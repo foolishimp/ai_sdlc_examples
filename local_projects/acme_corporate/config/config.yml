@@ -1,0 +1,26 @@
+corporate:
+  name: Acme Corporation
+  policies:
+    security:
+      uri: file://docs/policies/security_policy.md
+      version: '2.0'
+      mandatory: true
+    code_review:
+      uri: file://docs/policies/code_review.md
+      version: '1.0'
+      mandatory: true
+methodology:
+  testing:
+    min_coverage: 80
+    required_types:
+    - unit
+    - integration
+  coding:
+    max_function_lines: 50
+    max_complexity: 10
+quality:
+  gates:
+    code_quality:
+      max_critical_issues: 0
+      max_high_issues: 5
+      max_code_smells: 20

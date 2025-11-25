@@ -1,0 +1,203 @@
+project:
+  name: API Platform
+  team: Platform Engineering
+  tech_lead: sarah@company.com
+  type: public_api
+  customer_facing: true
+
+  description: |
+    Customer-facing API platform with strict backwards compatibility requirements.
+    Serves 10,000+ external customers with SLA commitments.
+
+# Override ONLY Principle #6 - No Legacy Baggage
+# All other Key Principles principles remain unchanged
+methodology:
+  principles:
+    # Principle #6 Override: From "No Legacy Baggage" to "Managed Evolution"
+    no_legacy_baggage:
+      principle: 6
+
+      # ORIGINAL from aisdlc-methodology:
+      # mantra: "Clean slate, no debt"
+      # requirements:
+      #   - No backwards compatibility constraints
+      #   - No technical debt
+      #   - Replace completely if needed
+      #   - Fresh start mentality
+
+      # PROJECT OVERRIDE:
+      mantra: "Backwards compatible through feature flags"
+
+      requirements:
+        - Use feature flags for all breaking changes
+        - Maintain backwards compatibility for 2 major versions minimum
+        - Document deprecation paths with clear timelines
+        - Provide comprehensive migration guides
+        - Monitor usage metrics before removal
+        - Clean tech debt only after safe deprecation period
+        - Feature flags must have: default, rollout plan, removal date
+
+      rationale: |
+        This project serves external customers with contractual SLA commitments.
+        Breaking changes without notice violate customer trust and contracts.
+        We balance innovation with stability through controlled evolution.
+
+      scope:
+        applies_to:
+          - Public REST APIs (v1, v2, v3)
+          - Published SDK/client libraries
+          - Webhook payloads and callbacks
+          - Database schemas with production data
+          - Configuration file formats
+
+        does_not_apply_to:
+          - Internal microservice APIs
+          - Development/staging environments
+          - Experimental features (marked beta)
+          - Internal utility functions
+          - Test fixtures and mocks
+
+      feature_flag_strategy:
+        pattern: "Toggle old/new behavior with gradual rollout"
+
+        tools:
+          primary: LaunchDarkly
+          fallback: Environment variables
+          custom: Feature flag service API
+
+        lifecycle:
+          - phase: 1_implementation
+            duration: 1-2 sprints
+            action: "Implement new behavior behind flag (default OFF)"
+            deliverable: "Code merged, feature flag created, tests passing"
+
+          - phase: 2_internal_validation
+            duration: 1 week
+            action: "Enable for internal testing (staging)"
+            deliverable: "Internal team validates, metrics look good"
+
+          - phase: 3_beta_rollout
+            duration: 2-4 weeks
+            action: "Gradual rollout to beta customers (1% → 10% → 50%)"
+            deliverable: "Monitor metrics, gather feedback, fix issues"
+
+          - phase: 4_full_rollout
+            duration: 2 weeks
+            action: "Enable for all customers (flag ON by default)"
+            deliverable: "100% traffic on new behavior, old behavior available"
+
+          - phase: 5_deprecation_notice
+            duration: 3-6 months
+            action: "Announce deprecation, provide migration guide"
+            deliverable: "Email sent, docs updated, warning logs added"
+
+          - phase: 6_final_removal
+            duration: 1 sprint
+            action: "Remove old code and feature flag after 2 major versions"
+            deliverable: "Clean codebase, tech debt removed, tests updated"
+
+        versioning_policy:
+          - "v1.0.0 → v2.0.0: Old behavior available via flag for 6 months"
+          - "v2.0.0 → v3.0.0: Old behavior removed, v2 becomes legacy"
+          - "Always maintain current + previous major version"
+
+        examples:
+          - flag_name: "USE_NEW_AUTH_FLOW"
+            created: "2024-03-15"
+            enabled_by_default: "2024-06-01"
+            deprecation_notice: "2024-09-01"
+            removal_target: "v3.0.0 (2025-03-01)"
+            reason: "OAuth 2.1 migration from OAuth 2.0"
+
+          - flag_name: "ENABLE_PAGINATION_V2"
+            created: "2024-05-01"
+            enabled_by_default: "2024-08-01"
+            deprecation_notice: "2024-11-01"
+            removal_target: "v3.0.0 (2025-03-01)"
+            reason: "Cursor-based pagination replacing offset-based"
+
+      monitoring:
+        metrics:
+          - "Feature flag usage by customer (who's on old vs new)"
+          - "Error rates (old behavior vs new behavior)"
+          - "Performance impact (latency, throughput)"
+          - "Customer support tickets related to changes"
+
+        alerts:
+          - "Spike in errors after flag toggle"
+          - "Customers still using deprecated behavior 1 month before removal"
+          - "Performance regression detected"
+
+      decision_tree:
+        question: "Is this change breaking for external customers?"
+
+        if_yes:
+          - "Create feature flag"
+          - "Follow 6-phase lifecycle"
+          - "Document in API changelog"
+          - "Notify customers via email"
+          - "Wait 2 major versions before removal"
+
+        if_no:
+          - "Follow standard Key Principles principles"
+          - "Deploy directly (no flag needed)"
+          - "No backwards compatibility burden"
+
+  # All other principles inherited from aisdlc-methodology
+  # No overrides - we follow Key Principles for:
+  #   1. Test Driven Development
+  #   2. Fail Fast & Root Cause
+  #   3. Modular & Maintainable
+  #   4. Reuse Before Build
+  #   5. Open Source First
+  #   7. Perfectionist Excellence
+
+  # Project-specific quality standards
+  testing:
+    min_coverage: 90
+    required_types:
+      - unit
+      - integration
+      - api_contract
+      - backwards_compatibility
+
+    backwards_compat_testing:
+      tool: "Pact contract testing"
+      versioned_tests: true
+      test_old_and_new: true
+
+  deployment:
+    strategy: "Blue-green with feature flags"
+    rollback_capability: required
+    approval_chain:
+      development:
+        - tech_lead
+      staging:
+        - tech_lead
+        - qa_lead
+      production:
+        - tech_lead
+        - qa_lead
+        - product_manager
+        - customer_success_lead
+
+quality:
+  api_versioning:
+    format: "v{major}.{minor}.{patch}"
+    support_policy: "Current + 1 previous major version"
+    deprecation_notice_period_months: 6
+
+  breaking_change_definition:
+    - "Removing or renaming API endpoints"
+    - "Changing request/response schemas"
+    - "Modifying authentication requirements"
+    - "Changing rate limits (downward)"
+    - "Altering webhook payload structure"
+
+documentation:
+  required:
+    - API changelog with version history
+    - Migration guides for each major version
+    - Feature flag documentation
+    - Deprecation notices in OpenAPI spec
+    - Customer-facing release notes

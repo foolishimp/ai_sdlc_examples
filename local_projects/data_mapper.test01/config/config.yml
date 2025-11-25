@@ -1,0 +1,443 @@
+project:
+  name: Data Mapper
+  team: Data Engineering Team
+  tech_lead: data-eng-lead@acme.com
+  product_owner: data-team@acme.com
+  classification: internal
+  user_facing: false
+
+  description: |
+    Configuration-based ETL data transformation system enabling data engineers to:
+    - Auto-detect schemas from multiple sources (JSON, CSV, Database)
+    - Define transformations using declarative YAML configuration
+    - Process large datasets efficiently (10,000+ records/second)
+    - Validate data quality with built-in rules
+    - Track all transformations for auditability
+
+    This project demonstrates:
+    - Folder-based asset discovery (no hardcoded requirement keys)
+    - Complete 7-stage AI SDLC methodology
+    - TDD workflow for all transformations
+    - BDD testing for integration scenarios
+    - Performance as a first-class requirement
+
+# ============================================================================
+# AI SDLC METHODOLOGY - 7-STAGE CONFIGURATION
+# ============================================================================
+# Reference: claude-code/plugins/aisdlc-methodology v2.0.0
+# Guide: docs/ai_sdlc_method.md
+
+ai_sdlc:
+  # Load 7-stage methodology plugin
+  methodology_plugin: "file://../../../claude-code/plugins/aisdlc-methodology/config/stages_config.yml"
+  key_principles: "file://../../../claude-code/plugins/aisdlc-methodology/config/config.yml"
+
+  # Asset discovery configuration (folder-based, no hardcoded keys)
+  asset_discovery:
+    requirement:
+      folders:
+        - ".ai-workspace/requirements"
+      file_patterns: ["*.md", "*.yml", "*.yaml"]
+
+    design:
+      folders:
+        - ".ai-workspace/designs"
+      file_patterns: ["*.md", "*.mermaid", "*.yml"]
+
+    task:
+      folders:
+        - ".ai-workspace/tasks"
+      file_patterns: ["*.md", "*.yml"]
+
+    test:
+      folders:
+        - ".ai-workspace/tests"
+        - "tests"
+      file_patterns: ["*.feature", "*.md", "test_*.py"]
+
+    runtime:
+      folders:
+        - ".ai-workspace/runtime"
+      file_patterns: ["*.yml", "*.json"]
+
+  # Enable all 7 stages
+  enabled_stages:
+    - requirements    # Section 4.0: Intent → Structured requirements
+    - design          # Section 5.0: Requirements → Technical solution
+    - tasks           # Section 6.0: Work breakdown
+    - code            # Section 7.0: TDD implementation (RED→GREEN→REFACTOR)
+    - system_test     # Section 8.0: BDD integration testing
+    - uat             # Section 9.0: Data team validation
+    - runtime_feedback # Section 10.0: Pipeline telemetry feedback loop
+
+  # Stage-specific configuration
+  stages:
+    # -------------------------------------------------------------------------
+    # 1. REQUIREMENTS STAGE (Section 4.0)
+    # -------------------------------------------------------------------------
+    requirements:
+      personas:
+        product_owner: data-team@acme.com
+        data_engineer: data-eng@acme.com
+        data_architect: data-arch@acme.com
+
+      # Folder-based requirements (no hardcoded keys)
+      folders:
+        functional: ".ai-workspace/requirements/functional"
+        non_functional: ".ai-workspace/requirements/non-functional"
+        business_rules: ".ai-workspace/requirements/business-rules"
+        data_quality: ".ai-workspace/requirements/data-quality"
+
+      quality_gates:
+        - all_requirements_in_folders: true
+        - all_requirements_have_acceptance_criteria: true
+        - data_team_review: required
+        - architect_review: required
+
+      traceability:
+        # Reference by file path (no hardcoded format)
+        reference_format: ".ai-workspace/requirements/{category}/{filename}.md"
+        track_changes: true
+        feedback_sources:
+          - design
+          - tasks
+          - code
+          - system_test
+          - uat
+          - runtime_feedback
+
+    # -------------------------------------------------------------------------
+    # 2. DESIGN STAGE (Section 5.0)
+    # -------------------------------------------------------------------------
+    design:
+      personas:
+        data_architect: data-arch@acme.com
+        software_architect: arch@acme.com
+        performance_engineer: perf-eng@acme.com
+
+      design_artifacts:
+        - type: component_diagrams
+          tool: "Mermaid"
+          output: ".ai-workspace/designs/components/"
+
+        - type: data_flow_diagrams
+          tool: "Mermaid"
+          output: ".ai-workspace/designs/data-flows/"
+
+        - type: api_specifications
+          tool: "Python type hints + docstrings"
+          output: ".ai-workspace/designs/api/"
+
+        - type: performance_models
+          tool: "Markdown + benchmarks"
+          output: ".ai-workspace/designs/performance/"
+
+      quality_gates:
+        - all_components_reference_requirements: true  # By file path
+        - architecture_review: required
+        - performance_review: required
+        - design_coverage: 100%
+
+      traceability:
+        # Reference requirements by file path
+        requirement_reference_format: ".ai-workspace/requirements/{category}/{filename}.md"
+
+    # -------------------------------------------------------------------------
+    # 3. TASKS STAGE (Section 6.0)
+    # -------------------------------------------------------------------------
+    tasks:
+      personas:
+        tech_lead: data-eng-lead@acme.com
+        scrum_master: scrum@acme.com
+
+      task_management:
+        tool: "File-based (.ai-workspace/tasks)"
+        active_folder: ".ai-workspace/tasks/active"
+        completed_folder: ".ai-workspace/tasks/completed"
+
+      task_format:
+        title: "required"
+        description: "required"
+        # Reference requirements by file path
+        implements: ".ai-workspace/requirements/{category}/{filename}.md"
+        estimated_hours: "required"
+        assigned_to: "optional"
+
+      quality_gates:
+        - all_tasks_reference_requirements: true
+        - all_tasks_have_estimates: true
+        - dependencies_mapped: true
+
+    # -------------------------------------------------------------------------
+    # 4. CODE STAGE (Section 7.0)
+    # -------------------------------------------------------------------------
+    code:
+      personas:
+        developer: data-eng@acme.com
+        code_reviewer: senior-data-eng@acme.com
+
+      # KEY PRINCIPLES (from claude-code/plugins/aisdlc-methodology/config/config.yml)
+      key_principles:
+        enabled: true
+        principles:
+          - tdd              # Test-Driven Development (RED→GREEN→REFACTOR)
+          - fail_fast        # Break loudly, fix completely
+          - modular          # Single responsibility, loose coupling
+          - reuse            # Check first, create second
+          - open_source      # Suggest alternatives, human decides
+          - no_legacy        # Clean slate, no debt
+          - excellence       # Best of breed only
+
+      # TDD Workflow
+      tdd:
+        workflow: "RED → GREEN → REFACTOR → COMMIT"
+        enforce: true
+        test_first: true
+        minimum_coverage: 95
+
+      # Code structure
+      structure:
+        src: "src/"
+        tests: "tests/"
+        # Reference requirements in code comments
+        requirement_reference_format: "# Implements: .ai-workspace/requirements/{category}/{filename}.md"
+
+      testing:
+        frameworks:
+          unit: "pytest"
+          integration: "pytest + behave"
+          performance: "pytest-benchmark"
+
+        coverage:
+          minimum: 95
+          report_format: "html"
+          fail_under: 90
+
+      performance:
+        # Performance is a first-class requirement
+        benchmarks_required: true
+        performance_tests: ".ai-workspace/tests/performance/"
+        targets:
+          - metric: "records_per_second"
+            target: 10000
+            references: ".ai-workspace/requirements/non-functional/performance.yml"
+
+          - metric: "memory_per_record"
+            target_mb: 0.01
+            references: ".ai-workspace/requirements/non-functional/scalability.yml"
+
+      quality_gates:
+        - all_code_references_requirements: true  # By file path
+        - all_tests_pass: true
+        - coverage_above_minimum: true
+        - no_linting_errors: true
+        - performance_benchmarks_pass: true
+
+    # -------------------------------------------------------------------------
+    # 5. SYSTEM TEST STAGE (Section 8.0)
+    # -------------------------------------------------------------------------
+    system_test:
+      personas:
+        qa_engineer: qa-data@acme.com
+        data_engineer: data-eng@acme.com
+
+      testing:
+        framework: "behave (BDD)"
+        features: ".ai-workspace/tests/scenarios/"
+        step_definitions: "tests/integration/steps/"
+
+      bdd_format: |
+        # Format: Given/When/Then
+        # Reference: .ai-workspace/requirements/{category}/{filename}.md
+
+        Feature: Data Mapping
+          Scenario: Transform customer data
+            Given a source JSON file
+            When I apply mapping configuration
+            Then output matches expected schema
+            And processing completes in < 100ms
+
+      coverage:
+        requirement_coverage_minimum: 95
+        # Track which requirements are validated by which scenarios
+
+      quality_gates:
+        - requirement_coverage_above_minimum: true
+        - all_scenarios_passing: true
+        - performance_validated: true
+        - error_handling_validated: true
+
+    # -------------------------------------------------------------------------
+    # 6. UAT STAGE (Section 9.0)
+    # -------------------------------------------------------------------------
+    uat:
+      personas:
+        data_team: data-team@acme.com
+        business_analyst: ba@acme.com
+
+      uat_approach: "Data team validation with real-world datasets"
+
+      test_cases:
+        location: ".ai-workspace/tests/uat/"
+        # Reference requirements by file path
+        format: |
+          UAT-001: Schema Auto-Detection
+          Validates: .ai-workspace/requirements/functional/schema-discovery.md
+          Tester: data-team@acme.com
+
+          Test Data: production_sample_customers.json (10k records)
+
+          Steps:
+          1. Run schema discovery on sample file
+          2. Verify detected schema matches expectations
+          3. Verify sample config generated correctly
+
+          Result: ✅ Pass
+          Sign-off: data-team@acme.com ✅
+
+      quality_gates:
+        - data_team_signoff: required
+        - real_world_data_validated: true
+        - performance_validated_at_scale: true
+
+    # -------------------------------------------------------------------------
+    # 7. RUNTIME FEEDBACK STAGE (Section 10.0)
+    # -------------------------------------------------------------------------
+    runtime_feedback:
+      personas:
+        sre: sre@acme.com
+        data_ops: data-ops@acme.com
+
+      observability:
+        metrics_folder: ".ai-workspace/runtime/metrics/"
+        dashboards_folder: ".ai-workspace/runtime/dashboards/"
+        alerts_folder: ".ai-workspace/runtime/alerts/"
+
+      telemetry:
+        # Tag all metrics with requirement file paths
+        requirement_tagging:
+          enabled: true
+          format: |
+            logger.info("Mapping completed", extra={
+                "requirement": ".ai-workspace/requirements/functional/mapping-engine.md",
+                "records_processed": 10000,
+                "duration_ms": 950,
+                "success_rate": 0.98
+            })
+
+        metrics:
+          - name: "records_processed"
+            type: "counter"
+            references: ".ai-workspace/requirements/functional/mapping-engine.md"
+
+          - name: "processing_duration_ms"
+            type: "histogram"
+            references: ".ai-workspace/requirements/non-functional/performance.yml"
+
+          - name: "validation_failures"
+            type: "counter"
+            references: ".ai-workspace/requirements/functional/validation.md"
+
+          - name: "memory_usage_mb"
+            type: "gauge"
+            references: ".ai-workspace/requirements/non-functional/scalability.yml"
+
+      alerts:
+        - name: "Performance Degradation"
+          condition: "records_per_second < 10000"
+          references: ".ai-workspace/requirements/non-functional/performance.yml"
+          action: "Generate new intent: Optimize performance"
+
+        - name: "High Validation Failure Rate"
+          condition: "validation_failure_rate > 0.05"
+          references: ".ai-workspace/requirements/functional/validation.md"
+          action: "Generate new intent: Improve data quality"
+
+        - name: "Memory Usage High"
+          condition: "memory_usage_mb > 1000"
+          references: ".ai-workspace/requirements/non-functional/scalability.yml"
+          action: "Generate new intent: Optimize memory usage"
+
+      feedback_loop:
+        # Close loop: Runtime issues → New intents
+        generate_intents: true
+        intent_threshold:
+          alert_count: 3
+          time_window_hours: 24
+        intent_routing: "data-team@acme.com"
+
+      quality_gates:
+        - all_metrics_tagged_with_requirements: true
+        - dashboards_deployed: true
+        - alerts_configured: true
+        - feedback_loop_operational: true
+
+# ============================================================================
+# TECHNOLOGY STACK
+# ============================================================================
+
+technology:
+  language: "Python 3.9+"
+
+  dependencies:
+    core:
+      - pandas          # Data processing
+      - polars          # Fast dataframe library
+      - pyyaml          # Configuration parsing
+      - jsonschema      # Schema validation
+
+    testing:
+      - pytest          # Unit testing
+      - behave          # BDD testing
+      - pytest-benchmark # Performance testing
+      - pytest-cov      # Coverage
+
+    development:
+      - black           # Code formatting
+      - flake8          # Linting
+      - mypy            # Type checking
+      - pre-commit      # Git hooks
+
+  performance:
+    target_throughput: "10,000 records/second"
+    max_memory: "< 1GB for 10GB file"
+    processing_model: "streaming (chunked)"
+
+# ============================================================================
+# EXAMPLE: Folder-Based Requirement Reference
+# ============================================================================
+
+example_references:
+  in_code: |
+    # src/transformations/remove_prefix.py
+
+    # Implements: .ai-workspace/requirements/functional/transformations.md
+    class RemovePrefixTransform:
+        """Remove prefix from string value."""
+        ...
+
+  in_design: |
+    # .ai-workspace/designs/transformation-pipeline.md
+
+    # Implements:
+    #   - .ai-workspace/requirements/functional/mapping-engine.md
+    #   - .ai-workspace/requirements/functional/transformations.md
+
+    ## Transformation Pipeline
+    ...
+
+  in_tests: |
+    # tests/integration/mapping.feature
+
+    Feature: Data Mapping
+      # Validates: .ai-workspace/requirements/functional/mapping-engine.md
+
+      Scenario: Transform customer data
+        ...
+
+  in_metrics: |
+    # Runtime telemetry
+    logger.info("Mapping completed", extra={
+        "requirement": ".ai-workspace/requirements/functional/mapping-engine.md",
+        "records_processed": 10000
+    })

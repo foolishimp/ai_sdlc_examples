@@ -1,0 +1,12 @@
+{
+  "name": "acme_corporate",
+  "project_type": "base",
+  "version": "1.0.0",
+  "created": "2025-10-14T16:11:15.494478Z",
+  "modified": "2025-10-14T16:11:15.494478Z",
+  "base_projects": [],
+  "description": "Corporate-wide policies and standards",
+  "merged_from": null,
+  "merge_date": null,
+  "runtime_overrides": null
+}

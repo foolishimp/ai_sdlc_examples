@@ -1,0 +1,44 @@
+project:
+  name: Payment Gateway
+  team: Payments Team
+  tech_lead: alice@acme.com
+  classification: restricted
+  pci_compliant: true
+methodology:
+  testing:
+    min_coverage: 95
+    required_types:
+    - unit
+    - integration
+    - security
+    - penetration
+    - load
+  deployment:
+    approval_chain:
+      development:
+      - tech_lead
+      staging:
+      - tech_lead
+      - qa_lead
+      production:
+      - tech_lead
+      - qa_lead
+      - security_lead
+      - compliance_officer
+      - cto
+security:
+  vulnerability_management:
+    scan_frequency: daily
+    critical_fix_sla_hours: 4
+    high_fix_sla_hours: 24
+  compliance:
+    frameworks:
+    - PCI DSS
+    - SOC2
+    - GDPR
+quality:
+  gates:
+    code_quality:
+      max_critical_issues: 0
+      max_high_issues: 0
+      max_code_smells: 0

@@ -1,0 +1,20 @@
+{
+  "name": "payment_gateway",
+  "project_type": "project",
+  "version": "1.0.0",
+  "created": "2025-10-14T16:11:15.546136Z",
+  "modified": "2025-10-16T03:00:00Z",
+  "base_projects": [
+    "aisdlc_methodology",
+    "python_standards"
+  ],
+  "description": "High-security payment processing gateway with PCI compliance (inherits Key Principles + Python standards)",
+  "merged_from": null,
+  "merge_date": null,
+  "runtime_overrides": null,
+  "metadata": {
+    "security_classification": "high",
+    "pci_compliant": true,
+    "inherits_from": ["ai_init_methodology", "python_standards"]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "customer_portal",
+  "project_type": "web_application",
+  "version": "1.0.0",
+  "created": "2025-11-14T02:30:00Z",
+  "modified": "2025-11-14T02:30:00Z",
+  "base_projects": [
+    "aisdlc_methodology",
+    "python_standards",
+    "acme_corporate"
+  ],
+  "description": "Customer self-service portal demonstrating complete 7-stage AI SDLC methodology with requirement traceability from intent to runtime",
+  "merged_from": null,
+  "merge_date": null,
+  "runtime_overrides": null,
+  "metadata": {
+    "team": "Customer Experience Team",
+    "tech_lead": "maria@acme.com",
+    "product_owner": "john@acme.com",
+    "classification": "internal",
+    "user_facing": true,
+    "demonstrates": "Complete 7-stage AI SDLC workflow",
+    "stages_used": [
+      "requirements",
+      "design",
+      "tasks",
+      "code",
+      "system_test",
+      "uat",
+      "runtime_feedback"
+    ]
+  }
+}

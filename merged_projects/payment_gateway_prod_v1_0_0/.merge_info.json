@@ -1,0 +1,26 @@
+{
+  "source_projects": [
+    "acme_corporate",
+    "python_standards",
+    "payment_gateway"
+  ],
+  "merge_date": "2025-10-14T16:11:15.672842Z",
+  "runtime_overrides": {
+    "environment": "production",
+    "build": {
+      "version": "1.0.0",
+      "timestamp": "2025-10-14T16:00:00Z",
+      "commit": "abc123def"
+    },
+    "security": {
+      "vulnerability_management": {
+        "scan_frequency": "continuous"
+      }
+    },
+    "deployment": {
+      "replicas": 5,
+      "auto_scaling": true,
+      "region": "us-east-1"
+    }
+  }
+}

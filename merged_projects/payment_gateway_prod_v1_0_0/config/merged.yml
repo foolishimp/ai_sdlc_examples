@@ -1,0 +1,75 @@
+corporate:
+  name: Acme Corporation
+  policies:
+    security:
+      uri: file://docs/policies/security_policy.md
+    code_review:
+      uri: file://docs/policies/code_review.md
+methodology:
+  testing:
+    min_coverage: 95
+    required_types:
+      '0': unit
+      '1': integration
+      '2': security
+      '3': penetration
+      '4': load
+    framework: pytest
+    plugins:
+      '0': pytest-cov
+      '1': pytest-mock
+      '2': pytest-asyncio
+  coding:
+    max_function_lines: 50
+    max_complexity: 10
+    standards:
+      style_guide: PEP 8
+      formatter: black
+      type_checking: true
+    linting:
+      tools:
+        '0': pylint
+        '1': flake8
+        '2': mypy
+        '3': black
+  deployment:
+    approval_chain:
+      development:
+        '0': tech_lead
+      staging:
+        '0': tech_lead
+        '1': qa_lead
+      production:
+        '0': tech_lead
+        '1': qa_lead
+        '2': security_lead
+        '3': compliance_officer
+        '4': cto
+quality:
+  gates:
+    code_quality:
+      max_critical_issues: 0
+      max_high_issues: 0
+      max_code_smells: 0
+tools:
+  package_management:
+    tool: poetry
+    python_version: ^3.9
+project:
+  name: Payment Gateway
+  team: Payments Team
+  tech_lead: alice@acme.com
+  classification: restricted
+  pci_compliant: true
+security:
+  vulnerability_management:
+    scan_frequency: continuous
+environment: production
+build:
+  version: 1.0.0
+  timestamp: '2025-10-14T16:00:00Z'
+  commit: abc123def
+deployment:
+  replicas: 5
+  auto_scaling: true
+  region: us-east-1

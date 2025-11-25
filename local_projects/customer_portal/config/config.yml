@@ -1,0 +1,423 @@
+project:
+  name: Customer Portal
+  team: Customer Experience Team
+  tech_lead: maria@acme.com
+  product_owner: john@acme.com
+  classification: internal
+  user_facing: true
+
+  description: |
+    Customer self-service portal allowing users to:
+    - View account information
+    - Submit support tickets
+    - Track order status
+    - Update preferences
+
+    This project demonstrates the complete 7-stage AI SDLC methodology
+    with full requirement traceability from intent to runtime feedback.
+
+# ============================================================================
+# AI SDLC METHODOLOGY - 7-STAGE CONFIGURATION
+# ============================================================================
+# Reference: claude-code/plugins/aisdlc-methodology v2.0.0
+# Guide: docs/ai_sdlc_method.md
+
+ai_sdlc:
+  # Load 7-stage methodology plugin
+  methodology_plugin: "file://../../../claude-code/plugins/aisdlc-methodology/config/stages_config.yml"
+  sacred_seven: "file://../../../claude-code/plugins/aisdlc-methodology/config/config.yml"
+
+  # Enable all 7 stages
+  enabled_stages:
+    - requirements    # Section 4.0: Intent → Structured requirements
+    - design          # Section 5.0: Requirements → Technical solution
+    - tasks           # Section 6.0: Work breakdown + Jira orchestration
+    - code            # Section 7.0: TDD implementation (RED→GREEN→REFACTOR)
+    - system_test     # Section 8.0: BDD integration testing
+    - uat             # Section 9.0: Business validation
+    - runtime_feedback # Section 10.0: Production telemetry feedback loop
+
+  # Stage-specific configuration
+  stages:
+    # -------------------------------------------------------------------------
+    # 1. REQUIREMENTS STAGE (Section 4.0)
+    # -------------------------------------------------------------------------
+    requirements:
+      personas:
+        product_owner: john@acme.com
+        business_analyst: sarah@acme.com
+        data_steward: data-team@acme.com
+
+      requirement_types:
+        - type: functional
+          prefix: REQ-F
+          template: "file://docs/templates/user_story_template.md"
+        - type: non_functional
+          prefix: REQ-NFR
+          template: "file://docs/templates/nfr_template.md"
+        - type: data_quality
+          prefix: REQ-DATA
+          template: "file://docs/templates/data_requirement_template.md"
+        - type: business_rule
+          prefix: REQ-BR
+          template: "file://docs/templates/business_rule_template.md"
+
+      quality_gates:
+        - all_requirements_have_unique_keys: true
+        - all_requirements_have_acceptance_criteria: true
+        - product_owner_review: required
+        - business_analyst_review: required
+
+      traceability:
+        requirement_key_format: "REQ-{TYPE}-{CATEGORY}-{ID:03d}"
+        immutable_keys: true
+        track_changes: true
+        feedback_sources:
+          - design
+          - tasks
+          - code
+          - system_test
+          - uat
+          - runtime_feedback
+
+    # -------------------------------------------------------------------------
+    # 2. DESIGN STAGE (Section 5.0)
+    # -------------------------------------------------------------------------
+    design:
+      personas:
+        solution_architect: alice@acme.com
+        data_architect: bob@acme.com
+        security_architect: security@acme.com
+
+      design_artifacts:
+        - type: component_diagrams
+          tool: "Mermaid"
+          output: "docs/design/components/"
+        - type: data_models
+          tool: "ERD / dbdiagram.io"
+          output: "docs/design/data_models/"
+        - type: api_specifications
+          tool: "OpenAPI 3.0"
+          output: "docs/design/api/"
+        - type: architecture_decision_records
+          template: "file://docs/templates/adr_template.md"
+          output: "docs/design/adrs/"
+
+      architectural_patterns:
+        - "Microservices architecture"
+        - "Event-driven patterns"
+        - "CQRS for read/write separation"
+        - "API Gateway pattern"
+
+      quality_gates:
+        - requirement_coverage: 100%
+        - all_components_mapped_to_requirements: true
+        - architecture_review: required
+        - data_architecture_review: required
+        - security_review: required
+
+      traceability:
+        design_to_requirement_matrix: required
+        track_design_decisions: true
+
+    # -------------------------------------------------------------------------
+    # 3. TASKS STAGE (Section 6.0)
+    # -------------------------------------------------------------------------
+    tasks:
+      personas:
+        scrum_master: tasks-lead@acme.com
+        tech_lead: maria@acme.com
+
+      jira_integration:
+        enabled: true
+        project_key: "PORTAL"
+        base_url: "https://acme.atlassian.net"
+
+        work_item_types:
+          - epic
+          - user_story
+          - technical_task
+          - data_task
+          - test_task
+
+        requirement_key_field: "customfield_10100"
+        tag_all_work_items: true
+
+      work_breakdown:
+        estimation_method: "story_points"
+        capacity_planning: enabled
+        dependency_tracking: enabled
+        critical_path_analysis: enabled
+
+      agent_orchestration:
+        # Tasks Stage Orchestrator assigns work to Code Agents
+        monitor_tdd_cycle: true
+        enforce_test_coverage_gates: true
+        coverage_minimum: 80
+        critical_path_coverage: 100
+
+      quality_gates:
+        - all_tasks_linked_to_requirements: true
+        - all_tasks_estimated: true
+        - capacity_validated: true
+        - dependencies_identified: true
+
+    # -------------------------------------------------------------------------
+    # 4. CODE STAGE (Section 7.0) - TDD with Key Principles
+    # -------------------------------------------------------------------------
+    code:
+      personas:
+        developer: "Customer Experience Dev Team"
+        tech_lead: maria@acme.com
+
+      methodology: TDD  # RED → GREEN → REFACTOR → COMMIT
+
+      sacred_seven_adherence: strict
+      # All 7 principles apply (inherited from plugin)
+      # See: claude-code/plugins/aisdlc-methodology/config/config.yml
+
+      testing:
+        framework: pytest
+        coverage_minimum: 80
+        critical_path_coverage: 100
+        test_types:
+          - unit
+          - integration
+
+        tdd_workflow:
+          enforce_red_green_refactor: true
+          no_code_without_tests: true
+          tests_as_documentation: true
+
+      code_standards:
+        language: python
+        style_guide: PEP 8
+        type_hints: required
+        docstrings: required
+        max_complexity: 10
+        max_function_lines: 50
+
+      requirement_tagging:
+        # All code must be tagged with requirement keys
+        comment_format: "# Implements: {requirement_key}"
+        git_commit_format: "{type}: {summary}\n\nImplements: {requirement_keys}\n\n{body}"
+
+      quality_gates:
+        - all_code_has_tests: true
+        - test_coverage_met: true
+        - all_tests_passing: true
+        - code_tagged_with_requirements: true
+        - security_scan_passes: true
+        - no_critical_code_smells: true
+
+    # -------------------------------------------------------------------------
+    # 5. SYSTEM TEST STAGE (Section 8.0) - BDD Integration Testing
+    # -------------------------------------------------------------------------
+    system_test:
+      personas:
+        qa_engineer: qa-team@acme.com
+        qa_lead: qa-lead@acme.com
+
+      methodology: BDD  # Given/When/Then
+
+      bdd_framework:
+        tool: pytest-bdd
+        language: Gherkin
+        feature_files: "tests/features/"
+        step_definitions: "tests/steps/"
+
+      test_types:
+        - integration_tests
+        - api_contract_tests
+        - data_quality_tests
+        - performance_tests
+        - security_tests
+
+      coverage_analysis:
+        requirement_coverage_minimum: 95
+        scenario_to_requirement_matrix: required
+        track_untested_requirements: true
+
+      quality_gates:
+        - all_requirements_have_scenarios: true
+        - requirement_coverage_met: true
+        - all_scenarios_pass: true
+        - no_critical_defects: true
+        - qa_lead_approval: required
+
+      feedback_to_requirements:
+        # If gaps found, create new requirements or modify existing
+        gap_analysis: enabled
+        auto_create_feedback_items: true
+
+    # -------------------------------------------------------------------------
+    # 6. UAT STAGE (Section 9.0) - Business Validation with BDD
+    # -------------------------------------------------------------------------
+    uat:
+      personas:
+        business_sme: john@acme.com
+        uat_lead: uat-lead@acme.com
+        data_steward: data-team@acme.com
+
+      parallel_activities:
+        manual_uat:
+          enabled: true
+          test_case_format: "Given/When/Then (pure business language)"
+          location: "docs/uat/manual_test_cases/"
+
+        automated_uat:
+          enabled: true
+          framework: pytest-bdd
+          location: "tests/uat/"
+
+        automated_data_tests:
+          enabled: true
+          framework: great_expectations
+          location: "tests/data_quality/"
+
+      sign_off_authorities:
+        - business_sme: john@acme.com
+        - data_steward: data-team@acme.com
+        - uat_lead: uat-lead@acme.com
+
+      quality_gates:
+        - all_manual_scenarios_executed: true
+        - business_sign_off: required
+        - data_validation_complete: true
+        - no_critical_defects: true
+
+      traceability:
+        uat_to_requirement_matrix: required
+        track_business_acceptance: true
+
+    # -------------------------------------------------------------------------
+    # 7. RUNTIME FEEDBACK STAGE (Section 10.0)
+    # -------------------------------------------------------------------------
+    runtime_feedback:
+      personas:
+        sre: sre-team@acme.com
+        devops: devops@acme.com
+
+      observability_platforms:
+        - platform: Datadog
+          metrics: true
+          traces: true
+          logs: true
+        - platform: Prometheus
+          metrics: true
+        - platform: Grafana
+          dashboards: true
+
+      telemetry_tagging:
+        # All deployed code tagged with requirement keys
+        release_manifest_includes_requirements: true
+        runtime_logs_include_requirement_keys: true
+        metrics_tagged_with_requirement_keys: true
+
+      feedback_loop:
+        # Runtime issues generate new intents
+        alert_to_intent_mapping: enabled
+        auto_create_incidents: true
+        root_cause_analysis: enabled
+        trend_analysis: enabled
+
+      dashboards:
+        - name: "Requirement Health Dashboard"
+          metrics:
+            - requirement_error_rates
+            - requirement_performance
+            - requirement_usage_metrics
+        - name: "Feature Performance"
+          metrics:
+            - response_times_by_feature
+            - error_rates_by_feature
+            - user_satisfaction_by_feature
+
+      quality_gates:
+        - all_code_tagged_with_requirements: true
+        - telemetry_captures_requirement_keys: true
+        - alerts_routed_to_intent_manager: true
+        - traceability_complete: true
+
+# ============================================================================
+# PROJECT-SPECIFIC QUALITY STANDARDS
+# ============================================================================
+quality:
+  testing:
+    min_coverage: 85  # Higher than baseline 80%
+    required_types:
+      - unit
+      - integration
+      - bdd_system_tests
+      - bdd_uat_tests
+      - data_quality_tests
+
+  code_quality:
+    max_critical_issues: 0
+    max_high_issues: 2
+    max_code_smells: 10
+
+  security:
+    scan_on_commit: true
+    vulnerability_sla:
+      critical: 24h
+      high: 72h
+
+# ============================================================================
+# TRACEABILITY CONFIGURATION
+# ============================================================================
+traceability:
+  requirement_key_propagation:
+    stages:
+      - requirements   # REQ-F-AUTH-001 created
+      - design         # Component maps to REQ-F-AUTH-001
+      - tasks          # Jira PORTAL-123 → REQ-F-AUTH-001
+      - code           # auth.py # Implements: REQ-F-AUTH-001
+      - system_test    # test_auth.feature # Validates: REQ-F-AUTH-001
+      - uat            # UAT-001 → REQ-F-AUTH-001
+      - runtime_feedback # ERROR: REQ-F-AUTH-001 - Auth failure
+
+  bidirectional:
+    forward: "Intent → Requirements → Design → Tasks → Code → Tests → UAT → Runtime"
+    backward: "Runtime Issues → Requirement → Code → Design → Intent"
+
+  tools:
+    requirement_management: Jira
+    traceability_matrix: "docs/traceability/matrix.xlsx"
+    impact_analysis: enabled
+
+# ============================================================================
+# DEPLOYMENT CONFIGURATION
+# ============================================================================
+deployment:
+  strategy: blue_green
+  approval_chain:
+    development:
+      - tech_lead
+    staging:
+      - tech_lead
+      - qa_lead
+    production:
+      - tech_lead
+      - qa_lead
+      - product_owner
+      - sre_lead
+
+  release_manifest:
+    include_requirement_keys: true
+    format: "release_{version}_{date}.yml"
+    location: "releases/"
+
+# ============================================================================
+# DOCUMENTATION
+# ============================================================================
+documentation:
+  required:
+    - README.md
+    - ARCHITECTURE.md
+    - API documentation (OpenAPI)
+    - Data models (ERDs)
+    - ADRs (Architecture Decision Records)
+    - Traceability matrix
+    - UAT test cases
+    - Release notes

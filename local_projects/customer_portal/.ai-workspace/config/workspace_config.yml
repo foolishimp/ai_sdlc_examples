@@ -1,0 +1,119 @@
+# Developer Workspace Configuration
+version: "1.0"
+
+# Task tracking (single-tier: lightweight or formal)
+task_tracking:
+  enabled: true
+
+  # Tasks (can be lightweight or formal based on need)
+  tasks:
+    enabled: true
+    active_file: "tasks/active/ACTIVE_TASKS.md"
+    finished_dir: "tasks/finished/"
+    template: "templates/TASK_TEMPLATE.md"
+    finished_template: "templates/FINISHED_TASK_TEMPLATE.md"
+    feature_flags:
+      enabled: true
+      pattern: "task-{id}-{description}"
+
+  # Archive
+  archive:
+    enabled: true
+    retention_days: 365  # Keep finished tasks for 1 year
+
+# Session management
+session:
+  enabled: true
+  current_file: "session/current_session.md"
+  history_dir: "session/history/"
+  template: "templates/SESSION_TEMPLATE.md"
+  starter_checklist: "templates/SESSION_STARTER.md"
+
+  # Check-in reminders
+  checkin_frequency_minutes: 15
+
+  # Auto-save session state
+  autosave: true
+  autosave_interval_minutes: 5
+
+# Pair programming
+pair_programming:
+  enabled: true
+  guide: "templates/PAIR_PROGRAMMING_GUIDE.md"
+
+  # Default mode
+  default_mode: "human_driver_ai_navigator"
+
+  # Communication preferences
+  verbosity: "medium"  # low, medium, high
+  think_aloud: true
+  frequent_checkins: true
+
+# TDD workflow
+tdd:
+  enforce: true
+  workflow: "RED → GREEN → REFACTOR → COMMIT"
+  min_coverage: 80
+  critical_path_coverage: 100
+
+# Integration with AI SDLC (NO external integrations)
+ai_sdlc:
+  # Link to enterprise system
+  requirements_integration: true
+
+  # File system is ALWAYS the foundation
+  # No external integrations enabled by default
+  jira_integration:
+    enabled: false
+  github_projects_integration:
+    enabled: false
+  azure_devops_integration:
+    enabled: false
+
+  # Requirement key tagging
+  require_req_keys: false  # Optional, set to true for strict enforcement
+  req_key_pattern: "REQ-{TYPE}-{DOMAIN}-{SEQ}"
+
+# Metrics
+metrics:
+  track_time: true
+  track_coverage: true
+  track_rework: true
+  track_defects: true
+
+  # Session metrics report
+  generate_report: true
+  report_frequency: "daily"  # daily, weekly, monthly
+
+# Git integration
+git:
+  # Commit message template
+  commit_template: |
+    Task #{id}: {title}
+
+    {problem}
+
+    {solution}
+
+    Tests: {test_summary}
+    TDD: RED → GREEN → REFACTOR
+
+    🤖 Generated with [Claude Code](https://claude.ai/code)
+    Co-Authored-By: Claude <noreply@anthropic.com>
+
+  # Auto-commit finished tasks
+  auto_commit: false  # User preference
+
+# Notifications
+notifications:
+  # Remind to take breaks
+  break_reminder: true
+  break_interval_minutes: 60
+
+  # Remind to commit
+  uncommitted_changes_reminder: true
+  uncommitted_threshold_minutes: 120
+
+  # Session timeout warning
+  session_timeout_warning: true
+  session_timeout_hours: 4

@@ -1,0 +1,23 @@
+{
+  "acme_corporate": {
+    "type": "organizational",
+    "path": "local_projects/acme_corporate",
+    "base_contexts": ["aisdlc_methodology"],
+    "description": "Example: Corporate-level policies and standards",
+    "demonstrates": ["organizational_layer", "corporate_governance", "local_customization"]
+  },
+  "payment_gateway": {
+    "type": "project",
+    "path": "local_projects/payment_gateway",
+    "base_contexts": ["aisdlc_methodology", "python_standards", "acme_corporate"],
+    "description": "Example: High-risk payment processing service",
+    "demonstrates": ["multi_layer_inheritance", "risk_based_config", "enterprise_project"]
+  },
+  "admin_dashboard": {
+    "type": "project",
+    "path": "local_projects/admin_dashboard",
+    "base_contexts": ["aisdlc_methodology", "python_standards", "acme_corporate"],
+    "description": "Example: Low-risk internal admin tool",
+    "demonstrates": ["relaxed_standards", "internal_tooling", "rapid_development"]
+  }
+}
