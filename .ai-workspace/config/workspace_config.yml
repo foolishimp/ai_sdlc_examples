@@ -1,0 +1,21 @@
+# Developer Workspace Configuration
+version: "1.0"
+
+# Task tracking
+task_tracking:
+  enabled: true
+  active_file: "tasks/active/ACTIVE_TASKS.md"
+  finished_dir: "tasks/finished/"
+  template: "templates/TASK_TEMPLATE.md"
+  finished_template: "templates/FINISHED_TASK_TEMPLATE.md"
+
+# TDD workflow
+tdd:
+  enforce: true
+  workflow: "RED → GREEN → REFACTOR → COMMIT"
+  min_coverage: 80
+
+# Requirement key tagging
+ai_sdlc:
+  require_req_keys: false
+  req_key_pattern: "REQ-{TYPE}-{DOMAIN}-{SEQ}"
