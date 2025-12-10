@@ -962,21 +962,235 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 
 ---
 
+### 2.8. Cross-Domain Fidelity (COV)
+
+#### REQ-COV-01: Cross-Domain Covariance Contracts
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, INT-002 (Axiom 8: Topology is the Guardrail), REQ-ADJ-01
+
+**Description**: The system must support formal Covariance Contracts between domains, defining how entities in one domain relate to entities in another domain with explicit grain alignment requirements.
+
+**Rationale**: Complex enterprises operate multiple data domains (Finance, Risk, Operations, Regulatory) that must maintain consistent views of the same underlying business reality. Without formal contracts, domains diverge silently, creating reconciliation nightmares and regulatory exposure.
+
+**Acceptance Criteria**:
+- Covariance contracts define morphisms between domains with explicit grain alignment
+- Each cross-domain morphism declares cardinality (1:1, N:1, 1:N, M:N)
+- Grain alignment is enforced: ATOMIC↔ATOMIC, DAILY↔DAILY, etc.
+- Cross-grain mappings require explicit aggregation/disaggregation morphisms
+- Contracts are versioned and immutable (REQ-TRV-05-B)
+- Contract violations are detected at compile time where possible
+- Contracts support invariant declarations (REQ-COV-02)
+
+---
+
+#### REQ-COV-02: Fidelity Invariants
+
+**Priority**: Critical
+**Type**: Functional
+**Traces To**: INT-001, INT-002 (Axiom 7: Types are Contracts), REQ-COV-01
+
+**Description**: Covariance contracts must support Fidelity Invariants - mathematical assertions that must hold between domains at each grain level, with violations treated as contract breaches, not acceptable drift.
+
+**Rationale**: In regulated environments, "drift" is not tolerable - either the data is correct or it's a breach. Fidelity invariants provide provable guarantees that cross-domain relationships hold.
+
+**Acceptance Criteria**:
+- Invariants are declared per grain level (ATOMIC, DAILY, MONTHLY, etc.)
+- Invariant types include:
+  - **Conservation**: `sum(A.amount) == sum(B.amount)` (value preservation)
+  - **Coverage**: `count(B) >= count(A)` (completeness)
+  - **Alignment**: `A.as_of_date == B.as_of_date` (temporal consistency)
+  - **Containment**: `keys(A) ⊆ keys(B)` (subset relationship)
+- Invariants support **materiality thresholds** (immaterial differences below threshold)
+- Materiality thresholds are explicit, auditable, and justified
+- Invariant violations are **contract breaches**, not warnings
+- Breach severity levels: IMMATERIAL (below threshold), MATERIAL (above threshold), CRITICAL (structural)
+- All invariant checks are logged with full context for audit
+
+---
+
+#### REQ-COV-03: Fidelity Verification
+
+**Priority**: Critical
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-01, REQ-COV-02, REQ-TRV-05-A
+
+**Description**: The system must provide Fidelity Verification - the ability to prove that cross-domain invariants hold at any point in time, with cryptographic evidence binding the proof to immutable domain states.
+
+**Rationale**: Auditors and regulators require proof, not assertions. Fidelity verification produces evidence that can be independently validated, not just logs that claim correctness.
+
+**Acceptance Criteria**:
+- Fidelity verification produces a **Fidelity Certificate** for each verification run
+- Certificate is cryptographically bound to:
+  - Source domain state (snapshot hash)
+  - Target domain state (snapshot hash)
+  - Contract version
+  - Invariant evaluation results
+  - Timestamp and run ID
+- Certificate includes:
+  - All invariants checked
+  - Pass/fail status for each invariant
+  - Actual values vs expected values
+  - Materiality threshold applied
+  - Any breaches detected with full context
+- Certificates are immutable (stored with run manifest per REQ-TRV-05-A)
+- Historical certificates are queryable for audit
+- Verification can run as scheduled job or on-demand
+- Verification performance: O(sample) for statistical verification, O(full) for exhaustive
+
+---
+
+#### REQ-COV-04: Contract Breach Detection
+
+**Priority**: Critical
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-02, REQ-COV-03, REQ-TYP-03 (Error Domain)
+
+**Description**: When fidelity verification detects invariant violations exceeding materiality thresholds, the system must treat these as Contract Breaches with full diagnostic capture and configurable response.
+
+**Rationale**: Breaches are not errors to be logged and ignored - they represent a breakdown in the fundamental guarantee that domains are consistent. Response must be explicit and auditable.
+
+**Acceptance Criteria**:
+- Breach detection occurs during fidelity verification
+- Breach severity classification:
+  - **IMMATERIAL**: Below materiality threshold, logged but not escalated
+  - **MATERIAL**: Above threshold, requires investigation and remediation
+  - **CRITICAL**: Structural breach (missing entities, broken relationships), halts dependent processing
+- Breach record includes:
+  - Contract and invariant violated
+  - Source and target entities involved
+  - Expected vs actual values
+  - Materiality threshold and how much exceeded
+  - Contributing records (via adjoint backward traversal)
+  - Timestamp and domain snapshot references
+- Configurable breach response:
+  - `ALERT`: Notify but continue processing
+  - `QUARANTINE`: Continue but flag affected records
+  - `HALT`: Stop dependent processing until remediated
+  - `ROLLBACK`: Revert to last verified state
+- Breach records are queryable and exportable for regulatory reporting
+- Breach remediation is tracked with audit trail
+
+---
+
+#### REQ-COV-05: Covariant Propagation
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-01, REQ-ADJ-10 (Bidirectional Sync)
+
+**Description**: Changes in one domain must propagate correctly to related domains per the covariance contract, maintaining fidelity invariants across the propagation.
+
+**Rationale**: Domains don't exist in isolation. When Finance books a trade, Risk must see it. When Risk revalues a position, Finance must reflect it. Propagation must be automatic, correct, and verifiable.
+
+**Acceptance Criteria**:
+- Change propagation follows covariance contract morphisms
+- Propagation respects grain alignment (atomic changes propagate to atomic, aggregate to aggregate)
+- Propagation direction is explicit: FORWARD (A→B), BACKWARD (B→A), or BIDIRECTIONAL
+- Conflict detection when both domains have concurrent changes to related entities
+- Conflict resolution strategies per contract:
+  - `SOURCE_AUTHORITATIVE`: Source domain wins
+  - `TARGET_AUTHORITATIVE`: Target domain wins
+  - `MERGE`: Apply non-conflicting changes from both
+  - `FAIL`: Halt and require manual resolution
+- Each propagation is an immutable run with full manifest (REQ-TRV-05-A)
+- Fidelity verification runs automatically after propagation
+- Propagation failures do not leave domains in inconsistent state (transactional semantics)
+
+---
+
+#### REQ-COV-06: Multi-Grain Fidelity
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-02, REQ-LDM-06, REQ-INT-02
+
+**Description**: Fidelity invariants must be verifiable across grain boundaries within and between domains, ensuring that aggregations in one domain align with aggregations in another.
+
+**Rationale**: A daily P&L in Finance must equal the sum of atomic transactions. A monthly Risk report must align with daily VaR calculations. Cross-grain fidelity prevents the "reconciliation gap" problem.
+
+**Acceptance Criteria**:
+- Cross-grain invariants supported within domain: `sum(daily) == monthly`
+- Cross-grain invariants supported across domains: `sum(A.daily) == sum(B.daily)`
+- Grain hierarchy is explicit in both domains (REQ-LDM-06)
+- Aggregation morphisms between grains are monoidal (REQ-LDM-04)
+- Verification traverses grain hierarchy to check consistency at each level
+- Grain misalignment (e.g., comparing daily to monthly without aggregation) is rejected at compile time
+- Multi-grain verification produces hierarchical fidelity certificate showing status at each level
+
+---
+
+#### REQ-COV-07: Contract Enforcement
+
+**Priority**: Critical
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-01, REQ-COV-02, REQ-LDM-03
+
+**Description**: Covariance contracts must be enforced at execution time, not just verified after the fact. Operations that would violate fidelity invariants must be prevented before they corrupt domain state.
+
+**Rationale**: Verification detects problems after they occur. Enforcement prevents problems from occurring. In financial systems, it's better to reject a transaction that would break invariants than to process it and detect the breach later.
+
+**Acceptance Criteria**:
+- Contract enforcement occurs during mapping execution, not just verification
+- **Pre-execution enforcement**: Validate that proposed changes will not violate invariants
+- **Transactional enforcement**: Cross-domain updates are atomic - both succeed or both fail
+- Enforcement modes per contract:
+  - `STRICT`: Reject any operation that would violate invariants
+  - `DEFERRED`: Allow operation but require remediation within defined window
+  - `ADVISORY`: Warn but allow (for migration/transition periods only)
+- Enforcement integrates with Error Domain (REQ-TYP-03) for rejected operations
+- Enforcement decisions are logged with full context
+- Compile-time enforcement where possible (REQ-LDM-03 path validation extended to cross-domain)
+- Runtime enforcement for value-level invariants
+- Enforcement cannot be bypassed without explicit override with audit trail
+
+---
+
+#### REQ-COV-08: Fidelity Certificate Chain
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, REQ-COV-03, REQ-TRV-05-A, REQ-AI-02
+
+**Description**: Fidelity certificates must form an immutable chain, enabling proof of continuous fidelity over time and detection of any gaps in verification coverage.
+
+**Rationale**: A single point-in-time certificate proves fidelity at that moment. A certificate chain proves continuous fidelity and makes any verification gaps visible. This is essential for regulatory reporting that requires proof of ongoing compliance.
+
+**Acceptance Criteria**:
+- Each fidelity certificate references the previous certificate (hash chain)
+- Certificate chain is cryptographically tamper-evident
+- Gaps in verification (missed scheduled verifications) are detectable
+- Chain provides:
+  - Continuous fidelity proof over time period
+  - List of all breaches detected and remediated
+  - Verification coverage percentage
+  - Time since last full verification
+- Chain is queryable: "Prove fidelity between date A and date B"
+- Chain supports branching (verification at different grain levels, different contracts)
+- Certificate chain integrates with run manifest hierarchy (REQ-TRV-05-A)
+- Export format for regulatory submission (JSON, XML, PDF with signatures)
+
+---
+
 ## 3. Regulatory Compliance Mapping
 
 ### 3.1. BCBS 239 (Risk Data Aggregation & Reporting)
 
 | Principle | Requirements | Description |
 |-----------|-------------|-------------|
-| Principle 3 (Accuracy & Integrity) | REQ-TYP-01, REQ-TYP-02, REQ-TYP-06, REQ-TRV-05 | Type enforcement and deterministic reproducibility |
-| Principle 4 (Completeness) | REQ-LDM-03, REQ-TRV-02, REQ-INT-03, REQ-ERROR-01 | Path validation, grain safety, lineage, error capture |
-| Principle 6 (Adaptability) | REQ-PDM-01 | LDM/PDM separation |
+| Principle 3 (Accuracy & Integrity) | REQ-TYP-01, REQ-TYP-02, REQ-TYP-06, REQ-TRV-05, REQ-COV-02, REQ-COV-03 | Type enforcement, deterministic reproducibility, fidelity verification |
+| Principle 4 (Completeness) | REQ-LDM-03, REQ-TRV-02, REQ-INT-03, REQ-ERROR-01, REQ-COV-06 | Path validation, grain safety, lineage, multi-grain fidelity |
+| Principle 5 (Timeliness) | REQ-COV-05, REQ-COV-07 | Covariant propagation, contract enforcement |
+| Principle 6 (Adaptability) | REQ-PDM-01, REQ-COV-01 | LDM/PDM separation, cross-domain contracts |
 
 ### 3.2. FRTB (Fundamental Review of the Trading Book)
 
 | Requirement | Requirements | Description |
 |-------------|-------------|-------------|
-| Granular Risk Attribution | REQ-INT-03, REQ-TRV-05, REQ-TRV-02 | Full lineage and grain correctness |
+| Granular Risk Attribution | REQ-INT-03, REQ-TRV-05, REQ-TRV-02, REQ-COV-06 | Full lineage, grain correctness, multi-grain fidelity |
+| Cross-Domain Consistency | REQ-COV-01, REQ-COV-02, REQ-COV-03 | Finance↔Risk covariance contracts and verification |
+| Audit Trail | REQ-TRV-05-A, REQ-COV-08 | Immutable run hierarchy, fidelity certificate chain |
 
 ### 3.3. GDPR / CCPA (Data Privacy)
 
@@ -988,8 +1202,16 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 
 | Article | Requirements | Description |
 |---------|-------------|-------------|
-| Article 14 (Human Oversight) | REQ-AI-01, REQ-AI-02, REQ-AI-03 | Hallucination prevention and triangulation |
-| Article 15 (Robustness) | REQ-LDM-03, REQ-TYP-06, REQ-TRV-05 | Topological strictness and determinism |
+| Article 14 (Human Oversight) | REQ-AI-01, REQ-AI-02, REQ-AI-03, REQ-COV-03 | Hallucination prevention, triangulation, fidelity verification |
+| Article 15 (Robustness) | REQ-LDM-03, REQ-TYP-06, REQ-TRV-05, REQ-COV-07 | Topological strictness, determinism, contract enforcement |
+
+### 3.5. SOX (Sarbanes-Oxley) / Internal Controls
+
+| Requirement | Requirements | Description |
+|-------------|-------------|-------------|
+| Control Evidence | REQ-COV-03, REQ-COV-08 | Fidelity certificates as control evidence, certificate chain for continuous compliance |
+| Segregation of Duties | REQ-LDM-05, REQ-COV-07 | Topological access control, contract enforcement prevents unauthorized changes |
+| Change Management | REQ-TRV-05-A, REQ-TRV-05-B | Immutable run hierarchy, artifact version binding |
 
 ---
 
@@ -1146,31 +1368,32 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 |----------|-------|-------------|
 | Logical Topology (LDM) | 7 | Entity/morphism graph structure and semantics |
 | Physical Binding (PDM) | 6 | Storage abstraction and system boundaries |
-| Traversal Engine (TRV/SHF) | 9 | Path execution, grain safety, context management, **immutability** |
+| Traversal Engine (TRV/SHF) | 9 | Path execution, grain safety, context management, immutability |
 | Integration & Synthesis (INT) | 8 | Transformations, aggregations, lineage |
 | Typing & Quality (TYP/ERROR) | 9 | Type system, refinements, error handling |
 | AI Assurance (AI) | 3 | Hallucination prevention, triangulation |
 | Adjoint Morphisms (ADJ) | 11 | Reverse transformations, reconciliation, impact analysis |
+| **Cross-Domain Fidelity (COV)** | **8** | **Covariance contracts, fidelity verification, enforcement** |
 | Implementation Constraints (RIC) | 9 | Performance optimizations, lineage modes |
-| **Total** | **62** | |
+| **Total** | **70** | |
 
 ### 5.2. By Priority
 
 | Priority | Count | Percentage |
 |----------|-------|------------|
-| Critical | 19 | 31% |
-| High | 26 | 42% |
-| Medium | 15 | 24% |
+| Critical | 23 | 33% |
+| High | 30 | 43% |
+| Medium | 15 | 21% |
 | Low | 2 | 3% |
-| **Total** | **62** | **100%** |
+| **Total** | **70** | **100%** |
 
 ### 5.3. By Type
 
 | Type | Count | Percentage |
 |------|-------|------------|
-| Functional | 47 | 76% |
-| Non-Functional | 15 | 24% |
-| **Total** | **62** | **100%** |
+| Functional | 55 | 79% |
+| Non-Functional | 15 | 21% |
+| **Total** | **70** | **100%** |
 
 ### 5.4. Critical Path Requirements
 
@@ -1184,6 +1407,7 @@ These requirements form the critical path for MVP implementation:
 6. **REQ-TYP-01, REQ-TYP-03, REQ-TYP-06** - Type system and error handling
 7. **REQ-INT-01, REQ-INT-03** - Synthesis and lineage
 8. **REQ-AI-01** - Topological validity (hallucination prevention)
+9. **REQ-COV-02, REQ-COV-03, REQ-COV-07** - Fidelity invariants, verification, and enforcement
 
 ---
 
@@ -1252,6 +1476,14 @@ These requirements form the critical path for MVP implementation:
 | REQ-ADJ-09 | INT-005 | ImpactAnalyzer | High | Pending |
 | REQ-ADJ-10 | INT-005 | BidirectionalSyncManager | Medium | Pending |
 | REQ-ADJ-11 | INT-005, RIC-LIN-01 | ResidueCollector | Medium | Pending |
+| REQ-COV-01 | INT-001, INT-002, REQ-ADJ-01 | CovarianceContractManager | High | Pending |
+| REQ-COV-02 | INT-001, INT-002, REQ-COV-01 | FidelityInvariantEngine | Critical | Pending |
+| REQ-COV-03 | INT-001, REQ-COV-01, REQ-TRV-05-A | FidelityVerificationService | Critical | Pending |
+| REQ-COV-04 | INT-001, REQ-COV-02, REQ-TYP-03 | ContractBreachHandler | Critical | Pending |
+| REQ-COV-05 | INT-001, REQ-COV-01, REQ-ADJ-10 | CovariantPropagationEngine | High | Pending |
+| REQ-COV-06 | INT-001, REQ-COV-02, REQ-LDM-06 | MultiGrainFidelityValidator | High | Pending |
+| REQ-COV-07 | INT-001, REQ-COV-01, REQ-LDM-03 | ContractEnforcementEngine | Critical | Pending |
+| REQ-COV-08 | INT-001, REQ-COV-03, REQ-TRV-05-A | FidelityCertificateChain | High | Pending |
 
 ---
 
@@ -1260,27 +1492,30 @@ These requirements form the critical path for MVP implementation:
 **Status**: Requirements stage complete. Ready for Design Stage.
 
 **Handoff to Design Agent**:
-1. All 49 requirements are formally documented with acceptance criteria
+1. All 70 requirements are formally documented with acceptance criteria
 2. Traceability matrix maps requirements to intents and design components
-3. Regulatory compliance requirements are explicitly identified
+3. Regulatory compliance requirements are explicitly identified (BCBS 239, FRTB, GDPR, EU AI Act, SOX)
 4. Critical path requirements are prioritized for MVP
 5. Implementation constraints provide optimization guidance
 
 **Design Stage Responsibilities**:
 1. Create component architecture for: TopologicalCompiler, SheafManager, MorphismExecutor, ErrorDomain, ImplementationFunctor, ResidueCollector
 2. Create adjoint-specific components: AdjointCompiler, ReconciliationEngine, ImpactAnalyzer, BidirectionalSyncManager
-3. Define interfaces and contracts between components
-4. Create ADRs (Architecture Decision Records) for key design choices
-5. Map requirements to specific modules and classes
-6. Define data structures for LDM, PDM, Mapping, and Execution artifacts
-7. Design lineage, telemetry, and adjoint metadata schemas
-8. Design adjoint backward capture wrappers for Spark/distributed operations
-9. Define `Adjoint<T,U>` interface with `forward`, `backward`, and `compositionalConsistency` laws
+3. Create cross-domain fidelity components: CovarianceContractManager, FidelityInvariantEngine, FidelityVerificationService, ContractBreachHandler, CovariantPropagationEngine, MultiGrainFidelityValidator, ContractEnforcementEngine, FidelityCertificateChain
+4. Create immutability components: RunManifestManager, ArtifactVersionStore
+5. Define interfaces and contracts between components
+6. Create ADRs (Architecture Decision Records) for key design choices
+7. Map requirements to specific modules and classes
+8. Define data structures for LDM, PDM, Mapping, and Execution artifacts
+9. Design lineage, telemetry, and adjoint metadata schemas
+10. Design adjoint backward capture wrappers for Spark/distributed operations
+11. Define `Adjoint<T,U>` interface with `forward`, `backward`, and `compositionalConsistency` laws
+12. Design Fidelity Certificate schema and chain structure
 
 ---
 
-**Document Version**: 1.1
+**Document Version**: 1.2
 **Generated By**: AISDLC Requirements Agent
 **Date**: 2025-12-10
-**Last Updated**: 2025-12-10 (Added INT-005 Adjoint Morphism requirements)
+**Last Updated**: 2025-12-10 (Added REQ-TRV-05-A/B Immutability, REQ-COV-* Cross-Domain Fidelity)
 **Status**: Approved for Design Stage
