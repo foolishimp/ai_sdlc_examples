@@ -45,6 +45,23 @@ This document translates the 60 CDME requirements into concepts you already know
 
 ---
 
+## Architecture Decision Records
+
+Key architectural decisions for this design:
+
+| ADR | Decision | Requirements |
+|-----|----------|--------------|
+| [ADR-001](adrs/ADR-001-adjoint-over-dagger.md) | Adjoint (Galois Connection) over Dagger Category | REQ-ADJ-01, REQ-ADJ-02 |
+| [ADR-002](adrs/ADR-002-schema-registry-source-of-truth.md) | Schema Registry as Single Source of Truth | REQ-LDM-01..03, REQ-PDM-01 |
+| [ADR-003](adrs/ADR-003-either-monad-error-handling.md) | Either Monad for Error Handling | REQ-TYP-03, REQ-ERROR-01 |
+| [ADR-004](adrs/ADR-004-lineage-capture-strategy.md) | Three Lineage Modes (Full/Key-Derivable/Sampled) | REQ-INT-03, RIC-LIN-* |
+| [ADR-005](adrs/ADR-005-grain-hierarchy-first-class.md) | Grain Hierarchy as First-Class Concept | REQ-LDM-06, REQ-TRV-02 |
+| [ADR-006](adrs/ADR-006-deterministic-execution-contract.md) | Deterministic Execution Contract | REQ-TRV-05, REQ-INT-06 |
+| [ADR-007](adrs/ADR-007-compile-time-vs-runtime-validation.md) | Compile-Time vs Runtime Validation | REQ-AI-01, REQ-TYP-06 |
+| [ADR-008](adrs/ADR-008-openlineage-standard.md) | OpenLineage as Lineage Standard | REQ-INT-03, REQ-TRV-04 |
+
+---
+
 ## Part 1: The Logical Data Model (LDM)
 
 ### What It Is
@@ -1082,6 +1099,471 @@ Output:
 
 ---
 
+## Part 9: Configuration Artifacts (Mapping + Transformation + Sources + Operations)
+
+This section defines the **minimal artifact schemas** for a CDME job. These are the building blocks that data engineers author.
+
+### 9.1 Mapping Definition Schema
+
+A **mapping** is the core artifact - it declares what goes in, what comes out, and what transformations connect them.
+
+```yaml
+# mappings/order_enrichment.yaml
+apiVersion: cdme/v1
+kind: Mapping
+metadata:
+  name: order_enrichment
+  version: 1.0.0
+  description: Enrich orders with customer and product details
+  owner: data-platform-team
+  tags: [orders, customer-360, daily]
+
+spec:
+  # Source entities (input side)
+  sources:
+    - entity: Order
+      alias: o
+      filter: "order_status != 'CANCELLED'"
+
+    - entity: Customer
+      alias: c
+      join:
+        type: LEFT
+        on: "o.customer_id = c.customer_id"
+        cardinality: N:1  # Many orders per customer
+
+    - entity: Product
+      alias: p
+      join:
+        type: LEFT
+        on: "o.product_id = p.product_id"
+        cardinality: N:1
+
+  # Target entity (output side)
+  target:
+    entity: OrderEnriched
+    grain: ATOMIC  # Same grain as source
+    grain_key: [order_id]
+
+  # Transformations (what to compute)
+  transformations:
+    - name: order_id
+      expr: "o.order_id"
+
+    - name: customer_name
+      expr: "c.full_name"
+
+    - name: product_category
+      expr: "p.category"
+
+    - name: order_total_usd
+      expr: "o.amount * lookup('ExchangeRate', o.currency, 'USD')"
+      type: Money
+
+    - name: is_high_value
+      expr: "o.amount > 10000"
+      type: Boolean
+
+  # Lookups required
+  lookups:
+    - name: ExchangeRate
+      version: AS_OF
+      as_of_field: o.order_date
+
+  # Validation rules
+  validations:
+    - name: positive_amount
+      expr: "order_total_usd > 0"
+      on_fail: route_to_error_domain
+```
+
+**Required Fields**:
+| Field | Purpose | Example |
+|-------|---------|---------|
+| `metadata.name` | Unique identifier | `order_enrichment` |
+| `spec.sources` | Input entities with join logic | `Order LEFT JOIN Customer` |
+| `spec.target.entity` | Output entity name | `OrderEnriched` |
+| `spec.target.grain` | Aggregation level | `ATOMIC`, `DAILY` |
+| `spec.transformations` | Column expressions | `o.amount * rate` |
+
+---
+
+### 9.2 Transformation Types
+
+Transformations declare **how** data flows from source to target.
+
+```yaml
+# transformation_types.yaml - Registry of allowed transformations
+apiVersion: cdme/v1
+kind: TransformationType
+metadata:
+  name: standard_transformations
+
+spec:
+  # Direct projection (no change)
+  - type: PROJECTION
+    signature: "A → A"
+    description: Direct column copy
+    example: "o.order_id"
+
+  # Join enrichment (lookup)
+  - type: JOIN_ENRICHMENT
+    signature: "A → A ⊕ B"
+    cardinality: [N:1, 1:1]
+    description: Add columns from joined entity
+    example: "LEFT JOIN customer ON o.customer_id = c.customer_id"
+
+  # Aggregation (grain coarsening)
+  - type: AGGREGATION
+    signature: "List[A] → B"
+    cardinality: N:1
+    grain_change: FINER → COARSER
+    requires_group_by: true
+    allowed_functions: [SUM, COUNT, MIN, MAX, AVG, COLLECT_LIST]
+    example: "SUM(o.amount) GROUP BY customer_id, date"
+
+  # Explosion (grain refinement)
+  - type: EXPLOSION
+    signature: "A → List[B]"
+    cardinality: 1:N
+    grain_change: COARSER → FINER
+    requires_context_lift: true
+    example: "LATERAL VIEW explode(line_items)"
+
+  # Computed column (expression)
+  - type: EXPRESSION
+    signature: "A → A'"
+    description: Derived column from expression
+    allowed_operations: [arithmetic, string, date, conditional]
+    example: "o.quantity * o.unit_price AS total"
+
+  # Lookup (reference data)
+  - type: LOOKUP
+    signature: "A × Ref → A'"
+    description: Enrich with versioned reference data
+    requires_version: true
+    example: "lookup('CountryCode', o.country, '2024.01')"
+
+  # Type cast (explicit)
+  - type: SAFE_CAST
+    signature: "A → Either[Error, B]"
+    description: Type conversion with error handling
+    routes_errors: true
+    example: "safe_cast(o.quantity, INT)"
+```
+
+**Transformation in Mapping Context**:
+
+```yaml
+transformations:
+  # Projection - direct copy
+  - name: order_id
+    type: PROJECTION
+    expr: "o.order_id"
+
+  # Expression - computed value
+  - name: total_with_tax
+    type: EXPRESSION
+    expr: "o.subtotal * (1 + tax_rate)"
+    output_type: Money
+
+  # Aggregation - grain coarsening
+  - name: daily_revenue
+    type: AGGREGATION
+    expr: "SUM(o.amount)"
+    group_by: [customer_id, order_date]
+    output_grain: DAILY
+
+  # Lookup - reference data enrichment
+  - name: country_name
+    type: LOOKUP
+    lookup_table: CountryCode
+    lookup_key: o.country_code
+    lookup_value: country_name
+    lookup_version: "2024.01.15"
+
+  # Safe cast - explicit type conversion
+  - name: quantity_int
+    type: SAFE_CAST
+    expr: "o.quantity"
+    from_type: String
+    to_type: Int
+    on_fail: route_to_error_domain
+```
+
+---
+
+### 9.3 Source Configuration Schema
+
+Sources declare **where** data comes from and **how** to partition/filter it.
+
+```yaml
+# sources/orders_source.yaml
+apiVersion: cdme/v1
+kind: Source
+metadata:
+  name: orders
+  entity: Order  # Links to LDM entity
+
+spec:
+  # Physical binding (PDM layer)
+  binding:
+    type: glue_table
+    database: production_db
+    table: orders
+    partition_columns: [order_date]
+
+  # Or S3 direct:
+  # binding:
+  #   type: s3_parquet
+  #   path: s3://data-lake/orders/
+  #   partition_pattern: "year={yyyy}/month={MM}/day={dd}"
+
+  # Generation characteristics
+  generation:
+    grain: EVENT              # Each row is an event occurrence
+    immutable: true           # Events don't change after creation
+    append_only: true         # No updates, only inserts
+
+  # Temporal properties
+  temporal:
+    event_time_field: order_timestamp
+    processing_time_field: ingestion_timestamp
+    watermark: "5 minutes"    # Late data tolerance
+
+  # Boundaries (what data to read)
+  boundaries:
+    epoch:
+      type: partition_filter
+      field: order_date
+      strategy: exact         # Only this epoch's partition
+
+    # Or time-based window:
+    # epoch:
+    #   type: time_window
+    #   field: order_timestamp
+    #   window: "24 hours"
+
+  # Data quality expectations
+  expectations:
+    row_count_min: 1000       # Alert if below
+    null_rate_max:
+      customer_id: 0.01       # Max 1% nulls
+      order_id: 0             # No nulls allowed
+    freshness_max: "2 hours"  # Data should be recent
+```
+
+**Snapshot Source Example**:
+
+```yaml
+# sources/customer_profile_source.yaml
+apiVersion: cdme/v1
+kind: Source
+metadata:
+  name: customer_profile
+  entity: Customer
+
+spec:
+  binding:
+    type: glue_table
+    database: production_db
+    table: customer_profiles
+
+  generation:
+    grain: SNAPSHOT           # State at a point in time
+    immutable: false          # Profiles change
+    supersedes: true          # Today's snapshot replaces yesterday's
+
+  temporal:
+    snapshot_time_field: snapshot_date
+    valid_from: effective_date
+    valid_to: expiry_date     # SCD Type 2 support
+
+  boundaries:
+    epoch:
+      type: latest_snapshot   # Use most recent complete snapshot
+```
+
+---
+
+### 9.4 Job Configuration Schema (Operational Parameters)
+
+Jobs declare **how** to execute a mapping - runtime parameters, error handling, cost limits.
+
+```yaml
+# jobs/daily_order_enrichment.yaml
+apiVersion: cdme/v1
+kind: Job
+metadata:
+  name: daily_order_enrichment
+  description: Daily enrichment of order data
+  schedule: "0 6 * * *"  # 6am daily
+  owner: data-platform-team
+  notifications:
+    on_failure: ["data-alerts@company.com"]
+    on_success: ["data-reports@company.com"]
+
+spec:
+  # Which mapping to execute
+  mapping: order_enrichment
+  mapping_version: "1.0.0"
+
+  # Epoch configuration (what time window)
+  epoch:
+    type: daily
+    timestamp: "${execution_date}"  # Injected by scheduler
+    timezone: UTC
+
+  # Lookup versions (pinned for reproducibility)
+  lookups:
+    ExchangeRate:
+      version_semantics: AS_OF
+      as_of_field: order_date
+    CountryCode:
+      version: "2024.01.15"
+    ProductCatalog:
+      version: "v3.2.1"
+
+  # Lineage mode
+  lineage:
+    mode: KEY_DERIVABLE       # Capture enough for key reconstruction
+    storage: s3://lineage-bucket/order_enrichment/
+    retention_days: 90
+
+  # Error handling
+  error_handling:
+    strategy: ROUTE_TO_ERROR_DOMAIN
+    error_table: s3://errors/order_enrichment/
+    threshold:
+      type: percentage
+      value: 5                # Halt if > 5% fail
+    on_breach:
+      action: halt
+      alert: true
+      commit_successful: false
+
+  # Cost limits (circuit breaker)
+  budget:
+    max_input_rows: 100_000_000
+    max_output_rows: 100_000_000
+    max_shuffle_size_gb: 500
+    max_duration_minutes: 120
+
+  # Execution parameters
+  execution:
+    engine: spark             # or: athena, glue, dbt
+    parallelism: 200
+    memory_per_executor: "8g"
+    retry:
+      max_attempts: 3
+      backoff: exponential
+
+  # Output configuration
+  output:
+    target:
+      type: glue_table
+      database: production_db
+      table: orders_enriched
+      partition_by: [order_date]
+      format: delta           # Or: parquet, iceberg
+    write_mode: overwrite_partition  # Idempotent rerun
+
+  # Adjoint configuration (for reverse lookups)
+  adjoint:
+    enabled: true
+    storage_strategy: SEPARATE_TABLE
+    table: orders_enriched_adjoint
+
+  # Manifest output (for reproducibility)
+  manifest:
+    enabled: true
+    output: s3://manifests/order_enrichment/${epoch_date}/
+    include:
+      - input_checksums
+      - lookup_versions
+      - output_checksums
+```
+
+---
+
+### 9.5 Complete Job Artifact Structure
+
+A complete CDME deployment includes:
+
+```
+cdme/
+├── ldm/                          # Logical Data Model
+│   ├── entities/
+│   │   ├── order.yaml            # Entity definitions
+│   │   ├── customer.yaml
+│   │   └── product.yaml
+│   ├── relationships/
+│   │   └── order_relationships.yaml
+│   └── grains/
+│       └── hierarchy.yaml        # Grain levels
+│
+├── pdm/                          # Physical Data Model
+│   ├── sources/
+│   │   ├── orders_source.yaml    # Source bindings
+│   │   └── customers_source.yaml
+│   └── bindings/
+│       └── environment_bindings.yaml
+│
+├── mappings/                     # Mapping definitions
+│   ├── order_enrichment.yaml
+│   └── customer_360.yaml
+│
+├── jobs/                         # Job configurations
+│   ├── daily_order_enrichment.yaml
+│   └── weekly_customer_rollup.yaml
+│
+├── types/                        # Custom types
+│   ├── semantic_types.yaml       # Money, Percent, etc.
+│   └── refinement_types.yaml     # PositiveInteger, etc.
+│
+└── lookups/                      # Reference data config
+    ├── exchange_rates.yaml
+    └── country_codes.yaml
+```
+
+---
+
+### 9.6 Minimal Viable Mapping
+
+For simple mappings, a minimal definition:
+
+```yaml
+# mappings/simple_filter.yaml
+apiVersion: cdme/v1
+kind: Mapping
+metadata:
+  name: active_orders
+  version: 1.0.0
+
+spec:
+  sources:
+    - entity: Order
+      alias: o
+      filter: "status = 'ACTIVE'"
+
+  target:
+    entity: ActiveOrder
+    grain: ATOMIC
+    grain_key: [order_id]
+
+  transformations:
+    - name: "*"              # Project all columns
+      from: o
+```
+
+**Inference Rules**:
+- If no `transformations` → project all source columns
+- If no `grain_key` → infer from source primary key
+- If no `join` → single source, no enrichment
+- If no `lookups` → no reference data needed
+
+---
+
 ## Appendix A: Glossary for Data Engineers
 
 | CDME Term | Plain English |
@@ -1101,17 +1583,15 @@ Output:
 
 ## Appendix B: When to Use CDME
 
-**Use CDME when:**
-- Regulatory compliance requires full lineage (BCBS 239, FRTB)
-- AI/LLM generates data mappings that need validation
-- You have complex multi-grain data models
-- Silent data corruption has cost you in the past
-- You need to answer "which source records affected this output?"
+**CDME is foundational for:**
+- Regulatory compliance (BCBS 239, FRTB, EU AI Act)
+- AI/LLM-generated data mappings that need validation
+- Automated mapping generation with assurance
+- Complex multi-grain data models
+- Full lineage and impact analysis
+- Preventing silent data corruption
 
-**Maybe skip CDME when:**
-- Simple single-table transformations
-- Exploratory/ad-hoc analysis
-- Prototyping (add validation later)
+**This is not optional tooling** - it's the ontological foundation for trustworthy data pipelines. Every transformation, whether simple or complex, benefits from compile-time validation and lineage. The investment in proper topology pays dividends in automated assurance as pipelines scale.
 
 ---
 
