@@ -29,7 +29,10 @@ case class ExecutionConfig(
   mode: String,  // BATCH or STREAMING
   error_threshold: Double,
   lineage_mode: String  // BASIC, FULL, SAMPLED
-)
+) {
+  // Alias for cleaner test access
+  def execution_mode: String = mode
+}
 
 case class OutputConfig(
   data_path: String,
@@ -134,10 +137,15 @@ case class TargetConfig(
 case class MorphismConfig(
   name: String,
   `type`: String,
-  predicate: Option[String],
-  path: Option[String],
-  cardinality: Option[String]
-)
+  predicate: Option[String] = None,
+  path: Option[String] = None,
+  cardinality: Option[String] = None,
+  groupBy: Option[List[String]] = None,
+  orderBy: Option[List[String]] = None
+) {
+  // Alias for cleaner access without backticks
+  def morphismType: String = `type`
+}
 
 case class ProjectionConfig(
   name: String,
@@ -146,9 +154,10 @@ case class ProjectionConfig(
 )
 
 case class ValidationConfig(
-  name: String,
-  expression: String,
-  severity: String  // ERROR or WARNING
+  field: String,
+  validationType: String,  // NOT_NULL, RANGE, PATTERN, etc.
+  expression: Option[String] = None,
+  errorMessage: String
 )
 
 /**

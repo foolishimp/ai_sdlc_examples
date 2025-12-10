@@ -1,0 +1,10 @@
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test02/src/data_mapper.spark.scala/src/test/scala/cdme/CompilerSpec.scala:96:9: local val mapping in value <local CompilerSpec> is never used
+[warn]     val mapping = MappingConfig(
+[warn]         ^
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test02/src/data_mapper.spark.scala/src/test/scala/cdme/CompilerSpec.scala:112:9: local val compiler in value <local CompilerSpec> is never used
+[warn]     val compiler = new Compiler(registry)
+[warn]         ^
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test02/src/data_mapper.spark.scala/src/test/scala/cdme/CompilerSpec.scala:118:9: local val testCtx in value <local CompilerSpec> is never used
+[warn]     val testCtx = null.asInstanceOf[ExecutionContext]
+[warn]         ^
+[warn] three warnings found

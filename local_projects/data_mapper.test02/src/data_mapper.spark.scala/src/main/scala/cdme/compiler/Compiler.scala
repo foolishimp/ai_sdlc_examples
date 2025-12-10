@@ -68,7 +68,9 @@ class Compiler(registry: SchemaRegistry) {
         morphismType = m.`type`,
         predicate = m.predicate,
         path = m.path,
-        cardinality = m.cardinality.flatMap(Cardinality.fromString)
+        cardinality = m.cardinality.flatMap(Cardinality.fromString),
+        groupBy = m.groupBy,
+        orderBy = m.orderBy
       )
     }
 
@@ -80,6 +82,15 @@ class Compiler(registry: SchemaRegistry) {
       )
     }
 
+    val validationOps = mapping.validations.map(_.map { v =>
+      ValidationOp(
+        field = v.field,
+        validationType = v.validationType,
+        expression = v.expression,
+        errorMessage = v.errorMessage
+      )
+    })
+
     Right(ExecutionPlan(
       mappingName = mapping.name,
       sourceEntity = mapping.source.entity,
@@ -90,7 +101,8 @@ class Compiler(registry: SchemaRegistry) {
         key = mapping.target.grain.key
       ),
       morphisms = morphismOps,
-      projections = projections
+      projections = projections,
+      validations = validationOps
     ))
   }
 }
@@ -105,7 +117,8 @@ case class ExecutionPlan(
   sourceGrain: Grain,
   targetGrain: Grain,
   morphisms: List[MorphismOp],
-  projections: List[ProjectionOp]
+  projections: List[ProjectionOp],
+  validations: Option[List[ValidationOp]] = None
 )
 
 /**
@@ -116,7 +129,9 @@ case class MorphismOp(
   morphismType: String,
   predicate: Option[String] = None,
   path: Option[String] = None,
-  cardinality: Option[Cardinality] = None
+  cardinality: Option[Cardinality] = None,
+  groupBy: Option[List[String]] = None,
+  orderBy: Option[List[String]] = None
 )
 
 /**
@@ -126,6 +141,20 @@ case class ProjectionOp(
   name: String,
   source: String,
   aggregation: Option[String] = None
+) {
+  // Alias for cleaner UAT test access
+  def targetField: String = name
+  def sourcePath: String = source
+}
+
+/**
+ * Validation operation.
+ */
+case class ValidationOp(
+  field: String,
+  validationType: String,
+  expression: Option[String] = None,
+  errorMessage: String
 )
 
 /**
