@@ -1173,6 +1173,133 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 
 ---
 
+### 2.9. Data Quality (DQ)
+
+#### REQ-PDM-06: Late Arrival Handling
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, INT-002 (Axiom 4: Data Has Contextual Extent)
+
+**Description**: The system must handle late-arriving data (records that arrive after their epoch has been processed) with explicit strategies that maintain determinism and auditability.
+
+**Rationale**: In distributed systems, data frequently arrives out of order. Without explicit late arrival handling, systems either lose data or produce non-deterministic results when re-processing.
+
+**Acceptance Criteria**:
+- Late arrival detection identifies records arriving after epoch closure
+- Configurable strategies per source:
+  - `REJECT`: Reject late records to Error Domain with `LATE_ARRIVAL` error code
+  - `REPROCESS`: Trigger reprocessing of affected epoch (requires immutable inputs)
+  - `ACCUMULATE`: Route to accumulation buffer for next epoch (with lineage marking)
+  - `BACKFILL`: Route to separate backfill pipeline with different SLAs
+- Strategy selection is explicit in PDM source configuration
+- Late arrival records are never silently dropped
+- Lineage captures late arrival handling decisions
+- Metrics track late arrival frequency per source per epoch
+
+---
+
+#### REQ-DQ-01: Volume Threshold Monitoring
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, REQ-TRV-06, REQ-TYP-03-A
+
+**Description**: The system must detect anomalous data volumes (too few or too many records) against expected baselines and treat violations as potential data quality issues.
+
+**Rationale**: Sudden drops in volume often indicate upstream failures. Sudden spikes may indicate duplicate delivery or configuration errors. Both require investigation before processing.
+
+**Acceptance Criteria**:
+- Volume thresholds configurable per source:
+  - `min_records`: Minimum expected records (absolute or percentage of historical average)
+  - `max_records`: Maximum expected records (absolute or percentage of historical average)
+  - `baseline_window`: Historical window for computing baseline (e.g., 7-day rolling average)
+- Threshold violations trigger configurable responses:
+  - `WARN`: Log warning but continue processing
+  - `HALT`: Stop processing pending investigation
+  - `QUARANTINE`: Process but flag entire epoch for review
+- Volume metrics captured in telemetry (REQ-TRV-04)
+- Historical volume trends queryable for anomaly investigation
+- Zero-record inputs are treated as threshold violations (not silently accepted)
+
+---
+
+#### REQ-DQ-02: Distribution Monitoring
+
+**Priority**: Medium
+**Type**: Functional
+**Traces To**: INT-001, REQ-TRV-04, REQ-COV-02
+
+**Description**: The system must monitor data distribution changes (null rates, value distributions, cardinality) against baselines to detect silent data quality degradation.
+
+**Rationale**: Data can be structurally correct but semantically wrong. A sudden increase in null rates or change in value distribution often indicates upstream problems that type systems cannot detect.
+
+**Acceptance Criteria**:
+- Distribution metrics computed per configurable fields:
+  - `null_rate`: Percentage of null/missing values
+  - `distinct_count`: Cardinality of distinct values
+  - `value_distribution`: Histogram of value ranges (numeric) or top-N frequencies (categorical)
+- Baseline comparison against historical distributions:
+  - `null_rate_threshold`: Maximum acceptable null rate change
+  - `cardinality_threshold`: Maximum acceptable cardinality change
+  - `distribution_divergence`: Statistical divergence threshold (e.g., KL divergence, chi-squared)
+- Violations trigger configurable responses (WARN, HALT, QUARANTINE)
+- Distribution metrics are part of telemetry output
+- Distribution monitoring is opt-in per field (not automatic for all fields)
+
+---
+
+#### REQ-DQ-03: Custom Validation Rules
+
+**Priority**: Medium
+**Type**: Functional
+**Traces To**: INT-001, REQ-TYP-02, REQ-INT-01
+
+**Description**: The system must support user-defined validation rules that go beyond type constraints, allowing domain-specific data quality checks to be integrated into the processing pipeline.
+
+**Rationale**: Refinement types catch value-level constraints, but many data quality rules are cross-field or context-dependent (e.g., "end_date must be after start_date", "if status='CLOSED', close_date must be present").
+
+**Acceptance Criteria**:
+- Custom validation rules are definable as pure functions (REQ-INT-01)
+- Rules can reference multiple fields within the same record
+- Rules can reference lookup tables for domain validation
+- Rule violations route to Error Domain (REQ-TYP-03) with custom error codes
+- Rules are executed after type validation, before transformation
+- Rules are versioned and immutable per run (REQ-TRV-05-A)
+- Rule definition includes:
+  - Rule ID and description
+  - Validation predicate (pure function)
+  - Severity (ERROR, WARNING)
+  - Error message template
+
+---
+
+#### REQ-DQ-04: Profiling Integration
+
+**Priority**: Low
+**Type**: Non-Functional (Observability)
+**Traces To**: INT-001, REQ-TRV-04, REQ-AI-03
+
+**Description**: The system must integrate with data profiling tools to provide comprehensive data quality visibility and support dry-run validation.
+
+**Rationale**: Data engineers need profiling for initial data understanding and ongoing quality monitoring. Integration with standard profiling output formats enables tooling ecosystem compatibility.
+
+**Acceptance Criteria**:
+- Profiling can run as part of dry-run mode (REQ-AI-03)
+- Profiling output includes:
+  - Schema inference and validation against declared types
+  - Completeness metrics (null rates per field)
+  - Uniqueness metrics (duplicate rates for key fields)
+  - Value statistics (min, max, mean, stddev for numerics)
+  - Pattern detection (for strings)
+  - Referential integrity checks (foreign key validity)
+- Profiling output exportable in standard formats (JSON, OpenMetadata)
+- Profiling results can populate distribution baselines (REQ-DQ-02)
+- Profiling is optional and configurable per source
+- Profiling performance: target < 5% overhead when enabled
+
+---
+
 ## 3. Regulatory Compliance Mapping
 
 ### 3.1. BCBS 239 (Risk Data Aggregation & Reporting)
@@ -1373,27 +1500,28 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 | Typing & Quality (TYP/ERROR) | 9 | Type system, refinements, error handling |
 | AI Assurance (AI) | 3 | Hallucination prevention, triangulation |
 | Adjoint Morphisms (ADJ) | 11 | Reverse transformations, reconciliation, impact analysis |
-| **Cross-Domain Fidelity (COV)** | **8** | **Covariance contracts, fidelity verification, enforcement** |
+| Cross-Domain Fidelity (COV) | 8 | Covariance contracts, fidelity verification, enforcement |
+| **Data Quality (DQ)** | **5** | **Late arrival, volume thresholds, distribution monitoring, custom rules, profiling** |
 | Implementation Constraints (RIC) | 9 | Performance optimizations, lineage modes |
-| **Total** | **70** | |
+| **Total** | **75** | |
 
 ### 5.2. By Priority
 
 | Priority | Count | Percentage |
 |----------|-------|------------|
-| Critical | 23 | 33% |
-| High | 30 | 43% |
-| Medium | 15 | 21% |
+| Critical | 23 | 31% |
+| High | 32 | 43% |
+| Medium | 18 | 24% |
 | Low | 2 | 3% |
-| **Total** | **70** | **100%** |
+| **Total** | **75** | **100%** |
 
 ### 5.3. By Type
 
 | Type | Count | Percentage |
 |------|-------|------------|
-| Functional | 55 | 79% |
-| Non-Functional | 15 | 21% |
-| **Total** | **70** | **100%** |
+| Functional | 59 | 79% |
+| Non-Functional | 16 | 21% |
+| **Total** | **75** | **100%** |
 
 ### 5.4. Critical Path Requirements
 
@@ -1484,6 +1612,11 @@ These requirements form the critical path for MVP implementation:
 | REQ-COV-06 | INT-001, REQ-COV-02, REQ-LDM-06 | MultiGrainFidelityValidator | High | Pending |
 | REQ-COV-07 | INT-001, REQ-COV-01, REQ-LDM-03 | ContractEnforcementEngine | Critical | Pending |
 | REQ-COV-08 | INT-001, REQ-COV-03, REQ-TRV-05-A | FidelityCertificateChain | High | Pending |
+| REQ-PDM-06 | INT-001, INT-002 | ImplementationFunctor | High | Pending |
+| REQ-DQ-01 | INT-001, REQ-TRV-06, REQ-TYP-03-A | DataQualityMonitor | High | Pending |
+| REQ-DQ-02 | INT-001, REQ-TRV-04, REQ-COV-02 | DataQualityMonitor | Medium | Pending |
+| REQ-DQ-03 | INT-001, REQ-TYP-02, REQ-INT-01 | DataQualityMonitor | Medium | Pending |
+| REQ-DQ-04 | INT-001, REQ-TRV-04, REQ-AI-03 | DataProfiler | Low | Pending |
 
 ---
 
@@ -1492,7 +1625,7 @@ These requirements form the critical path for MVP implementation:
 **Status**: Requirements stage complete. Ready for Design Stage.
 
 **Handoff to Design Agent**:
-1. All 70 requirements are formally documented with acceptance criteria
+1. All 75 requirements are formally documented with acceptance criteria
 2. Traceability matrix maps requirements to intents and design components
 3. Regulatory compliance requirements are explicitly identified (BCBS 239, FRTB, GDPR, EU AI Act, SOX)
 4. Critical path requirements are prioritized for MVP
@@ -1511,11 +1644,13 @@ These requirements form the critical path for MVP implementation:
 10. Design adjoint backward capture wrappers for Spark/distributed operations
 11. Define `Adjoint<T,U>` interface with `forward`, `backward`, and `compositionalConsistency` laws
 12. Design Fidelity Certificate schema and chain structure
+13. Create data quality components: DataQualityMonitor, DataProfiler
+14. Design late arrival handling strategies and configuration
 
 ---
 
-**Document Version**: 1.2
+**Document Version**: 1.3
 **Generated By**: AISDLC Requirements Agent
 **Date**: 2025-12-10
-**Last Updated**: 2025-12-10 (Added REQ-TRV-05-A/B Immutability, REQ-COV-* Cross-Domain Fidelity)
+**Last Updated**: 2025-12-10 (Added REQ-PDM-06, REQ-DQ-* Data Quality requirements)
 **Status**: Approved for Design Stage

@@ -1703,10 +1703,10 @@ This section maps common data engineering concerns to CDME requirements, showing
 
 ### 10.2 Missing Data & Nulls
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Unexpected NULLs breaking downstream logic
 - COALESCE chains hiding data quality issues
-- "Is NULL missing or legitimately absent?"
+- Ambiguity: "Is NULL missing or legitimately absent?"
 
 **CDME Guarantees:**
 
@@ -1737,10 +1737,10 @@ attributes:
 
 ### 10.3 Duplicate Records
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Accidental row multiplication from bad joins
 - Dedup logic that silently drops records
-- "Which record is authoritative?"
+- Uncertainty: "Which record is authoritative?"
 
 **CDME Guarantees:**
 
@@ -1771,10 +1771,10 @@ relationship:
 
 ### 10.4 Schema Drift & Evolution
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Upstream schema changes breaking pipelines
 - Column renames causing silent nulls
-- "What version of the schema was used?"
+- Traceability: "What version of the schema was used?"
 
 **CDME Guarantees:**
 
@@ -1804,10 +1804,10 @@ run_manifest:
 
 ### 10.5 Referential Integrity
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Orphan records from failed joins
 - FK violations in denormalized data
-- "Does this relationship actually exist?"
+- Validity: "Does this relationship actually exist?"
 
 **CDME Guarantees:**
 
@@ -1838,10 +1838,10 @@ relationship:
 
 ### 10.6 Data Freshness & Latency
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Stale data in dashboards
 - Processing data from wrong time window
-- "Is this data from today or yesterday?"
+- Currency: "Is this data from today or yesterday?"
 
 **CDME Guarantees:**
 
@@ -1878,10 +1878,10 @@ mapping:
 
 ### 10.7 Completeness & Coverage
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Missing records in aggregations
 - Incomplete data causing wrong totals
-- "Did we process everything?"
+- Accountability: "Did we process everything?"
 
 **CDME Guarantees:**
 
@@ -1915,10 +1915,10 @@ reconciliation:
 
 ### 10.8 Consistency & Reconciliation
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Numbers don't match between systems
 - Reconciliation breaks finding discrepancies
-- "Why doesn't Finance match Risk?"
+- Cross-domain consistency: "Why doesn't Finance match Risk?"
 
 **CDME Guarantees:**
 
@@ -1950,10 +1950,10 @@ contract:
 
 ### 10.9 Silent Failures & Error Handling
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Errors swallowed by try/catch
 - Bad records silently dropped
-- "Did it actually succeed?"
+- False confidence: "Did it actually succeed?"
 
 **CDME Guarantees:**
 
@@ -1986,10 +1986,10 @@ error_domain:
 
 ### 10.10 Non-Determinism & Reproducibility
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Different results on re-run
 - Flaky tests and pipelines
-- "Why did it work yesterday but not today?"
+- Debugging impossibility: "Why did it work yesterday but not today?"
 
 **CDME Guarantees:**
 
@@ -2023,10 +2023,10 @@ run_manifest:
 
 ### 10.11 Data Loss Detection
 
-**What Data Engineers Worry About:**
+**Why This Matters:**
 - Records vanishing in pipeline
 - Aggregation hiding missing data
-- "Where did those 1000 records go?"
+- Auditability: "Where did those 1000 records go?"
 
 **CDME Guarantees:**
 
