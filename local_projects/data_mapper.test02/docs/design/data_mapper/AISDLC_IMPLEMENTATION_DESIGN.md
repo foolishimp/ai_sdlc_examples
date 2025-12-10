@@ -59,6 +59,7 @@ Key architectural decisions for this design:
 | [ADR-006](adrs/ADR-006-deterministic-execution-contract.md) | Deterministic Execution Contract | REQ-TRV-05, REQ-INT-06 |
 | [ADR-007](adrs/ADR-007-compile-time-vs-runtime-validation.md) | Compile-Time vs Runtime Validation | REQ-AI-01, REQ-TYP-06 |
 | [ADR-008](adrs/ADR-008-openlineage-standard.md) | OpenLineage as Lineage Standard | REQ-INT-03, REQ-TRV-04 |
+| [ADR-009](adrs/ADR-009-immutable-run-hierarchy.md) | Immutable Run Hierarchy | REQ-TRV-05, REQ-INT-03, REQ-AI-02 |
 
 ---
 
@@ -1566,7 +1567,82 @@ cdme/
 
 ---
 
-### 9.6 Minimal Viable Mapping
+### 9.6 Immutable Run Hierarchy (ADR-009)
+
+Every execution is bound to an **immutable snapshot** of configuration, code, and design. This enables complete reproducibility and audit trails.
+
+**RunID Structure**:
+```
+RunID = run_{timestamp}_{hash}
+
+Where hash = SHA256(config_hash + code_hash + design_hash)
+```
+
+**Hierarchy Levels**:
+
+```
+Level 0: RUN (Execution Instance)
+    │    run_id, epoch, timestamp, executor
+    ▼
+Level 1: CONFIG SNAPSHOT
+    │    mapping@version, sources, lookups, labels
+    │    git_commit, config_hash
+    ▼
+Level 2: CODE SNAPSHOT
+    │    transformations_hash, udf_versions
+    │    engine_version, cdme_version
+    ▼
+Level 3: DESIGN SNAPSHOT
+         adrs_in_effect, ldm_version
+         type_system_version, requirements_trace
+```
+
+**Immutable Manifest** (stored per run):
+
+```yaml
+apiVersion: cdme/v1
+kind: RunManifest
+metadata:
+  run_id: run_20240115_143022_a1b2c3
+
+spec:
+  execution:
+    epoch_timestamp: "2024-01-15T00:00:00Z"
+    triggered_by: airflow/dag_order_enrichment
+
+  config:
+    snapshot_id: cfg_sha256_abc123
+    git_commit: 7a8b9c0d...
+    mapping: order_enrichment@v1.2.3
+    lookups:
+      ExchangeRate: {version: "2024.01.15", hash: sha256:...}
+
+  code:
+    snapshot_id: code_sha256_def456
+    cdme_version: "1.5.0"
+    engine: spark-3.4.1
+
+  design:
+    snapshot_id: design_sha256_789xyz
+    adrs: [ADR-001@v1, ADR-003@v2, ADR-009@v1]
+    ldm_version: ldm_sha256_111222
+
+  checksums:
+    manifest: sha256:entire_manifest
+    inputs: sha256:all_input_data
+    outputs: sha256:all_output_data
+```
+
+**Key Guarantees**:
+- **Reproducibility**: Same manifest → bit-identical outputs
+- **Auditability**: Run → Config → Code → Design → Requirements chain
+- **Comparison**: `cdme diff run_001 run_002` shows exactly what changed
+
+See [ADR-009](adrs/ADR-009-immutable-run-hierarchy.md) for full specification.
+
+---
+
+### 9.7 Minimal Viable Mapping
 
 For simple mappings, a minimal definition:
 
