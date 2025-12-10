@@ -325,6 +325,53 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 
 ---
 
+#### REQ-TRV-05-A: Immutable Run Hierarchy
+
+**Priority**: Critical
+**Type**: Functional
+**Traces To**: INT-001, INT-002 (Axiom 8: Topology is the Guardrail), INT-004 (AI Assurance - Triangulation)
+
+**Description**: Every execution must be bound to an immutable snapshot of configuration, code, and design artifacts, enabling exact reproduction of any historical run and safe evolution of the system over time.
+
+**Rationale**: In an evolving system, configuration, code, and design decisions change continuously. Without immutable binding of each run to its exact artifacts, we cannot:
+- Reproduce a historical run for debugging or audit
+- Determine what logic was in effect when a specific output was produced
+- Safely evolve the system while preserving the ability to explain past results
+- Compare runs to identify what changed between executions
+
+**Acceptance Criteria**:
+- Every run is assigned a unique, immutable RunID
+- RunID cryptographically binds to hashes of: configuration, code, design artifacts
+- **Configuration snapshot** includes: mapping definition, source bindings, lookup versions, semantic labels
+- **Code snapshot** includes: transformation expressions, UDF versions, engine version, CDME version
+- **Design snapshot** includes: ADRs in effect, LDM version, type system version, grain hierarchy version
+- Run manifest is stored immutably (write-once, no modification)
+- Historical runs can be exactly reproduced given the manifest
+- Run comparison is supported: diff(run_A, run_B) shows what changed at each level
+- Manifest includes checksums of all inputs and outputs for verification
+- Immutable storage has configurable retention (default: 7 years for regulatory compliance)
+
+---
+
+#### REQ-TRV-05-B: Artifact Version Binding
+
+**Priority**: High
+**Type**: Functional
+**Traces To**: INT-001, REQ-TRV-05-A
+
+**Description**: All artifacts (mappings, sources, types, ADRs) must be versioned and bound to specific runs, with version changes creating new artifact instances rather than modifying existing ones.
+
+**Acceptance Criteria**:
+- Every artifact has explicit version identifier (semantic version or content hash)
+- Artifact modification creates new version, never overwrites existing
+- Run references artifacts by version, not mutable name
+- Version lineage is tracked (v1.0.0 → v1.1.0 → v2.0.0)
+- Breaking changes require major version increment
+- Artifact versions are immutable once referenced by any run
+- Deletion of referenced artifacts is forbidden
+
+---
+
 #### REQ-TRV-06: Computational Cost Governance
 
 **Priority**: High
@@ -1099,31 +1146,31 @@ This document contains formal AISDLC requirements extracted from the CDME v7.2 s
 |----------|-------|-------------|
 | Logical Topology (LDM) | 7 | Entity/morphism graph structure and semantics |
 | Physical Binding (PDM) | 6 | Storage abstraction and system boundaries |
-| Traversal Engine (TRV/SHF) | 7 | Path execution, grain safety, context management |
+| Traversal Engine (TRV/SHF) | 9 | Path execution, grain safety, context management, **immutability** |
 | Integration & Synthesis (INT) | 8 | Transformations, aggregations, lineage |
 | Typing & Quality (TYP/ERROR) | 9 | Type system, refinements, error handling |
 | AI Assurance (AI) | 3 | Hallucination prevention, triangulation |
 | Adjoint Morphisms (ADJ) | 11 | Reverse transformations, reconciliation, impact analysis |
 | Implementation Constraints (RIC) | 9 | Performance optimizations, lineage modes |
-| **Total** | **60** | |
+| **Total** | **62** | |
 
 ### 5.2. By Priority
 
 | Priority | Count | Percentage |
 |----------|-------|------------|
-| Critical | 18 | 30% |
-| High | 25 | 42% |
-| Medium | 15 | 25% |
+| Critical | 19 | 31% |
+| High | 26 | 42% |
+| Medium | 15 | 24% |
 | Low | 2 | 3% |
-| **Total** | **60** | **100%** |
+| **Total** | **62** | **100%** |
 
 ### 5.3. By Type
 
 | Type | Count | Percentage |
 |------|-------|------------|
-| Functional | 45 | 75% |
-| Non-Functional | 15 | 25% |
-| **Total** | **60** | **100%** |
+| Functional | 47 | 76% |
+| Non-Functional | 15 | 24% |
+| **Total** | **62** | **100%** |
 
 ### 5.4. Critical Path Requirements
 
@@ -1133,9 +1180,10 @@ These requirements form the critical path for MVP implementation:
 2. **REQ-LDM-04, REQ-LDM-06** - Grain and type metadata
 3. **REQ-PDM-01** - LDM/PDM separation
 4. **REQ-TRV-01, REQ-TRV-02** - Context lifting and grain safety
-5. **REQ-TYP-01, REQ-TYP-03, REQ-TYP-06** - Type system and error handling
-6. **REQ-INT-01, REQ-INT-03** - Synthesis and lineage
-7. **REQ-AI-01** - Topological validity (hallucination prevention)
+5. **REQ-TRV-05, REQ-TRV-05-A** - Determinism and immutable run hierarchy
+6. **REQ-TYP-01, REQ-TYP-03, REQ-TYP-06** - Type system and error handling
+7. **REQ-INT-01, REQ-INT-03** - Synthesis and lineage
+8. **REQ-AI-01** - Topological validity (hallucination prevention)
 
 ---
 
@@ -1161,6 +1209,8 @@ These requirements form the critical path for MVP implementation:
 | REQ-TRV-03 | INT-001, INT-002 | SheafManager | High | Pending |
 | REQ-TRV-04 | INT-001 | MorphismExecutor | Medium | Pending |
 | REQ-TRV-05 | INT-001, INT-002 | MorphismExecutor | Critical | Pending |
+| REQ-TRV-05-A | INT-001, INT-002, INT-004 | RunManifestManager | Critical | Pending |
+| REQ-TRV-05-B | INT-001, REQ-TRV-05-A | ArtifactVersionStore | High | Pending |
 | REQ-TRV-06 | INT-001 | TopologicalCompiler | High | Pending |
 | REQ-SHF-01 | INT-001, INT-002 | SheafManager | Critical | Pending |
 | REQ-INT-01 | INT-001, INT-003 | MorphismExecutor | High | Pending |

@@ -2,7 +2,7 @@
 
 **Status**: Accepted
 **Date**: 2025-12-10
-**Implements**: REQ-TRV-05, REQ-INT-03, REQ-AI-02
+**Implements**: REQ-TRV-05-A, REQ-TRV-05-B, REQ-TRV-05, REQ-INT-03, REQ-AI-02
 
 ---
 
@@ -418,6 +418,8 @@ cdme.reproduce(run_id="run_20240115_143022_a1b2c3")
 
 ## Requirements Addressed
 
+- **REQ-TRV-05-A**: Immutable Run Hierarchy - Core requirement for binding runs to artifact snapshots
+- **REQ-TRV-05-B**: Artifact Version Binding - Version immutability and lineage tracking
 - **REQ-TRV-05**: Deterministic reproducibility - Full hierarchy enables exact reproduction
 - **REQ-INT-03**: Traceability - Run → Config → Code → Design → Requirements chain
 - **REQ-AI-02**: Triangulation - Intent/Logic/Proof linkage via hierarchical snapshots

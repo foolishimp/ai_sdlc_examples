@@ -59,7 +59,7 @@ Key architectural decisions for this design:
 | [ADR-006](adrs/ADR-006-deterministic-execution-contract.md) | Deterministic Execution Contract | REQ-TRV-05, REQ-INT-06 |
 | [ADR-007](adrs/ADR-007-compile-time-vs-runtime-validation.md) | Compile-Time vs Runtime Validation | REQ-AI-01, REQ-TYP-06 |
 | [ADR-008](adrs/ADR-008-openlineage-standard.md) | OpenLineage as Lineage Standard | REQ-INT-03, REQ-TRV-04 |
-| [ADR-009](adrs/ADR-009-immutable-run-hierarchy.md) | Immutable Run Hierarchy | REQ-TRV-05, REQ-INT-03, REQ-AI-02 |
+| [ADR-009](adrs/ADR-009-immutable-run-hierarchy.md) | Immutable Run Hierarchy | REQ-TRV-05-A, REQ-TRV-05-B, REQ-TRV-05 |
 
 ---
 
