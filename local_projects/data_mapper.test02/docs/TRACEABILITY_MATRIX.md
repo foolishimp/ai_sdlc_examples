@@ -192,6 +192,30 @@ Track requirement coverage across all SDLC stages: Intent → Requirements → D
 
 ---
 
+## Architecture Decision Records (ADRs)
+
+### Spark Implementation ADRs
+
+| ADR | Title | Requirements | Status |
+|-----|-------|--------------|--------|
+| **ADR-001** | Apache Spark as Execution Engine | All REQ-* (Spark variant) | Proposed |
+| **ADR-002** | Language Choice - Scala vs PySpark | - | Proposed |
+| **ADR-003** | Storage Format | - | Proposed |
+| **ADR-004** | Lineage Backend | RIC-LIN-01, REQ-INT-03 | Proposed |
+| **ADR-005** | Adjoint Metadata Storage | REQ-ADJ-04, REQ-ADJ-05, REQ-ADJ-06, REQ-ADJ-11 | Proposed |
+
+### Scala Implementation ADRs
+
+| ADR | Title | Requirements | Status |
+|-----|-------|--------------|--------|
+| **ADR-006** | Scala Type System for CDME | REQ-TYP-01, REQ-TYP-02, REQ-LDM-03, REQ-TRV-02 | Accepted |
+| **ADR-007** | Error Handling with Either Monad | REQ-TYP-03, REQ-ERR-01, REQ-ERR-02, REQ-ERR-03 | Accepted |
+| **ADR-008** | Scala Aggregation Patterns | REQ-ADJ-01, REQ-ADJ-02, REQ-ADJ-03, REQ-TYP-04 | Accepted |
+| **ADR-009** | Scala Project Structure | - (Best practices) | Accepted |
+| **ADR-010** | YAML Configuration Parsing | REQ-CFG-01, REQ-CFG-02, REQ-CFG-03 | Accepted |
+
+---
+
 ## Priority Summary
 
 | Priority | Count | Requirements |
