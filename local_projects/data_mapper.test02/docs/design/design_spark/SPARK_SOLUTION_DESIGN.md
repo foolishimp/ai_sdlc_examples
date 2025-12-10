@@ -44,6 +44,7 @@ CONFIG → INIT → COMPILE → EXECUTE → OUTPUT
 | REQ-AI-01 | ✓ | Topological validation |
 | REQ-ADJ-01 | ✓ | Full aggregations (SUM, COUNT, etc.) |
 | REQ-ADJ-02 | ✓ | Group By with scaling strategies |
+| REQ-ADJ-03 | ✓ | Window functions (ranking, running, analytic) |
 
 ### 1.3 Out of Scope for MVP
 
@@ -964,6 +965,7 @@ spark-submit \
 | REQ-AI-01 | Compiler | Topological validation |
 | REQ-ADJ-01 | FullAggregationMorphism | SUM, COUNT, AVG - single reducer |
 | REQ-ADJ-02 | GroupByAggregationMorphism | Partial, Salted, Bucketed, Broadcast strategies |
+| REQ-ADJ-03 | WindowMorphism | Ranking, running totals, LAG/LEAD - grain preserved |
 
 ---
 
@@ -971,12 +973,13 @@ spark-submit \
 
 ### 10.1 Overview
 
-Adjoint morphisms provide **reverse traversal** capability - aggregating from fine-grained data back to coarse-grained summaries. Two patterns emerge:
+Adjoint morphisms provide **reverse traversal** capability - aggregating from fine-grained data back to coarse-grained summaries. Three patterns emerge:
 
-| Pattern | Description | Complexity |
-|---------|-------------|------------|
-| **Full Aggregation** | SUM, COUNT, AVG over entire dataset | Trivial - single reducer |
-| **Group By Aggregation** | Aggregate by key(s) | Scaling challenge - shuffle required |
+| Pattern | Description | Rows Out | Complexity |
+|---------|-------------|----------|------------|
+| **Full Aggregation** | SUM, COUNT, AVG over entire dataset | 1 | Trivial - single reducer |
+| **Group By Aggregation** | Aggregate by key(s) | K (groups) | Scaling challenge - shuffle required |
+| **Window Aggregation** | Running totals, ranks, LAG/LEAD | N (preserved) | Sort + shuffle per partition |
 
 ### 10.2 Full Aggregation (Trivial Case)
 
@@ -1501,13 +1504,396 @@ class AdjointCompiler:
 
 ---
 
+## 10.8 Window Aggregations
+
+Window functions compute aggregates **without collapsing rows** - each input row produces one output row with additional computed columns.
+
+### Why Window Functions Matter
+
+| Pattern | Rows In | Rows Out | Use Case |
+|---------|---------|----------|----------|
+| Full Aggregation | N | 1 | Total summary |
+| Group By | N | K (groups) | Group summaries |
+| **Window** | N | N | Row-level + context |
+
+### Window Function Categories
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     WINDOW FUNCTION TYPES                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. RANKING FUNCTIONS                                                   │
+│     ┌─────────────────────────────────────────────────────────────┐    │
+│     │ ROW_NUMBER()  - Sequential 1,2,3,4... (no ties)             │    │
+│     │ RANK()        - 1,2,2,4... (gaps after ties)                │    │
+│     │ DENSE_RANK()  - 1,2,2,3... (no gaps)                        │    │
+│     │ NTILE(n)      - Distribute into n buckets                   │    │
+│     └─────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+│  2. AGGREGATE FUNCTIONS (over window)                                   │
+│     ┌─────────────────────────────────────────────────────────────┐    │
+│     │ SUM(col)      - Running/partition sum                       │    │
+│     │ AVG(col)      - Running/partition average                   │    │
+│     │ COUNT(col)    - Running/partition count                     │    │
+│     │ MIN/MAX(col)  - Running/partition min/max                   │    │
+│     └─────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+│  3. ANALYTIC FUNCTIONS                                                  │
+│     ┌─────────────────────────────────────────────────────────────┐    │
+│     │ LAG(col, n)   - Value n rows before                         │    │
+│     │ LEAD(col, n)  - Value n rows after                          │    │
+│     │ FIRST_VALUE() - First value in window                       │    │
+│     │ LAST_VALUE()  - Last value in window                        │    │
+│     └─────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Window Specification
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     WINDOW SPECIFICATION                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  OVER (                                                                 │
+│      PARTITION BY customer_id          ← Group rows (like GROUP BY)    │
+│      ORDER BY order_date               ← Order within partition        │
+│      ROWS BETWEEN ... AND ...          ← Frame bounds                  │
+│  )                                                                      │
+│                                                                          │
+│  Frame Types:                                                           │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ ROWS    - Physical row offset                                   │   │
+│  │ RANGE   - Logical value offset                                  │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│  Frame Bounds:                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ UNBOUNDED PRECEDING  - From partition start                     │   │
+│  │ n PRECEDING          - n rows/values before current             │   │
+│  │ CURRENT ROW          - Current row                              │   │
+│  │ n FOLLOWING          - n rows/values after current              │   │
+│  │ UNBOUNDED FOLLOWING  - To partition end                         │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Use Case Examples
+
+**1. Running Total (Cumulative Sum)**
+
+```
+Input: Orders                          Output: Orders + Running Total
+┌─────────────┬────────┬────────┐     ┌─────────────┬────────┬────────┬─────────────┐
+│ customer_id │ date   │ amount │     │ customer_id │ date   │ amount │ running_sum │
+├─────────────┼────────┼────────┤     ├─────────────┼────────┼────────┼─────────────┤
+│ C001        │ Jan-01 │ 100    │     │ C001        │ Jan-01 │ 100    │ 100         │
+│ C001        │ Jan-15 │ 200    │ ──► │ C001        │ Jan-15 │ 200    │ 300         │
+│ C001        │ Feb-01 │ 150    │     │ C001        │ Feb-01 │ 150    │ 450         │
+│ C002        │ Jan-10 │ 300    │     │ C002        │ Jan-10 │ 300    │ 300         │
+│ C002        │ Jan-20 │ 100    │     │ C002        │ Jan-20 │ 100    │ 400         │
+└─────────────┴────────┴────────┘     └─────────────┴────────┴────────┴─────────────┘
+
+Window: PARTITION BY customer_id ORDER BY date
+        ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+```
+
+**2. Rank Within Group**
+
+```
+Input: Orders                          Output: Orders + Rank
+┌─────────────┬────────┬────────┐     ┌─────────────┬────────┬────────┬──────┐
+│ customer_id │ date   │ amount │     │ customer_id │ date   │ amount │ rank │
+├─────────────┼────────┼────────┤     ├─────────────┼────────┼────────┼──────┤
+│ C001        │ Jan-01 │ 100    │     │ C001        │ Feb-01 │ 150    │ 1    │
+│ C001        │ Jan-15 │ 200    │ ──► │ C001        │ Jan-15 │ 200    │ 2    │
+│ C001        │ Feb-01 │ 150    │     │ C001        │ Jan-01 │ 100    │ 3    │
+│ C002        │ Jan-10 │ 300    │     │ C002        │ Jan-10 │ 300    │ 1    │
+│ C002        │ Jan-20 │ 100    │     │ C002        │ Jan-20 │ 100    │ 2    │
+└─────────────┴────────┴────────┘     └─────────────┴────────┴────────┴──────┘
+
+Window: PARTITION BY customer_id ORDER BY amount DESC
+```
+
+**3. Moving Average**
+
+```
+Input: Daily Sales                     Output: Sales + 7-Day Moving Avg
+┌────────┬────────┐                   ┌────────┬────────┬─────────────┐
+│ date   │ sales  │                   │ date   │ sales  │ moving_avg  │
+├────────┼────────┤                   ├────────┼────────┼─────────────┤
+│ Day 1  │ 100    │                   │ Day 1  │ 100    │ 100.0       │
+│ Day 2  │ 120    │                   │ Day 2  │ 120    │ 110.0       │
+│ Day 3  │ 80     │                   │ Day 3  │ 80     │ 100.0       │
+│ ...    │ ...    │  ──────────────►  │ ...    │ ...    │ ...         │
+│ Day 7  │ 150    │                   │ Day 7  │ 150    │ 114.3       │
+│ Day 8  │ 200    │                   │ Day 8  │ 200    │ 125.7       │
+└────────┴────────┘                   └────────┴────────┴─────────────┘
+
+Window: ORDER BY date
+        ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+```
+
+**4. Previous/Next Value (LAG/LEAD)**
+
+```
+Input: Orders                          Output: Orders + Previous Amount
+┌─────────────┬────────┬────────┐     ┌─────────────┬────────┬────────┬─────────────┐
+│ customer_id │ date   │ amount │     │ customer_id │ date   │ amount │ prev_amount │
+├─────────────┼────────┼────────┤     ├─────────────┼────────┼────────┼─────────────┤
+│ C001        │ Jan-01 │ 100    │     │ C001        │ Jan-01 │ 100    │ NULL        │
+│ C001        │ Jan-15 │ 200    │ ──► │ C001        │ Jan-15 │ 200    │ 100         │
+│ C001        │ Feb-01 │ 150    │     │ C001        │ Feb-01 │ 150    │ 200         │
+└─────────────┴────────┴────────┘     └─────────────┴────────┴────────┴─────────────┘
+
+Window: PARTITION BY customer_id ORDER BY date
+Function: LAG(amount, 1)
+```
+
+### Scaling Considerations
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 WINDOW FUNCTION SCALING                                  │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Challenge: Window functions require SORTING within partitions          │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Input Data                                                       │   │
+│  │    │                                                             │   │
+│  │    ▼                                                             │   │
+│  │ SHUFFLE BY partition_key                    ← Network transfer   │   │
+│  │    │                                                             │   │
+│  │    ▼                                                             │   │
+│  │ SORT BY order_key within each partition     ← CPU + memory      │   │
+│  │    │                                                             │   │
+│  │    ▼                                                             │   │
+│  │ Apply window function                                            │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│  Optimization Strategies:                                               │
+│                                                                          │
+│  1. PARTITION SIZE MANAGEMENT                                           │
+│     - Skewed partitions cause OOM                                       │
+│     - Use salting for hot keys                                          │
+│     - Monitor partition sizes                                           │
+│                                                                          │
+│  2. FRAME OPTIMIZATION                                                  │
+│     - Unbounded frames process entire partition                         │
+│     - Bounded frames (ROWS n PRECEDING) more efficient                  │
+│     - ROWS faster than RANGE (physical vs logical)                      │
+│                                                                          │
+│  3. PRE-SORTING                                                         │
+│     - If data already sorted, Spark can skip sort                       │
+│     - Bucketed + sorted tables help                                     │
+│                                                                          │
+│  4. SPILL TO DISK                                                       │
+│     - Large partitions spill to disk                                    │
+│     - Configure spark.sql.windowExec.buffer.spill.threshold             │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Configuration Schema
+
+```yaml
+# config/mappings/order_with_running_total.yaml
+mapping:
+  name: order_with_running_total
+
+  source:
+    entity: Order
+
+  target:
+    entity: OrderEnriched
+    grain:
+      level: ATOMIC              # Same grain - row count preserved
+      key: [order_id]
+
+  # Window function definitions
+  windows:
+    - name: customer_date_window
+      partition_by: [customer_id]
+      order_by:
+        - field: order_date
+          direction: ASC
+
+    - name: customer_amount_window
+      partition_by: [customer_id]
+      order_by:
+        - field: amount
+          direction: DESC
+
+  projections:
+    # Pass-through columns
+    - name: order_id
+      source: order_id
+
+    - name: customer_id
+      source: customer_id
+
+    - name: order_date
+      source: order_date
+
+    - name: amount
+      source: amount
+
+    # Window function columns
+    - name: running_total
+      source: amount
+      function: SUM
+      window: customer_date_window
+      frame:
+        type: ROWS
+        start: UNBOUNDED_PRECEDING
+        end: CURRENT_ROW
+
+    - name: customer_order_rank
+      function: ROW_NUMBER
+      window: customer_amount_window
+
+    - name: prev_order_amount
+      source: amount
+      function: LAG
+      window: customer_date_window
+      offset: 1
+      default: 0
+
+    - name: pct_of_customer_total
+      source: amount
+      expression: "amount / SUM(amount) OVER customer_date_window_unbounded"
+      # Reference to window with unbounded frame
+```
+
+### Implementation
+
+```python
+class WindowMorphism:
+    def apply(
+        self,
+        df: DataFrame,
+        window_config: WindowConfig,
+        projections: List[WindowProjection]
+    ) -> DataFrame:
+
+        # Build window specifications
+        windows = {}
+        for w in window_config.windows:
+            window_spec = Window.partitionBy(*w.partition_by)
+
+            if w.order_by:
+                order_cols = [
+                    F.col(o.field).asc() if o.direction == "ASC"
+                    else F.col(o.field).desc()
+                    for o in w.order_by
+                ]
+                window_spec = window_spec.orderBy(*order_cols)
+
+            windows[w.name] = window_spec
+
+        # Apply projections
+        result = df
+        for proj in projections:
+            if proj.window:
+                window_spec = windows[proj.window]
+
+                # Apply frame if specified
+                if proj.frame:
+                    window_spec = self._apply_frame(window_spec, proj.frame)
+
+                # Apply function
+                col_expr = self._window_function(proj, window_spec)
+                result = result.withColumn(proj.name, col_expr)
+            else:
+                # Regular column
+                result = result.withColumn(proj.name, F.col(proj.source))
+
+        return result
+
+    def _apply_frame(self, window_spec: WindowSpec, frame: FrameConfig) -> WindowSpec:
+        start = self._frame_bound(frame.start)
+        end = self._frame_bound(frame.end)
+
+        if frame.type == "ROWS":
+            return window_spec.rowsBetween(start, end)
+        else:  # RANGE
+            return window_spec.rangeBetween(start, end)
+
+    def _frame_bound(self, bound: str) -> int:
+        if bound == "UNBOUNDED_PRECEDING":
+            return Window.unboundedPreceding
+        elif bound == "UNBOUNDED_FOLLOWING":
+            return Window.unboundedFollowing
+        elif bound == "CURRENT_ROW":
+            return Window.currentRow
+        else:
+            return int(bound)  # Numeric offset
+
+    def _window_function(
+        self,
+        proj: WindowProjection,
+        window_spec: WindowSpec
+    ):
+        if proj.function == "SUM":
+            return F.sum(proj.source).over(window_spec)
+        elif proj.function == "AVG":
+            return F.avg(proj.source).over(window_spec)
+        elif proj.function == "COUNT":
+            return F.count(proj.source).over(window_spec)
+        elif proj.function == "MIN":
+            return F.min(proj.source).over(window_spec)
+        elif proj.function == "MAX":
+            return F.max(proj.source).over(window_spec)
+        elif proj.function == "ROW_NUMBER":
+            return F.row_number().over(window_spec)
+        elif proj.function == "RANK":
+            return F.rank().over(window_spec)
+        elif proj.function == "DENSE_RANK":
+            return F.dense_rank().over(window_spec)
+        elif proj.function == "LAG":
+            return F.lag(proj.source, proj.offset, proj.default).over(window_spec)
+        elif proj.function == "LEAD":
+            return F.lead(proj.source, proj.offset, proj.default).over(window_spec)
+        elif proj.function == "FIRST_VALUE":
+            return F.first(proj.source).over(window_spec)
+        elif proj.function == "LAST_VALUE":
+            return F.last(proj.source).over(window_spec)
+```
+
+### Grain Safety for Windows
+
+Windows preserve grain - output row count equals input row count:
+
+```python
+class WindowGrainValidator:
+    def validate(
+        self,
+        source_grain: Grain,
+        window_config: WindowConfig
+    ) -> Either[GrainError, Grain]:
+        """
+        Windows preserve grain.
+
+        Unlike GROUP BY which changes grain, windows add columns
+        while keeping the same grain level.
+        """
+        # Output grain = Input grain (row count preserved)
+        return Right(source_grain)
+```
+
+---
+
 ## 11. Extension Points
 
 The following are identified for future iterations:
 
 | Extension | Requirements | Priority | Status |
 |-----------|--------------|----------|--------|
-| Adjoint aggregations | REQ-ADJ-01, REQ-ADJ-02 | High | ✓ Section 10 |
+| Adjoint aggregations | REQ-ADJ-01, REQ-ADJ-02, REQ-ADJ-03 | High | ✓ Section 10 |
 | Full lineage modes | REQ-LIN-* | Medium | Pending |
 | Immutable run hierarchy | REQ-TRV-05-A/B | High | Pending |
 | Cross-domain fidelity | REQ-COV-* | Medium | Pending |
