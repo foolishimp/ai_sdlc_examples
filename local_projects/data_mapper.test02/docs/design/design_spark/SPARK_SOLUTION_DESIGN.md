@@ -42,10 +42,11 @@ CONFIG → INIT → COMPILE → EXECUTE → OUTPUT
 | REQ-TYP-03 | ✓ | Error domain (Either monad) |
 | REQ-INT-03 | Partial | Basic lineage (input/output tracking) |
 | REQ-AI-01 | ✓ | Topological validation |
+| REQ-ADJ-01 | ✓ | Full aggregations (SUM, COUNT, etc.) |
+| REQ-ADJ-02 | ✓ | Group By with scaling strategies |
 
 ### 1.3 Out of Scope for MVP
 
-- Adjoint morphisms (reverse traversal)
 - Cross-domain fidelity
 - Advanced lineage modes (Key-Derivable, Sampled)
 - Data quality monitoring
@@ -961,25 +962,561 @@ spark-submit \
 | REQ-TYP-03 | ErrorHandler | Either monad, Error DataFrame |
 | REQ-INT-03 | LineageRecord | Basic input/output lineage |
 | REQ-AI-01 | Compiler | Topological validation |
+| REQ-ADJ-01 | FullAggregationMorphism | SUM, COUNT, AVG - single reducer |
+| REQ-ADJ-02 | GroupByAggregationMorphism | Partial, Salted, Bucketed, Broadcast strategies |
 
 ---
 
-## 10. Extension Points
+## 10. Adjoint Aggregations
+
+### 10.1 Overview
+
+Adjoint morphisms provide **reverse traversal** capability - aggregating from fine-grained data back to coarse-grained summaries. Two patterns emerge:
+
+| Pattern | Description | Complexity |
+|---------|-------------|------------|
+| **Full Aggregation** | SUM, COUNT, AVG over entire dataset | Trivial - single reducer |
+| **Group By Aggregation** | Aggregate by key(s) | Scaling challenge - shuffle required |
+
+### 10.2 Full Aggregation (Trivial Case)
+
+Full aggregations collapse the entire dataset to a single row. Spark handles this efficiently.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     FULL AGGREGATION                                     │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Input DataFrame (N rows)                                               │
+│  ┌────────────────────────┐                                             │
+│  │ order_id │ amount      │                                             │
+│  │ O001     │ 100.00      │                                             │
+│  │ O002     │ 250.00      │                                             │
+│  │ O003     │ 75.00       │                                             │
+│  │ ...      │ ...         │                                             │
+│  └────────────────────────┘                                             │
+│              │                                                           │
+│              ▼                                                           │
+│  ┌────────────────────────────────────────────────────┐                 │
+│  │ Partial aggregation per partition (map-side)       │                 │
+│  │                                                    │                 │
+│  │ Partition 1: sum=5000, count=50                    │                 │
+│  │ Partition 2: sum=4800, count=48                    │                 │
+│  │ Partition 3: sum=5200, count=52                    │                 │
+│  └────────────────────────────────────────────────────┘                 │
+│              │                                                           │
+│              ▼                                                           │
+│  ┌────────────────────────────────────────────────────┐                 │
+│  │ Final aggregation (single reducer)                 │                 │
+│  │                                                    │                 │
+│  │ total_sum=15000, total_count=150                   │                 │
+│  └────────────────────────────────────────────────────┘                 │
+│              │                                                           │
+│              ▼                                                           │
+│  Output: Single Row                                                     │
+│  ┌────────────────────────────────┐                                     │
+│  │ total_amount │ order_count     │                                     │
+│  │ 15000.00     │ 150             │                                     │
+│  └────────────────────────────────┘                                     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Why Trivial**:
+- Combiner-friendly (SUM, COUNT, MIN, MAX, AVG are associative/commutative)
+- Minimal shuffle - only partition summaries move
+- Single output row - no memory pressure
+
+**Implementation**:
+
+```python
+class FullAggregationMorphism:
+    def apply(self, df: DataFrame, aggregations: List[Aggregation]) -> DataFrame:
+        """
+        Full dataset aggregation - single output row.
+
+        Spark automatically optimizes with partial aggregation.
+        """
+        agg_exprs = [
+            self._to_spark_agg(agg) for agg in aggregations
+        ]
+        return df.agg(*agg_exprs)
+
+    def _to_spark_agg(self, agg: Aggregation):
+        if agg.type == "SUM":
+            return F.sum(agg.column).alias(agg.output_name)
+        elif agg.type == "COUNT":
+            return F.count(agg.column).alias(agg.output_name)
+        elif agg.type == "AVG":
+            return F.avg(agg.column).alias(agg.output_name)
+        elif agg.type == "MIN":
+            return F.min(agg.column).alias(agg.output_name)
+        elif agg.type == "MAX":
+            return F.max(agg.column).alias(agg.output_name)
+```
+
+### 10.3 Group By Aggregation (Scaling Challenge)
+
+Group By requires shuffling data by key - the most expensive operation in distributed computing.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     GROUP BY AGGREGATION                                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Input: Orders (fine grain)                                             │
+│  ┌──────────────────────────────────┐                                   │
+│  │ customer_id │ order_id │ amount  │                                   │
+│  │ C001        │ O001     │ 100     │                                   │
+│  │ C002        │ O002     │ 250     │                                   │
+│  │ C001        │ O003     │ 75      │ ← Same customer, different partition │
+│  │ ...         │ ...      │ ...     │                                   │
+│  └──────────────────────────────────┘                                   │
+│              │                                                           │
+│              ▼                                                           │
+│  ┌────────────────────────────────────────────────────┐                 │
+│  │ SHUFFLE BY customer_id                             │ ← EXPENSIVE     │
+│  │                                                    │                 │
+│  │ All C001 records → Partition X                     │                 │
+│  │ All C002 records → Partition Y                     │                 │
+│  └────────────────────────────────────────────────────┘                 │
+│              │                                                           │
+│              ▼                                                           │
+│  Output: Customer Summary (coarse grain)                                │
+│  ┌──────────────────────────────────────────┐                           │
+│  │ customer_id │ total_amount │ order_count │                           │
+│  │ C001        │ 175          │ 2           │                           │
+│  │ C002        │ 250          │ 1           │                           │
+│  └──────────────────────────────────────────┘                           │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 10.4 Group By Optimization Strategies
+
+#### Option A: Partial Aggregation (Map-Side Combine)
+
+**How it works**: Aggregate locally before shuffle, reducing data movement.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 OPTION A: PARTIAL AGGREGATION                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Partition 1                    Partition 2                             │
+│  ┌─────────────────────┐       ┌─────────────────────┐                  │
+│  │ C001, O001, 100     │       │ C001, O003, 75      │                  │
+│  │ C001, O004, 200     │       │ C002, O002, 250     │                  │
+│  │ C002, O005, 150     │       │ C003, O006, 300     │                  │
+│  └─────────────────────┘       └─────────────────────┘                  │
+│           │                             │                                │
+│           ▼                             ▼                                │
+│  ┌─────────────────────┐       ┌─────────────────────┐                  │
+│  │ LOCAL AGG           │       │ LOCAL AGG           │                  │
+│  │ C001: 300, cnt=2    │       │ C001: 75, cnt=1     │                  │
+│  │ C002: 150, cnt=1    │       │ C002: 250, cnt=1    │                  │
+│  └─────────────────────┘       │ C003: 300, cnt=1    │                  │
+│           │                    └─────────────────────┘                  │
+│           │                             │                                │
+│           └──────────┬──────────────────┘                               │
+│                      ▼                                                   │
+│           ┌─────────────────────┐                                       │
+│           │ SHUFFLE (reduced)   │  ← Only summaries move                │
+│           └─────────────────────┘                                       │
+│                      │                                                   │
+│                      ▼                                                   │
+│           ┌─────────────────────┐                                       │
+│           │ FINAL AGG           │                                       │
+│           │ C001: 375, cnt=3    │                                       │
+│           │ C002: 400, cnt=2    │                                       │
+│           │ C003: 300, cnt=1    │                                       │
+│           └─────────────────────┘                                       │
+│                                                                          │
+│  Benefit: Shuffle N summaries instead of M records (N << M)             │
+│  Requirement: Aggregation must be associative/commutative               │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Spark Implementation**: Enabled by default for standard aggregations.
+
+```python
+# Spark automatically applies partial aggregation
+df.groupBy("customer_id").agg(
+    F.sum("amount").alias("total_amount"),
+    F.count("order_id").alias("order_count")
+)
+```
+
+**When it helps**: High cardinality keys with many duplicates per partition.
+
+**When it doesn't help**: Low duplication (each key appears once per partition).
+
+---
+
+#### Option B: Salting (Skew Mitigation)
+
+**Problem**: Data skew - some keys have millions of records, others have few.
+
+**How it works**: Add random salt to keys, aggregate in two stages.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 OPTION B: SALTING                                        │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Problem: customer C001 has 10M orders, C002 has 100                    │
+│                                                                          │
+│  Stage 1: Salt and partial aggregate                                    │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                                                                  │   │
+│  │  Original key: C001                                              │   │
+│  │       │                                                          │   │
+│  │       ▼                                                          │   │
+│  │  Salted keys: C001_0, C001_1, C001_2, ... C001_99               │   │
+│  │  (100 salts = 100 parallel reducers for C001)                    │   │
+│  │                                                                  │   │
+│  │  GroupBy(salted_key).agg(sum, count)                            │   │
+│  │                                                                  │   │
+│  │  Result:                                                         │   │
+│  │  C001_0:  sum=50000,  cnt=500                                   │   │
+│  │  C001_1:  sum=48000,  cnt=480                                   │   │
+│  │  ...                                                             │   │
+│  │  C001_99: sum=52000,  cnt=520                                   │   │
+│  │                                                                  │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│  Stage 2: Remove salt, final aggregate                                  │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │                                                                  │   │
+│  │  Extract original key: C001_* → C001                            │   │
+│  │                                                                  │   │
+│  │  GroupBy(original_key).agg(sum(partial_sum), sum(partial_cnt))  │   │
+│  │                                                                  │   │
+│  │  Result:                                                         │   │
+│  │  C001: sum=5000000, cnt=50000                                   │   │
+│  │                                                                  │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation**:
+
+```python
+class SaltedAggregationMorphism:
+    def __init__(self, salt_buckets: int = 100):
+        self.salt_buckets = salt_buckets
+
+    def apply(
+        self,
+        df: DataFrame,
+        group_keys: List[str],
+        aggregations: List[Aggregation]
+    ) -> DataFrame:
+
+        # Stage 1: Add salt and partial aggregate
+        salted_df = df.withColumn(
+            "_salt",
+            (F.rand() * self.salt_buckets).cast("int")
+        )
+
+        salted_key = F.concat_ws("_", *[F.col(k) for k in group_keys], F.col("_salt"))
+
+        partial_aggs = [
+            self._to_partial_agg(agg) for agg in aggregations
+        ]
+
+        partial_df = salted_df.groupBy(salted_key.alias("_salted_key")).agg(*partial_aggs)
+
+        # Stage 2: Remove salt and final aggregate
+        for key in group_keys:
+            partial_df = partial_df.withColumn(
+                key,
+                F.split(F.col("_salted_key"), "_").getItem(group_keys.index(key))
+            )
+
+        final_aggs = [
+            self._to_final_agg(agg) for agg in aggregations
+        ]
+
+        return partial_df.groupBy(*group_keys).agg(*final_aggs)
+```
+
+**When to use**: Known skewed keys (e.g., "UNKNOWN" customer, popular products).
+
+**Trade-off**: Two shuffles instead of one, but each shuffle is balanced.
+
+---
+
+#### Option C: Bucketed Tables (Pre-Shuffle)
+
+**How it works**: Pre-partition source data by aggregation key.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 OPTION C: BUCKETED TABLES                                │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Source Table: orders (bucketed by customer_id into 100 buckets)        │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ Bucket 0: All customers where hash(customer_id) % 100 = 0       │   │
+│  │ Bucket 1: All customers where hash(customer_id) % 100 = 1       │   │
+│  │ ...                                                              │   │
+│  │ Bucket 99: All customers where hash(customer_id) % 100 = 99     │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│  GroupBy(customer_id).agg(...)                                          │
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │ NO SHUFFLE NEEDED                                                │   │
+│  │                                                                  │   │
+│  │ Each bucket already contains all records for its customers       │   │
+│  │ Aggregation happens locally within each bucket                   │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**PDM Configuration**:
+
+```yaml
+# config/pdm/order_binding.yaml
+binding:
+  entity: Order
+
+  physical:
+    type: PARQUET
+    location: "s3://data-lake/orders/"
+
+    # Bucketing for aggregation optimization
+    bucketing:
+      enabled: true
+      columns: [customer_id]
+      num_buckets: 100
+      sort_within_bucket: [order_date]
+```
+
+**Implementation**:
+
+```python
+# Writing bucketed table
+df.write \
+    .bucketBy(100, "customer_id") \
+    .sortBy("order_date") \
+    .saveAsTable("orders_bucketed")
+
+# Reading - Spark recognizes bucketing, skips shuffle
+spark.table("orders_bucketed") \
+    .groupBy("customer_id") \
+    .agg(F.sum("amount"))
+```
+
+**When to use**: Repeated aggregations on same key, known access patterns.
+
+**Trade-off**: Write-time cost, storage overhead, schema lock-in.
+
+---
+
+#### Option D: Broadcast Join Aggregation
+
+**How it works**: For small dimension tables, broadcast to avoid shuffle.
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 OPTION D: BROADCAST AGGREGATION                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  Use case: Aggregate orders by customer, enrich with customer name      │
+│                                                                          │
+│  Orders (large)                  Customers (small)                      │
+│  ┌─────────────────────┐        ┌─────────────────────┐                 │
+│  │ 100M rows           │        │ 100K rows           │                 │
+│  │ customer_id, amount │        │ customer_id, name   │                 │
+│  └─────────────────────┘        └─────────────────────┘                 │
+│                                          │                               │
+│                            ┌─────────────▼─────────────┐                │
+│                            │ BROADCAST to all nodes    │                │
+│                            │ (copy entire customer     │                │
+│                            │  table to each executor)  │                │
+│                            └─────────────┬─────────────┘                │
+│                                          │                               │
+│  ┌───────────────────────────────────────▼────────────────────────────┐ │
+│  │ Local join + aggregation (no shuffle)                              │ │
+│  │                                                                    │ │
+│  │ Each partition:                                                    │ │
+│  │   orders.join(broadcast(customers), "customer_id")                 │ │
+│  │        .groupBy("customer_id", "name")                             │ │
+│  │        .agg(sum("amount"))                                         │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation**:
+
+```python
+from pyspark.sql.functions import broadcast
+
+# Broadcast hint
+enriched = orders.join(
+    broadcast(customers),  # Force broadcast
+    "customer_id"
+).groupBy("customer_id", "name").agg(
+    F.sum("amount").alias("total_amount")
+)
+```
+
+**When to use**: Small dimension table (< 10GB), large fact table.
+
+**Trade-off**: Memory pressure if dimension table too large.
+
+---
+
+### 10.5 Strategy Selection Matrix
+
+| Scenario | Recommended Strategy | Rationale |
+|----------|---------------------|-----------|
+| Full aggregation (no GROUP BY) | Default | Trivial, Spark optimizes automatically |
+| GROUP BY, no skew, one-time | Partial Aggregation (A) | Default Spark behavior |
+| GROUP BY, known skew | Salting (B) | Balance parallel reducers |
+| GROUP BY, repeated queries | Bucketed Tables (C) | Amortize shuffle cost |
+| GROUP BY with small dimension | Broadcast (D) | Eliminate shuffle |
+| GROUP BY, extreme scale (PB) | Bucketed + Salting (C+B) | Combined approach |
+
+### 10.6 Configuration Schema
+
+```yaml
+# config/mappings/customer_summary.yaml
+mapping:
+  name: customer_summary
+
+  source:
+    entity: Order
+
+  target:
+    entity: CustomerSummary
+    grain:
+      level: CUSTOMER
+      key: [customer_id]
+
+  # Adjoint aggregation configuration
+  adjoint:
+    type: GROUP_BY                    # FULL | GROUP_BY
+    group_by: [customer_id]
+
+    # Aggregations
+    aggregations:
+      - name: total_amount
+        source: amount
+        function: SUM
+
+      - name: order_count
+        source: order_id
+        function: COUNT
+
+      - name: avg_order_value
+        source: amount
+        function: AVG
+
+    # Optimization strategy
+    optimization:
+      strategy: AUTO                  # AUTO | PARTIAL | SALTED | BUCKETED | BROADCAST
+
+      # Strategy-specific config
+      salting:
+        enabled: false
+        buckets: 100
+        skewed_keys: []               # Optional: known skewed values
+
+      bucketing:
+        enabled: false
+        source_bucketed: false        # Is source already bucketed?
+
+      broadcast:
+        enabled: false
+        dimension_table: null
+        size_threshold_mb: 100
+```
+
+### 10.7 Compiler Integration
+
+The compiler analyzes aggregation patterns and recommends strategies:
+
+```python
+class AdjointCompiler:
+    def compile_aggregation(
+        self,
+        context: ExecutionContext,
+        adjoint_config: AdjointConfig
+    ) -> Either[CompilationError, AggregationPlan]:
+
+        if adjoint_config.type == "FULL":
+            # Trivial case - no optimization needed
+            return Right(FullAggregationPlan(
+                aggregations=adjoint_config.aggregations
+            ))
+
+        # GROUP BY - analyze and recommend
+        strategy = self._select_strategy(context, adjoint_config)
+
+        return Right(GroupByAggregationPlan(
+            group_keys=adjoint_config.group_by,
+            aggregations=adjoint_config.aggregations,
+            strategy=strategy,
+            estimated_shuffle_size=self._estimate_shuffle(context, adjoint_config)
+        ))
+
+    def _select_strategy(
+        self,
+        context: ExecutionContext,
+        config: AdjointConfig
+    ) -> AggregationStrategy:
+
+        if config.optimization.strategy != "AUTO":
+            return config.optimization.strategy
+
+        # AUTO selection based on heuristics
+        source_stats = context.registry.get_stats(config.source_entity)
+
+        # Check for bucketing
+        binding = context.registry.get_binding(config.source_entity)
+        if binding.bucketing.enabled and binding.bucketing.columns == config.group_by:
+            return AggregationStrategy.BUCKETED
+
+        # Check for broadcast opportunity
+        if config.optimization.broadcast.dimension_table:
+            dim_size = context.registry.get_size(config.optimization.broadcast.dimension_table)
+            if dim_size < config.optimization.broadcast.size_threshold_mb * 1024 * 1024:
+                return AggregationStrategy.BROADCAST
+
+        # Check for skew
+        if source_stats.key_distribution.skew_ratio > 10:
+            return AggregationStrategy.SALTED
+
+        # Default: let Spark handle with partial aggregation
+        return AggregationStrategy.PARTIAL
+```
+
+---
+
+## 11. Extension Points
 
 The following are identified for future iterations:
 
-| Extension | Requirements | Priority |
-|-----------|--------------|----------|
-| Adjoint morphisms | REQ-ADJ-* | High |
-| Full lineage modes | RIC-LIN-* | Medium |
-| Immutable run hierarchy | REQ-TRV-05-A/B | High |
-| Cross-domain fidelity | REQ-COV-* | Medium |
-| Data quality monitoring | REQ-DQ-* | Medium |
-| Streaming mode | - | Low |
+| Extension | Requirements | Priority | Status |
+|-----------|--------------|----------|--------|
+| Adjoint aggregations | REQ-ADJ-01, REQ-ADJ-02 | High | ✓ Section 10 |
+| Full lineage modes | REQ-LIN-* | Medium | Pending |
+| Immutable run hierarchy | REQ-TRV-05-A/B | High | Pending |
+| Cross-domain fidelity | REQ-COV-* | Medium | Pending |
+| Data quality monitoring | REQ-DQ-* | Medium | Pending |
+| Streaming mode | - | Low | Pending |
 
 ---
 
-## 11. Next Steps
+## 12. Next Steps
 
 1. **Create sample configuration files** (ldm, pdm, mappings)
 2. **Implement ConfigLoader** with YAML parsing
