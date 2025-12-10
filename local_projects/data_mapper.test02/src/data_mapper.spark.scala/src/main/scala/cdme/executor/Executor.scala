@@ -1,0 +1,174 @@
+package cdme.executor
+
+import cats.implicits._
+import cdme.core._
+import cdme.compiler._
+import org.apache.spark.sql.{Dataset, DataFrame, SparkSession, functions => F}
+import org.apache.spark.sql.functions._
+
+/**
+ * Executor for CDME execution plans.
+ * Implements: REQ-INT-01 (Morphism Execution)
+ */
+class Executor(ctx: ExecutionContext) {
+
+  implicit val spark: SparkSession = ctx.spark
+  import spark.implicits._
+
+  /**
+   * Execute the compiled plan.
+   */
+  def execute(plan: ExecutionPlan): Either[CdmeError, ExecutionResult] = {
+    for {
+      // Load source data
+      sourceDF <- loadSourceData(plan.sourceEntity)
+
+      // Apply morphisms
+      transformedDF <- applyMorphisms(sourceDF, plan.morphisms)
+
+      // Apply projections
+      outputDF <- applyProjections(transformedDF, plan.projections)
+
+      // Create result
+      result = ExecutionResult(
+        data = outputDF,
+        errors = spark.emptyDataFrame,  // Simplified - no error handling in MVP
+        mappingName = plan.mappingName,
+        sourceEntity = plan.sourceEntity,
+        sourceRowCount = sourceDF.count(),
+        outputRowCount = outputDF.count()
+      )
+    } yield result
+  }
+
+  /**
+   * Load source data from physical binding.
+   */
+  private def loadSourceData(entityName: String): Either[CdmeError, DataFrame] = {
+    for {
+      binding <- ctx.registry.getBinding(entityName)
+      df <- loadDataFrame(binding)
+    } yield df
+  }
+
+  private def loadDataFrame(binding: PhysicalBinding): Either[CdmeError, DataFrame] = {
+    try {
+      val df = binding.storageType.toUpperCase match {
+        case "PARQUET" => spark.read.parquet(binding.location)
+        case "DELTA" => spark.read.format("delta").load(binding.location)
+        case "CSV" => spark.read.option("header", "true").csv(binding.location)
+        case other => throw new IllegalArgumentException(s"Unsupported storage type: $other")
+      }
+      Right(df)
+    } catch {
+      case e: Exception =>
+        Left(CdmeError.CompilationError(s"Failed to load data: ${e.getMessage}"))
+    }
+  }
+
+  /**
+   * Apply morphisms in sequence.
+   */
+  private def applyMorphisms(
+    df: DataFrame,
+    morphisms: List[MorphismOp]
+  ): Either[CdmeError, DataFrame] = {
+    morphisms.foldLeft(Right(df): Either[CdmeError, DataFrame]) { (result, morphism) =>
+      result.flatMap(currentDF => applyMorphism(currentDF, morphism))
+    }
+  }
+
+  /**
+   * Apply single morphism.
+   */
+  private def applyMorphism(
+    df: DataFrame,
+    morphism: MorphismOp
+  ): Either[CdmeError, DataFrame] = {
+    morphism.morphismType.toUpperCase match {
+      case "FILTER" =>
+        morphism.predicate match {
+          case Some(pred) =>
+            try {
+              Right(df.filter(expr(pred)))
+            } catch {
+              case e: Exception =>
+                Left(CdmeError.CompilationError(s"Invalid filter predicate: ${e.getMessage}"))
+            }
+          case None =>
+            Left(CdmeError.CompilationError(s"Filter morphism requires predicate"))
+        }
+
+      case "TRAVERSE" =>
+        // Simplified traverse - would require join implementation
+        Right(df)
+
+      case "AGGREGATE" =>
+        // Aggregation would be handled in projections
+        Right(df)
+
+      case other =>
+        Left(CdmeError.CompilationError(s"Unknown morphism type: $other"))
+    }
+  }
+
+  /**
+   * Apply projections (select/aggregate).
+   */
+  private def applyProjections(
+    df: DataFrame,
+    projections: List[ProjectionOp]
+  ): Either[CdmeError, DataFrame] = {
+    try {
+      // Check if any aggregations present
+      val hasAggregations = projections.exists(_.aggregation.isDefined)
+
+      if (hasAggregations) {
+        // Group by non-aggregated columns
+        val groupByCols = projections
+          .filter(_.aggregation.isEmpty)
+          .map(p => col(p.source))
+
+        val aggExprs = projections.map { proj =>
+          proj.aggregation match {
+            case Some("SUM") => sum(col(proj.source)).alias(proj.name)
+            case Some("COUNT") => count(col(proj.source)).alias(proj.name)
+            case Some("AVG") => avg(col(proj.source)).alias(proj.name)
+            case Some("MIN") => min(col(proj.source)).alias(proj.name)
+            case Some("MAX") => max(col(proj.source)).alias(proj.name)
+            case None => first(col(proj.source)).alias(proj.name)
+            case Some(other) =>
+              throw new IllegalArgumentException(s"Unknown aggregation: $other")
+          }
+        }
+
+        val result = if (groupByCols.nonEmpty) {
+          df.groupBy(groupByCols: _*).agg(aggExprs.head, aggExprs.tail: _*)
+        } else {
+          df.agg(aggExprs.head, aggExprs.tail: _*)
+        }
+
+        Right(result)
+      } else {
+        // Simple select
+        val selectExprs = projections.map(p => col(p.source).alias(p.name))
+        Right(df.select(selectExprs: _*))
+      }
+    } catch {
+      case e: Exception =>
+        Left(CdmeError.CompilationError(s"Failed to apply projections: ${e.getMessage}"))
+    }
+  }
+}
+
+/**
+ * Execution result.
+ */
+case class ExecutionResult(
+  data: DataFrame,
+  errors: DataFrame,
+  mappingName: String,
+  sourceEntity: String,
+  sourceRowCount: Long,
+  outputRowCount: Long
+)
