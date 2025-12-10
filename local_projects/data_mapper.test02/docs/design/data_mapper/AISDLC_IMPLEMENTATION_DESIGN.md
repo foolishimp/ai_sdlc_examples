@@ -1678,6 +1678,465 @@ spec:
 
 ---
 
+## Part 10: Data Quality Guarantees for Data Engineers
+
+This section maps common data engineering concerns to CDME requirements, showing how category-theoretic foundations provide formal guarantees for data quality issues that traditionally require ad-hoc validation.
+
+### 10.1 Data Quality Concerns Matrix
+
+| Data Quality Concern | Traditional Approach | CDME Guarantee | Requirements |
+|---------------------|---------------------|----------------|--------------|
+| **Missing data** | Null checks, COALESCE | Option types, refinement predicates | REQ-TYP-01, REQ-TYP-02 |
+| **Duplicate records** | DISTINCT, dedup jobs | Grain keys, morphism cardinality | REQ-LDM-06, REQ-LDM-02 |
+| **Schema drift** | Schema registry alerts | Immutable LDM topology | REQ-LDM-01, REQ-TRV-05-B |
+| **Type mismatches** | Cast errors at runtime | Compile-time type unification | REQ-TYP-06, REQ-TYP-05 |
+| **Referential integrity** | FK constraints, orphan checks | Morphism path validation | REQ-LDM-03, REQ-LDM-02 |
+| **Data freshness** | Timestamp checks, SLAs | Epoch semantics, temporal binding | REQ-PDM-03, REQ-TRV-03 |
+| **Completeness** | Row count validation | Coverage invariants, adjoint containment | REQ-COV-02, REQ-ADJ-08 |
+| **Consistency** | Reconciliation jobs | Fidelity verification, certificate chain | REQ-COV-03, REQ-COV-08 |
+| **Grain mixing** | Manual review, testing | Compile-time grain safety | REQ-TRV-02, REQ-LDM-06 |
+| **Silent failures** | Log monitoring | Either monad, Error Domain | REQ-TYP-03, REQ-ERROR-01 |
+| **Non-determinism** | Flaky test detection | Deterministic execution contract | REQ-TRV-05, REQ-INT-06 |
+| **Data loss** | Reconciliation, audits | Adjoint round-trip containment | REQ-ADJ-08, REQ-ADJ-04 |
+
+---
+
+### 10.2 Missing Data & Nulls
+
+**What Data Engineers Worry About:**
+- Unexpected NULLs breaking downstream logic
+- COALESCE chains hiding data quality issues
+- "Is NULL missing or legitimately absent?"
+
+**CDME Guarantees:**
+
+```yaml
+# Option types make nullability explicit
+entity: Order
+attributes:
+  - name: customer_id
+    type: String              # NOT NULL - absence is error
+  - name: discount_code
+    type: Option[String]      # Nullable - absence is valid
+  - name: shipping_address
+    type: Option[Address]     # Nested optional
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Unexpected NULL in required field | Runtime NPE or silent corruption | REQ-TYP-02: Refinement violation → Error Domain |
+| NULL propagation through joins | Silent NULL expansion | REQ-TYP-01: Option type propagation tracked |
+| Ambiguous NULL semantics | Documentation (ignored) | REQ-TYP-01: `Option[T]` vs `T` is type-level |
+
+**Requirements Providing Guarantee:**
+- **REQ-TYP-01**: Extended type system with Option types
+- **REQ-TYP-02**: Refinement types catch constraint violations
+- **REQ-TYP-03**: Violations route to Error Domain, never silent
+
+---
+
+### 10.3 Duplicate Records
+
+**What Data Engineers Worry About:**
+- Accidental row multiplication from bad joins
+- Dedup logic that silently drops records
+- "Which record is authoritative?"
+
+**CDME Guarantees:**
+
+```yaml
+# Grain keys define uniqueness
+entity: DailySummary
+grain: DAILY
+grain_key: [customer_id, date]  # Unique constraint at this grain
+
+# Cardinality prevents accidental fan-out
+relationship:
+  name: customer
+  cardinality: N:1  # Many orders per customer - row count preserved
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Join causes row multiplication | Runtime discovery, expensive reprocessing | REQ-LDM-02: 1:N flagged, context lifting required |
+| Dedup drops wrong record | Logic bugs, data loss | REQ-LDM-04: Aggregations are monoidal, deterministic |
+| Duplicate detection | Ad-hoc dedup jobs | REQ-LDM-06: Grain key uniqueness enforced |
+
+**Requirements Providing Guarantee:**
+- **REQ-LDM-02**: Cardinality types (1:1, N:1, 1:N) explicit
+- **REQ-LDM-06**: Grain key defines uniqueness at each level
+- **REQ-TRV-01**: Context lifting makes fan-out explicit
+
+---
+
+### 10.4 Schema Drift & Evolution
+
+**What Data Engineers Worry About:**
+- Upstream schema changes breaking pipelines
+- Column renames causing silent nulls
+- "What version of the schema was used?"
+
+**CDME Guarantees:**
+
+```yaml
+# Schema is immutable topology - changes create new versions
+ldm_version: ldm_sha256_abc123
+
+# Every run binds to specific schema version
+run_manifest:
+  design:
+    ldm_version: ldm_sha256_abc123  # Immutable reference
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Column renamed upstream | Runtime failure or silent NULL | REQ-LDM-03: Path validation fails at compile time |
+| Type changed upstream | Cast errors at runtime | REQ-TYP-06: Type unification fails at compile time |
+| "What schema was used?" | Log archaeology | REQ-TRV-05-A: Run manifest binds to design snapshot |
+
+**Requirements Providing Guarantee:**
+- **REQ-LDM-01**: Schema as immutable topology
+- **REQ-LDM-03**: Path validation against topology
+- **REQ-TRV-05-A**: Immutable run hierarchy binds to schema version
+- **REQ-TRV-05-B**: Artifact version binding prevents silent changes
+
+---
+
+### 10.5 Referential Integrity
+
+**What Data Engineers Worry About:**
+- Orphan records from failed joins
+- FK violations in denormalized data
+- "Does this relationship actually exist?"
+
+**CDME Guarantees:**
+
+```yaml
+# Relationships are first-class topology elements
+relationship:
+  name: customer
+  source: Order
+  target: Customer
+  cardinality: N:1
+  join_key: customer_id
+  # This relationship EXISTS or path validation fails
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Orphan records (no matching FK) | NULL from LEFT JOIN, or dropped from INNER | REQ-TYP-03: Either monad captures join failures |
+| Non-existent relationship | Runtime error or wrong results | REQ-LDM-03: Path validation rejects at compile time |
+| Circular references | Stack overflow or infinite loops | REQ-LDM-01: DAG structure enforced in topology |
+
+**Requirements Providing Guarantee:**
+- **REQ-LDM-01**: Relationships defined in topology
+- **REQ-LDM-02**: Cardinality validated
+- **REQ-LDM-03**: Path validation ensures relationships exist
+- **REQ-TYP-03**: Join failures captured in Error Domain
+
+---
+
+### 10.6 Data Freshness & Latency
+
+**What Data Engineers Worry About:**
+- Stale data in dashboards
+- Processing data from wrong time window
+- "Is this data from today or yesterday?"
+
+**CDME Guarantees:**
+
+```yaml
+# Epoch semantics are explicit
+source:
+  entity: Order
+  boundaries:
+    epoch:
+      type: partition_filter
+      field: order_date
+      strategy: exact  # Only this epoch's data
+
+# Cross-epoch joins require declaration
+mapping:
+  lookups:
+    - entity: ExchangeRate
+      temporal_semantics: AS_OF  # Explicit: use rate valid at order_date
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Processing wrong partition | Logic bugs, reprocessing | REQ-PDM-03: Epoch boundaries explicit |
+| Joining stale reference data | Silent incorrectness | REQ-TRV-03: Cross-boundary requires temporal semantics |
+| "When was this data from?" | Timestamp column inspection | REQ-TRV-05-A: Run manifest captures epoch |
+
+**Requirements Providing Guarantee:**
+- **REQ-PDM-03**: Boundary definition (how data is sliced)
+- **REQ-TRV-03**: Temporal semantics for cross-boundary joins
+- **REQ-INT-06**: Versioned lookups with temporal binding
+- **REQ-SHF-01**: Sheaf consistency (same epoch context)
+
+---
+
+### 10.7 Completeness & Coverage
+
+**What Data Engineers Worry About:**
+- Missing records in aggregations
+- Incomplete data causing wrong totals
+- "Did we process everything?"
+
+**CDME Guarantees:**
+
+```yaml
+# Fidelity invariants prove completeness
+invariant:
+  name: order_coverage
+  type: COVERAGE
+  expr: "count(output.orders) >= count(input.orders)"
+  on_violation: BREACH
+
+# Adjoint containment proves round-trip
+reconciliation:
+  check: "backward(forward(input)) ⊇ input"
+  # Every input record is accounted for in output
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Records dropped silently | Row count reconciliation | REQ-ADJ-08: Adjoint containment validation |
+| Filter dropped too much | Manual inspection | REQ-ADJ-05: Filter adjoint captures filtered keys |
+| Aggregation missing groups | Sum validation | REQ-COV-02: Coverage invariants |
+
+**Requirements Providing Guarantee:**
+- **REQ-ADJ-04**: Aggregation adjoints capture contributing keys
+- **REQ-ADJ-05**: Filter adjoints capture filtered-out keys
+- **REQ-ADJ-08**: Data reconciliation via adjoint round-trip
+- **REQ-COV-02**: Fidelity invariants (Coverage type)
+
+---
+
+### 10.8 Consistency & Reconciliation
+
+**What Data Engineers Worry About:**
+- Numbers don't match between systems
+- Reconciliation breaks finding discrepancies
+- "Why doesn't Finance match Risk?"
+
+**CDME Guarantees:**
+
+```yaml
+# Cross-domain fidelity contracts
+contract:
+  name: finance_risk_fidelity
+  invariants:
+    - name: pnl_conservation
+      type: CONSERVATION
+      expr: "sum(finance.pnl) == sum(risk.pnl_input)"
+      materiality_threshold: 0.01  # $0.01 tolerance
+      on_breach: HALT
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Cross-system mismatch | Monthly reconciliation nightmare | REQ-COV-03: Fidelity verification with certificates |
+| "When did it break?" | Log archaeology | REQ-COV-08: Certificate chain shows exactly when |
+| Tolerance creep | Gradually increasing thresholds | REQ-COV-02: Materiality thresholds auditable |
+
+**Requirements Providing Guarantee:**
+- **REQ-COV-01**: Cross-domain covariance contracts
+- **REQ-COV-02**: Fidelity invariants with materiality thresholds
+- **REQ-COV-03**: Fidelity verification produces certificates
+- **REQ-COV-08**: Certificate chain proves continuous fidelity
+
+---
+
+### 10.9 Silent Failures & Error Handling
+
+**What Data Engineers Worry About:**
+- Errors swallowed by try/catch
+- Bad records silently dropped
+- "Did it actually succeed?"
+
+**CDME Guarantees:**
+
+```yaml
+# Failures are data, not exceptions
+result: Either[Error, Value]
+
+# Error Domain captures all failures
+error_domain:
+  - source_key: "order_123"
+    error_type: REFINEMENT_VIOLATION
+    morphism_path: "Order.amount → PositiveDecimal"
+    offending_value: -50.00
+    # Nothing silently dropped - all failures queryable
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Exception swallowed | Silent corruption | REQ-TYP-03: Either monad - no exceptions |
+| Record dropped | Missing data mystery | REQ-ERROR-01: Error Domain captures all failures |
+| Too many failures | Job "succeeds" with garbage | REQ-TYP-03-A: Batch threshold halts on systemic failure |
+
+**Requirements Providing Guarantee:**
+- **REQ-TYP-03**: Either monad - failures are data
+- **REQ-TYP-03-A**: Batch failure threshold (circuit breaker)
+- **REQ-ERROR-01**: Minimal error object content
+- **REQ-TYP-04**: Idempotency of failure (same error every time)
+
+---
+
+### 10.10 Non-Determinism & Reproducibility
+
+**What Data Engineers Worry About:**
+- Different results on re-run
+- Flaky tests and pipelines
+- "Why did it work yesterday but not today?"
+
+**CDME Guarantees:**
+
+```yaml
+# Forbidden non-deterministic operations
+forbidden:
+  - CURRENT_TIMESTAMP()  # Use epoch_timestamp
+  - RANDOM()             # Use hash(key, seed)
+  - UUID()               # Use UUID_V5(namespace, key)
+
+# All dependencies versioned
+run_manifest:
+  lookups:
+    ExchangeRate: {version: "2024.01.15", hash: sha256:abc}
+  # Same inputs + same config = bit-identical outputs
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Different results on re-run | Debugging nightmare | REQ-TRV-05: Deterministic execution contract |
+| Lookup data changed | Silent incorrectness | REQ-INT-06: Versioned lookups |
+| "What inputs were used?" | Log archaeology | REQ-TRV-05-A: Immutable run manifest |
+
+**Requirements Providing Guarantee:**
+- **REQ-TRV-05**: Deterministic reproducibility
+- **REQ-INT-06**: Versioned lookups
+- **REQ-INT-07**: Deterministic key generation
+- **REQ-TRV-05-A**: Immutable run hierarchy
+
+---
+
+### 10.11 Data Loss Detection
+
+**What Data Engineers Worry About:**
+- Records vanishing in pipeline
+- Aggregation hiding missing data
+- "Where did those 1000 records go?"
+
+**CDME Guarantees:**
+
+```yaml
+# Adjoint morphisms enable backward traversal
+aggregation:
+  name: daily_summary
+  adjoint:
+    type: PROJECTION
+    backward: "returns set of contributing order_ids"
+    storage: daily_summary_adjoint
+
+# Reconciliation proves containment
+backward(forward(orders)) ⊇ orders
+# Every input order is accounted for in some output
+```
+
+| Scenario | Traditional | CDME |
+|----------|-------------|------|
+| Records lost in aggregation | Manual reconciliation | REQ-ADJ-04: Aggregation adjoints |
+| Records lost in filter | Undetectable | REQ-ADJ-05: Filter adjoints (optional capture) |
+| "Which inputs made this output?" | Expensive re-computation | REQ-ADJ-09: Impact analysis via backward traversal |
+
+**Requirements Providing Guarantee:**
+- **REQ-ADJ-04**: Aggregation backward captures contributing keys
+- **REQ-ADJ-05**: Filter backward captures filtered keys
+- **REQ-ADJ-08**: Data reconciliation via containment
+- **REQ-ADJ-09**: Impact analysis (backward traversal)
+
+---
+
+### 10.12 Identified Gaps & Proposed Requirements
+
+Analysis of common data quality concerns identified these potential gaps:
+
+| Gap | Description | Proposed Requirement |
+|-----|-------------|---------------------|
+| **Late-arriving data** | Data arrives after epoch closes | REQ-PDM-06: Late arrival handling |
+| **Data volume anomalies** | Unexpected row count changes | REQ-DQ-01: Volume threshold monitoring |
+| **Value distribution drift** | Statistical properties change | REQ-DQ-02: Distribution monitoring |
+| **Semantic validation** | Business rule validation beyond types | REQ-DQ-03: Custom validation rules |
+| **Data profiling** | Automated discovery of data characteristics | REQ-DQ-04: Profiling integration |
+
+#### Proposed: REQ-PDM-06: Late Arrival Handling
+
+**Priority**: High
+**Type**: Functional
+
+**Description**: The system must handle late-arriving data (data that arrives after its epoch has closed) with explicit semantics.
+
+**Acceptance Criteria**:
+- Late arrival policy declared per source: REJECT, BACKFILL, QUARANTINE
+- REJECT: Route to Error Domain with late arrival error
+- BACKFILL: Trigger reprocessing of affected epochs
+- QUARANTINE: Store for manual review
+- Late arrival detection based on event_time vs processing_time
+- Watermark configuration for acceptable lateness window
+- Late arrivals logged with full context for audit
+
+#### Proposed: REQ-DQ-01: Volume Threshold Monitoring
+
+**Priority**: Medium
+**Type**: Non-Functional (Observability)
+
+**Description**: The system must detect anomalous data volumes that may indicate upstream issues.
+
+**Acceptance Criteria**:
+- Volume thresholds configurable per source: min_rows, max_rows, expected_range
+- Thresholds can be absolute or relative to historical baseline
+- Threshold breach triggers: WARN, HALT, or ALERT
+- Empty input handling: explicit (error vs valid empty set)
+- Volume metrics captured in telemetry (REQ-TRV-04)
+
+#### Proposed: REQ-DQ-02: Distribution Monitoring
+
+**Priority**: Low
+**Type**: Non-Functional (Observability)
+
+**Description**: The system should detect statistical distribution changes that may indicate data quality issues.
+
+**Acceptance Criteria**:
+- Distribution metrics: cardinality, null rate, value range, percentiles
+- Baseline established from historical data
+- Anomaly detection for significant deviations
+- Distribution drift alerts (not enforcement - observability only)
+- Integration with data catalog for profiling metadata
+
+---
+
+### 10.13 Summary: Category Theory → Data Quality
+
+The categorical foundations provide these data quality guarantees:
+
+| Category Concept | Data Quality Guarantee |
+|-----------------|----------------------|
+| **Types as Objects** | Schema correctness, null safety |
+| **Morphisms as Arrows** | Transformation validity, referential integrity |
+| **Composition** | Path correctness, no broken chains |
+| **Functors** | Consistent mapping (LDM→PDM) |
+| **Monoids** | Safe aggregation, parallelizable |
+| **Either Monad** | Explicit error handling, no silent failures |
+| **Option Monad** | Explicit null handling |
+| **Kleisli Arrows** | Explicit fan-out, context lifting |
+| **Adjoints** | Backward traversal, data reconciliation |
+| **Sheaves** | Context consistency, epoch alignment |
+
+**The key insight**: Traditional data quality requires runtime checks, monitoring, and reconciliation. CDME shifts most guarantees to **compile time** through the type system and topology validation. Runtime checks are reserved for **value-level** validation (refinement types, fidelity invariants).
+
+---
+
 ## Appendix A: Glossary for Data Engineers
 
 | CDME Term | Plain English |
