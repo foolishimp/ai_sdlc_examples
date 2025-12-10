@@ -1,7 +1,7 @@
 # Active Tasks
 
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
-**Last Updated**: 2025-12-10 23:05
+**Last Updated**: 2025-12-10 23:20
 
 ---
 
@@ -49,11 +49,11 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - [ ] Wire Algebra.scala Aggregator to Executor
 - [ ] Add SparkAdjointWrapper for reverse-join capture
 - [ ] Add accumulator-based error collection (SparkErrorDomain)
-- [ ] Add Executor unit tests
+- [x] Add Executor unit tests ✅ (18 tests in ExecutorSpec.scala)
 
 **Acceptance Criteria**:
 - [x] Unit tests pass for Compiler (8/8 tests passing)
-- [ ] Unit tests pass for Executor
+- [x] Unit tests pass for Executor (18/18 tests passing) ✅
 - [ ] Integration test: end-to-end mapping execution
 - [ ] Error threshold checking implemented
 - [x] Build passes: `sbt compile` ✅
@@ -63,7 +63,7 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - Scala 2.12.18
 - Spark 3.5.0 (provided scope)
 - All 11 source files compile successfully
-- 8 tests passing (SchemaRegistry, GrainValidator, Compiler)
+- 26 tests passing (CompilerSpec: 8, ExecutorSpec: 18)
 
 **Dependencies**:
 - Design stage complete ✅
@@ -184,7 +184,8 @@ src/data_mapper.spark.scala/
     │           ├── FilterMorphism.scala
     │           └── AggregateMorphism.scala
     └── test/scala/cdme/
-        └── CompilerSpec.scala
+        ├── CompilerSpec.scala
+        └── ExecutorSpec.scala
 ```
 
 ---
