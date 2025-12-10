@@ -3,3 +3,19 @@
 .ai-workspace/session/current_session.md
 .ai-workspace/session/history/
 *.backup.*
+
+# Scala/sbt build artifacts
+target/
+project/target/
+project/project/target/
+
+# IDE artifacts
+.metals/
+.scala-build/
+.bloop/
+.bsp/
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
