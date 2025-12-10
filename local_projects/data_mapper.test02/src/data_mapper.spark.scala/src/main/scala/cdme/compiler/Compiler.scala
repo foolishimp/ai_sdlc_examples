@@ -26,11 +26,20 @@ class Compiler(registry: SchemaRegistry) {
       _ <- registry.getEntity(mapping.target.entity)
 
       // Validate all projection paths
-      _ <- mapping.projections.traverse(proj => validateProjectionPath(proj.source))
+      _ <- validateAllProjections(mapping.projections)
 
       // Generate execution plan
       plan <- generatePlan(mapping, sourceEntity)
     } yield plan
+  }
+
+  /**
+   * Validate all projection paths.
+   */
+  private def validateAllProjections(projections: List[ProjectionConfig]): Either[CdmeError, Unit] = {
+    projections.foldLeft(Right(()): Either[CdmeError, Unit]) { (acc, proj) =>
+      acc.flatMap(_ => validateProjectionPath(proj.source).map(_ => ()))
+    }
   }
 
   /**

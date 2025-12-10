@@ -27,11 +27,16 @@ object ConfigLoader {
    * Load all entities from LDM directory.
    */
   def loadEntities(ldmPath: String): Either[ConfigError, Map[String, Entity]] = {
-    listYamlFiles(ldmPath).traverse { file =>
-      loadYamlFile[EntityDefinition](file).map { def =>
-        val entity = fromEntityConfig(def.entity)
+    val files = listYamlFiles(ldmPath)
+    val results: List[Either[ConfigError, (String, Entity)]] = files.map { file =>
+      loadYamlFile[EntityDefinition](file).map { defn =>
+        val entity = fromEntityConfig(defn.entity)
         entity.name -> entity
       }
+    }
+    // Sequence the list of Eithers into Either of list
+    results.foldRight(Right(List.empty[(String, Entity)]): Either[ConfigError, List[(String, Entity)]]) {
+      (elem, acc) => for { a <- acc; e <- elem } yield e :: a
     }.map(_.toMap)
   }
 
@@ -39,11 +44,16 @@ object ConfigLoader {
    * Load all bindings from PDM directory.
    */
   def loadBindings(pdmPath: String): Either[ConfigError, Map[String, PhysicalBinding]] = {
-    listYamlFiles(pdmPath).traverse { file =>
-      loadYamlFile[BindingDefinition](file).map { def =>
-        val binding = fromBindingConfig(def.binding)
+    val files = listYamlFiles(pdmPath)
+    val results: List[Either[ConfigError, (String, PhysicalBinding)]] = files.map { file =>
+      loadYamlFile[BindingDefinition](file).map { defn =>
+        val binding = fromBindingConfig(defn.binding)
         binding.entity -> binding
       }
+    }
+    // Sequence the list of Eithers into Either of list
+    results.foldRight(Right(List.empty[(String, PhysicalBinding)]): Either[ConfigError, List[(String, PhysicalBinding)]]) {
+      (elem, acc) => for { a <- acc; e <- elem } yield e :: a
     }.map(_.toMap)
   }
 

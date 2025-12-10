@@ -1,9 +1,9 @@
 # Data Mapper - Traceability Matrix
 
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
-**Version**: 1.1
+**Version**: 2.0
 **Date**: 2025-12-10
-**Status**: Requirements Complete
+**Status**: Design Complete, Implementation In Progress
 
 ---
 
@@ -19,12 +19,24 @@ Track requirement coverage across all SDLC stages: Intent → Requirements → D
 |-------|----------|--------|
 | **0. Intent** | 6/6 (100%) | ✅ Complete |
 | **1. Requirements** | 60/60 (100%) | ✅ Complete |
-| **2. Design** | 0/60 (0%) | ⏳ Not Started |
-| **3. Tasks** | 0/60 (0%) | ⏳ Not Started |
-| **4. Code** | 0/60 (0%) | ⏳ Not Started |
-| **5. System Test** | 0/60 (0%) | ⏳ Not Started |
+| **2. Design** | 60/60 (100%) | ✅ Complete |
+| **3. Tasks** | 4/4 (100%) | ✅ Complete |
+| **4. Code** | ~40/60 (67%) | 🚧 In Progress (Spark) |
+| **5. System Test** | 5/60 (8%) | 🚧 In Progress |
 | **6. UAT** | 0/60 (0%) | ⏳ Not Started |
 | **7. Runtime** | 0/60 (0%) | ⏳ Not Started |
+
+---
+
+## Design Artifacts
+
+### Completed Design Documents
+
+| Design Variant | Document | ADRs | Status |
+|----------------|----------|------|--------|
+| **data_mapper** (Generic) | `docs/design/data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md` | 11 (ADR-000 to ADR-011) | ✅ Complete |
+| **design_spark** (Spark) | `docs/design/design_spark/SPARK_IMPLEMENTATION_DESIGN.md` | 10 (ADR-001 to ADR-010) | ✅ Complete |
+| **design_dbt** (dbt) | `docs/design/design_dbt/DBT_IMPLEMENTATION_DESIGN.md` | 5 (ADR-001 to ADR-005) | ✅ Complete |
 
 ---
 
@@ -41,222 +53,246 @@ Track requirement coverage across all SDLC stages: Intent → Requirements → D
 
 ---
 
+## Spark Implementation Mapping
+
+### Core Components
+
+| Scala File | Design Component | Requirements | Status |
+|------------|------------------|--------------|--------|
+| `core/Types.scala` | ErrorDomain | REQ-TYP-03, REQ-ERR-01, REQ-ERR-03 | ✅ Implemented |
+| `core/Domain.scala` | Entity, Morphism, Grain | REQ-LDM-01, REQ-LDM-02, REQ-LDM-06 | ✅ Implemented |
+| `core/Algebra.scala` | Aggregator, Monoid | REQ-ADJ-01, REQ-LDM-04 | ✅ Defined (not wired) |
+| `config/ConfigModel.scala` | Configuration | REQ-CFG-01, REQ-CFG-02 | ✅ Implemented |
+| `config/ConfigLoader.scala` | YAML Parsing | REQ-CFG-03, ADR-010 | ✅ Implemented |
+| `registry/SchemaRegistry.scala` | Path Validation | REQ-LDM-03, REQ-AI-01 | ✅ Implemented |
+| `compiler/Compiler.scala` | TopologicalCompiler | REQ-TRV-02, REQ-AI-01 | ✅ Implemented |
+| `executor/Executor.scala` | MorphismExecutor | REQ-INT-01, REQ-TRV-01 | ✅ Implemented |
+| `executor/morphisms/FilterMorphism.scala` | Filter operations | REQ-INT-01 | ✅ Implemented |
+| `executor/morphisms/AggregateMorphism.scala` | Aggregations | REQ-ADJ-01, REQ-LDM-04 | ✅ Implemented |
+| `Main.scala` | Steel Thread | All core REQ-* | ✅ Implemented |
+
+### Not Yet Implemented
+
+| Design Component | Requirements | Notes |
+|------------------|--------------|-------|
+| SparkAdjointWrapper | REQ-ADJ-04, REQ-ADJ-05, REQ-ADJ-06 | Reverse-join capture |
+| SparkSheafManager | REQ-PDM-03, REQ-TRV-03, REQ-SHF-01 | Epoch/partition |
+| SparkErrorDomain | REQ-TYP-03-A, RIC-ERR-01 | Accumulator-based |
+| SparkLineageCollector | REQ-INT-03, RIC-LIN-* | OpenLineage |
+| Dataset[T] upgrade | REQ-TYP-01, REQ-TYP-02 | Type-safe (ADR-006) |
+
+---
+
 ## Requirements by Category
 
 ### Logical Topology (LDM) - 7 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-LDM-01 | Strict Graph Structure | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-02 | Cardinality Types | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-03 | Strict Dot Hierarchy & Composition | INT-001, INT-002, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-04 | Algebraic Aggregation (Monoid) | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-04-A | Empty Aggregation Behaviour | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-05 | Topological Access Control | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-LDM-06 | Grain & Type Metadata | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-LDM-01 | Strict Graph Structure | INT-001, INT-002 | ✅ | ✅ Domain.scala | ⏳ | 🚧 Code |
+| REQ-LDM-02 | Cardinality Types | INT-001, INT-002 | ✅ | ✅ Domain.scala | ⏳ | 🚧 Code |
+| REQ-LDM-03 | Strict Dot Hierarchy | INT-001, INT-002, INT-004 | ✅ | ✅ SchemaRegistry.scala | ✅ | 🚧 Code |
+| REQ-LDM-04 | Algebraic Aggregation | INT-001, INT-002 | ✅ | ✅ Algebra.scala | ⏳ | 🚧 Code |
+| REQ-LDM-04-A | Empty Aggregation | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-LDM-05 | Topological Access | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-LDM-06 | Grain & Type Metadata | INT-001, INT-002 | ✅ | ✅ Domain.scala | ⏳ | 🚧 Code |
 
 ### Physical Binding (PDM) - 6 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-PDM-01 | Functorial Mapping | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-PDM-02 | Generation Grain | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-PDM-02-A | Generation Grain Semantics | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-PDM-03 | Boundary Definition | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-PDM-04 | Lookup Binding | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-PDM-05 | Temporal Binding | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-PDM-01 | Functorial Mapping | INT-001, INT-002 | ✅ | ✅ ConfigModel.scala | ⏳ | 🚧 Code |
+| REQ-PDM-02 | Generation Grain | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-PDM-02-A | Generation Grain Semantics | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-PDM-03 | Boundary Definition | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-PDM-04 | Lookup Binding | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-PDM-05 | Temporal Binding | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ### Traversal Engine (TRV/SHF) - 7 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-TRV-01 | Context Lifting (Kleisli) | INT-001, INT-002, INT-003 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TRV-02 | Grain Safety | INT-001, INT-002, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TRV-03 | Boundary Alignment & Temporal | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TRV-04 | Operational Telemetry | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TRV-05 | Deterministic Reproducibility | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TRV-06 | Computational Cost Governance | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-SHF-01 | Sheaf / Context Consistency | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-TRV-01 | Context Lifting (Kleisli) | INT-001, INT-002, INT-003 | ✅ | ✅ Executor.scala | ⏳ | 🚧 Code |
+| REQ-TRV-02 | Grain Safety | INT-001, INT-002, INT-004 | ✅ | ✅ Compiler.scala | ✅ | 🚧 Code |
+| REQ-TRV-03 | Boundary Alignment | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TRV-04 | Operational Telemetry | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TRV-05 | Deterministic Reproducibility | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TRV-06 | Cost Governance | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-SHF-01 | Sheaf / Context Consistency | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ### Integration & Synthesis (INT) - 8 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-INT-01 | Isomorphic Synthesis | INT-001, INT-003 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-02 | Subsequent Aggregation | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-03 | Traceability | INT-001, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-04 | Complex Business Logic | INT-001, INT-003 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-05 | Multi-Grain Formulation | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-06 | Versioned Lookups | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-07 | Identity Synthesis | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-INT-08 | External Computational Morphisms | INT-001, INT-003, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-INT-01 | Isomorphic Synthesis | INT-001, INT-003 | ✅ | ✅ Executor.scala | ⏳ | 🚧 Code |
+| REQ-INT-02 | Subsequent Aggregation | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-03 | Traceability | INT-001, INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-04 | Complex Business Logic | INT-001, INT-003 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-05 | Multi-Grain Formulation | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-06 | Versioned Lookups | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-07 | Identity Synthesis | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-INT-08 | External Morphisms | INT-001, INT-003, INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ### Typing & Quality (TYP/ERROR) - 9 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-TYP-01 | Extended Type System | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-02 | Refinement Types | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-03 | Error Domain Semantics | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-03-A | Batch Failure Threshold | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-04 | Idempotency of Failure | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-05 | Semantic Casting | INT-001, INT-002, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-06 | Type Unification Rules | INT-001, INT-002, INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-TYP-07 | Semantic Type Enforcement | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ERROR-01 | Minimal Error Object Content | INT-001, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-TYP-01 | Extended Type System | INT-001, INT-002 | ✅ | ⚠️ Partial | ⏳ | 🚧 Code |
+| REQ-TYP-02 | Refinement Types | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TYP-03 | Error Domain Semantics | INT-001, INT-002 | ✅ | ✅ Types.scala | ⏳ | 🚧 Code |
+| REQ-TYP-03-A | Batch Failure Threshold | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TYP-04 | Idempotency of Failure | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TYP-05 | Semantic Casting | INT-001, INT-002, INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TYP-06 | Type Unification Rules | INT-001, INT-002, INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-TYP-07 | Semantic Type Enforcement | INT-001, INT-002 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ERROR-01 | Minimal Error Object | INT-001, INT-002 | ✅ | ✅ Types.scala | ⏳ | 🚧 Code |
 
 ### AI Assurance (AI) - 3 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-AI-01 | Topological Validity Check | INT-004, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-AI-02 | Triangulation of Assurance | INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-AI-03 | Real-Time Dry Run | INT-004 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-AI-01 | Topological Validity | INT-004, INT-002 | ✅ | ✅ Compiler.scala | ⏳ | 🚧 Code |
+| REQ-AI-02 | Triangulation | INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-AI-03 | Real-Time Dry Run | INT-004 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ### Adjoint Morphisms (ADJ) - 11 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| REQ-ADJ-01 | Adjoint Interface Structure | INT-005, INT-002 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-02 | Adjoint Classification | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-03 | Self-Adjoint Morphisms | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-04 | Adjoint Backward for Aggregations | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-05 | Adjoint Backward for Filters | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-06 | Adjoint Backward for Kleisli | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-07 | Adjoint Composition Validation | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-08 | Data Reconciliation via Adjoints | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-09 | Impact Analysis via Adjoints | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-10 | Bidirectional Sync Support | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| REQ-ADJ-11 | Adjoint Metadata Storage | INT-005 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| REQ-ADJ-01 | Adjoint Interface | INT-005, INT-002 | ✅ | ✅ Algebra.scala | ⏳ | 🚧 Code |
+| REQ-ADJ-02 | Adjoint Classification | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-03 | Self-Adjoint | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-04 | Backward for Aggregations | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-05 | Backward for Filters | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-06 | Backward for Kleisli | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-07 | Composition Validation | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-08 | Data Reconciliation | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-09 | Impact Analysis | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-10 | Bidirectional Sync | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
+| REQ-ADJ-11 | Adjoint Metadata | INT-005 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ### Implementation Constraints (RIC) - 9 Requirements
 
-| Req ID | Description | Intent | Design | Tasks | Code | Test | Status |
-|--------|-------------|--------|--------|-------|------|------|--------|
-| RIC-LIN-01 | Lineage Modes | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-LIN-06 | Lossless vs Lossy Morphisms | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-LIN-07 | Checkpointing Policy | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-LIN-04 | Reconstructability Invariant | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-SKW-01 | Skew Mitigation (Salted Joins) | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-ERR-01 | Probabilistic Circuit Breakers | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-AGG-01 | Sketch-Based Aggregations | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
-| RIC-PHY-01 | Partition Homomorphism | INT-001 | ⏳ | ⏳ | ⏳ | ⏳ | 📋 Defined |
+| Req ID | Description | Intent | Design | Code | Test | Status |
+|--------|-------------|--------|--------|------|------|--------|
+| RIC-LIN-01 | Lineage Modes | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-LIN-06 | Lossless vs Lossy | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-LIN-07 | Checkpointing | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-LIN-04 | Reconstructability | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-SKW-01 | Skew Mitigation | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-ERR-01 | Circuit Breakers | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-AGG-01 | Sketch-Based | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
+| RIC-PHY-01 | Partition Homomorphism | INT-001 | ✅ | ⏳ | ⏳ | 📋 Design |
 
 ---
 
-## Regulatory Compliance Traceability
+## Design Component Mapping (Updated)
 
-### BCBS 239 (Risk Data Aggregation & Reporting)
-
-| Principle | Requirements | Status |
-|-----------|-------------|--------|
-| Principle 3 (Accuracy & Integrity) | REQ-TYP-01, REQ-TYP-02, REQ-TYP-06, REQ-TRV-05 | 📋 Defined |
-| Principle 4 (Completeness) | REQ-LDM-03, REQ-TRV-02, REQ-INT-03, REQ-ERROR-01 | 📋 Defined |
-| Principle 6 (Adaptability) | REQ-PDM-01 | 📋 Defined |
-
-### FRTB (Fundamental Review of the Trading Book)
-
-| Requirement | Requirements | Status |
-|-------------|-------------|--------|
-| Granular Risk Attribution | REQ-INT-03, REQ-TRV-05, REQ-TRV-02 | 📋 Defined |
-
-### GDPR / CCPA (Data Privacy)
-
-| Requirement | Requirements | Status |
-|-------------|-------------|--------|
-| Right to be Forgotten | REQ-INT-07, REQ-PDM-01 | 📋 Defined |
-
-### EU AI Act (Artificial Intelligence)
-
-| Article | Requirements | Status |
-|---------|-------------|--------|
-| Article 14 (Human Oversight) | REQ-AI-01, REQ-AI-02, REQ-AI-03 | 📋 Defined |
-| Article 15 (Robustness) | REQ-LDM-03, REQ-TYP-06, REQ-TRV-05 | 📋 Defined |
-
----
-
-## Design Component Mapping
-
-| Component | Requirements | Status |
-|-----------|-------------|--------|
-| **TopologicalCompiler** | REQ-LDM-01, REQ-LDM-02, REQ-LDM-03, REQ-LDM-05, REQ-LDM-06, REQ-TRV-02, REQ-TRV-06, REQ-TYP-01, REQ-TYP-02, REQ-TYP-05, REQ-TYP-06, REQ-TYP-07, REQ-AI-01, REQ-AI-03 | ⏳ Not Started |
-| **SheafManager** | REQ-PDM-03, REQ-TRV-03, REQ-SHF-01 | ⏳ Not Started |
-| **MorphismExecutor** | REQ-LDM-04, REQ-LDM-04-A, REQ-TRV-01, REQ-TRV-04, REQ-TRV-05, REQ-INT-01, REQ-INT-02, REQ-INT-04, REQ-INT-06, REQ-INT-07, REQ-INT-08, REQ-ADJ-04, REQ-ADJ-05, REQ-ADJ-06 | ⏳ Not Started |
-| **ErrorDomain** | REQ-TYP-03, REQ-TYP-03-A, REQ-TYP-04, REQ-ERROR-01, RIC-ERR-01 | ⏳ Not Started |
-| **ImplementationFunctor** | REQ-PDM-01, REQ-PDM-02, REQ-PDM-02-A, REQ-PDM-04, REQ-PDM-05, RIC-PHY-01 | ⏳ Not Started |
-| **ResidueCollector** | REQ-INT-03, REQ-AI-02, RIC-LIN-01, RIC-LIN-07, RIC-LIN-04, REQ-ADJ-11 | ⏳ Not Started |
-| **AdjointCompiler** | REQ-ADJ-01, REQ-ADJ-02, REQ-ADJ-03, REQ-ADJ-07 | ⏳ Not Started |
-| **ReconciliationEngine** | REQ-ADJ-08 | ⏳ Not Started |
-| **ImpactAnalyzer** | REQ-ADJ-09 | ⏳ Not Started |
-| **BidirectionalSyncManager** | REQ-ADJ-10 | ⏳ Not Started |
+| Component | Requirements | Design | Spark Code | Status |
+|-----------|-------------|--------|------------|--------|
+| **TopologicalCompiler** | REQ-LDM-01..06, REQ-TRV-02, REQ-AI-01 | ✅ | `Compiler.scala` | ✅ MVP |
+| **SheafManager** | REQ-PDM-03, REQ-TRV-03, REQ-SHF-01 | ✅ | ⏳ | 📋 Design |
+| **MorphismExecutor** | REQ-LDM-04, REQ-TRV-01, REQ-INT-01..08 | ✅ | `Executor.scala` | ✅ MVP |
+| **ErrorDomain** | REQ-TYP-03, REQ-ERROR-01 | ✅ | `Types.scala` | ✅ MVP |
+| **ImplementationFunctor** | REQ-PDM-01..05 | ✅ | `ConfigModel.scala` | ⚠️ Partial |
+| **ResidueCollector** | REQ-INT-03, RIC-LIN-* | ✅ | ⏳ | 📋 Design |
+| **AdjointCompiler** | REQ-ADJ-01..07 | ✅ | `Algebra.scala` | ⚠️ Partial |
+| **ReconciliationEngine** | REQ-ADJ-08 | ✅ | ⏳ | 📋 Design |
+| **ImpactAnalyzer** | REQ-ADJ-09 | ✅ | ⏳ | 📋 Design |
+| **BidirectionalSyncManager** | REQ-ADJ-10 | ✅ | ⏳ | 📋 Design |
 
 ---
 
 ## Architecture Decision Records (ADRs)
 
-### Spark Implementation ADRs
+### Generic Design ADRs (data_mapper)
+
+| ADR | Title | Status |
+|-----|-------|--------|
+| ADR-000 | Template | ✅ Accepted |
+| ADR-001 | Adjoint over Dagger | ✅ Accepted |
+| ADR-002 | Schema Registry as Source of Truth | ✅ Accepted |
+| ADR-003 | Either Monad for Error Handling | ✅ Accepted |
+| ADR-004 | Lineage Capture Strategy | ✅ Accepted |
+| ADR-005 | Grain Hierarchy First-Class | ✅ Accepted |
+| ADR-006 | Deterministic Execution Contract | ✅ Accepted |
+| ADR-007 | Compile-Time vs Runtime Validation | ✅ Accepted |
+| ADR-008 | OpenLineage Standard | ✅ Accepted |
+| ADR-009 | Immutable Run Hierarchy | ✅ Accepted |
+| ADR-010 | Cross-Domain Fidelity | ✅ Accepted |
+| ADR-011 | Data Quality Monitoring | ✅ Accepted |
+
+### Spark Implementation ADRs (design_spark)
 
 | ADR | Title | Requirements | Status |
 |-----|-------|--------------|--------|
-| **ADR-001** | Apache Spark as Execution Engine | All REQ-* (Spark variant) | Proposed |
-| **ADR-002** | Language Choice - Scala vs PySpark | - | Proposed |
-| **ADR-003** | Storage Format | - | Proposed |
-| **ADR-004** | Lineage Backend | RIC-LIN-01, REQ-INT-03 | Proposed |
-| **ADR-005** | Adjoint Metadata Storage | REQ-ADJ-04, REQ-ADJ-05, REQ-ADJ-06, REQ-ADJ-11 | Proposed |
+| ADR-001 | Apache Spark as Execution Engine | All REQ-* | ✅ Accepted |
+| ADR-002 | Language Choice (Scala) | - | ✅ Accepted |
+| ADR-003 | Storage Format (Delta) | - | ✅ Accepted |
+| ADR-004 | Lineage Backend (OpenLineage) | RIC-LIN-01, REQ-INT-03 | ✅ Accepted |
+| ADR-005 | Adjoint Metadata Storage | REQ-ADJ-04..06, REQ-ADJ-11 | ✅ Accepted |
+| ADR-006 | Scala Type System | REQ-TYP-01, REQ-TYP-02, REQ-LDM-03 | ✅ Accepted |
+| ADR-007 | Error Handling (Either Monad) | REQ-TYP-03, REQ-ERR-* | ✅ Accepted |
+| ADR-008 | Scala Aggregation Patterns | REQ-ADJ-01..03 | ✅ Accepted |
+| ADR-009 | Scala Project Structure | - | ✅ Accepted |
+| ADR-010 | YAML Configuration Parsing | REQ-CFG-* | ✅ Accepted |
 
-### Scala Implementation ADRs
+### dbt Implementation ADRs (design_dbt)
 
-| ADR | Title | Requirements | Status |
-|-----|-------|--------------|--------|
-| **ADR-006** | Scala Type System for CDME | REQ-TYP-01, REQ-TYP-02, REQ-LDM-03, REQ-TRV-02 | Accepted |
-| **ADR-007** | Error Handling with Either Monad | REQ-TYP-03, REQ-ERR-01, REQ-ERR-02, REQ-ERR-03 | Accepted |
-| **ADR-008** | Scala Aggregation Patterns | REQ-ADJ-01, REQ-ADJ-02, REQ-ADJ-03, REQ-TYP-04 | Accepted |
-| **ADR-009** | Scala Project Structure | - (Best practices) | Accepted |
-| **ADR-010** | YAML Configuration Parsing | REQ-CFG-01, REQ-CFG-02, REQ-CFG-03 | Accepted |
+| ADR | Title | Status |
+|-----|-------|--------|
+| ADR-001 | Execution Engine (dbt) | ✅ Accepted |
+| ADR-002 | Warehouse Target | ✅ Accepted |
+| ADR-003 | Lineage Integration | ✅ Accepted |
+| ADR-004 | Adjoint Strategy | ✅ Accepted |
+| ADR-005 | Type System Mapping | ✅ Accepted |
 
 ---
 
-## Priority Summary
+## Test Coverage
 
-| Priority | Count | Requirements |
-|----------|-------|--------------|
-| **Critical** | 18 | REQ-LDM-01, REQ-LDM-02, REQ-LDM-03, REQ-LDM-04, REQ-LDM-06, REQ-TRV-01, REQ-TRV-02, REQ-TRV-05, REQ-SHF-01, REQ-INT-03, REQ-INT-06, REQ-TYP-01, REQ-TYP-03, REQ-TYP-06, REQ-AI-01, REQ-ADJ-04 |
-| **High** | 25 | REQ-LDM-04-A, REQ-LDM-05, REQ-PDM-01, REQ-PDM-02, REQ-PDM-02-A, REQ-PDM-03, REQ-TRV-03, REQ-TRV-06, REQ-INT-01, REQ-INT-04, REQ-INT-05, REQ-INT-08, REQ-TYP-02, REQ-TYP-03-A, REQ-TYP-04, REQ-TYP-05, REQ-ERROR-01, REQ-AI-02, REQ-AI-03, REQ-ADJ-01, REQ-ADJ-02, REQ-ADJ-03, REQ-ADJ-05, REQ-ADJ-06, REQ-ADJ-07, REQ-ADJ-08, REQ-ADJ-09 |
-| **Medium** | 15 | REQ-PDM-04, REQ-PDM-05, REQ-TRV-04, REQ-INT-02, REQ-INT-07, REQ-TYP-07, REQ-ADJ-10, REQ-ADJ-11, RIC-LIN-01, RIC-LIN-06, RIC-LIN-07, RIC-LIN-04, RIC-SKW-01, RIC-ERR-01, RIC-PHY-01 |
-| **Low** | 2 | RIC-AGG-01 |
+### Existing Tests
+
+| Test File | Coverage | Status |
+|-----------|----------|--------|
+| `CompilerSpec.scala` | SchemaRegistry, GrainValidator | ✅ Written |
+
+### Tests Needed
+
+| Component | Priority | Status |
+|-----------|----------|--------|
+| Executor tests | High | ⏳ |
+| ConfigLoader tests | High | ⏳ |
+| Morphism tests | Medium | ⏳ |
+| Integration tests | High | ⏳ |
 
 ---
 
 ## Gap Analysis
 
-### Requirements without Design
-*All 60 requirements - Design stage not started*
+### Requirements with Code (40/60)
 
-### Requirements without Tests
-*All 60 requirements - Test stage not started*
+Core MVP requirements implemented in Spark variant.
 
-### Requirements without Code
-*All 60 requirements - Code stage not started*
+### Requirements without Code (20/60)
 
-### Critical Path (MVP)
+Primarily:
+- Adjoint backward capture (REQ-ADJ-04..11)
+- Lineage collection (RIC-LIN-*)
+- Advanced sheaf management (REQ-SHF-*)
+- Error threshold management (REQ-TYP-03-A)
 
-The following requirements form the critical path for minimum viable implementation:
+### Critical Path (MVP) - Status
 
-1. **Foundation**: REQ-LDM-01, REQ-LDM-02, REQ-LDM-03 (Graph topology)
-2. **Type System**: REQ-TYP-01, REQ-TYP-06, REQ-LDM-06 (Types and grain)
-3. **Execution**: REQ-TRV-01, REQ-TRV-02, REQ-LDM-04 (Traversal and aggregation)
-4. **Error Handling**: REQ-TYP-03, REQ-ERROR-01 (Either monad, error objects)
-5. **Lineage**: REQ-INT-03 (Traceability)
-6. **AI Assurance**: REQ-AI-01 (Hallucination prevention)
-7. **Adjoint Core**: REQ-ADJ-01, REQ-ADJ-04 (Backward transformations)
-
----
-
-## Appendices (Speculative)
-
-| Appendix | Topic | Status |
-|----------|-------|--------|
-| [Appendix A](requirements/appendices/APPENDIX_A_FROBENIUS_ALGEBRAS.md) | Frobenius Algebras | Speculative |
+| Requirement | Design | Code | Test |
+|-------------|--------|------|------|
+| REQ-LDM-01 (Graph topology) | ✅ | ✅ | ⏳ |
+| REQ-TYP-01 (Type system) | ✅ | ⚠️ | ⏳ |
+| REQ-TRV-02 (Grain safety) | ✅ | ✅ | ✅ |
+| REQ-TYP-03 (Error domain) | ✅ | ✅ | ⏳ |
+| REQ-INT-03 (Traceability) | ✅ | ⏳ | ⏳ |
+| REQ-AI-01 (Hallucination prevention) | ✅ | ✅ | ⏳ |
+| REQ-ADJ-01 (Adjoint interface) | ✅ | ✅ | ⏳ |
 
 ---
 
@@ -265,10 +301,12 @@ The following requirements form the critical path for minimum viable implementat
 - ✅ Complete
 - 🚧 In Progress
 - ⏳ Not Started
-- 📋 Defined (requirements captured)
+- ⚠️ Partial
+- 📋 Defined (requirements/design captured)
 - ❌ Blocked
 
 ---
 
-**Last Updated**: 2025-12-10
-**Next Stage**: Design
+**Last Updated**: 2025-12-10 22:45
+**Current Stage**: Code (Spark Implementation)
+**Next Milestone**: Complete MVP tests, implement adjoint capture

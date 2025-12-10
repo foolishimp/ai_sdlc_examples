@@ -21,6 +21,25 @@ ThisBuild / scalacOptions ++= Seq(
 ThisBuild / Test / fork := true
 ThisBuild / Test / parallelExecution := false  // Spark tests can conflict
 
+// JVM options for Java 17+ compatibility with Spark
+ThisBuild / Test / javaOptions ++= Seq(
+  "--add-opens=java.base/java.lang=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+  "--add-opens=java.base/java.io=ALL-UNNAMED",
+  "--add-opens=java.base/java.net=ALL-UNNAMED",
+  "--add-opens=java.base/java.nio=ALL-UNNAMED",
+  "--add-opens=java.base/java.util=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
+  "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+  "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
+  "--add-opens=java.security.jgss/sun.security.krb5=ALL-UNNAMED"
+  // Note: Security Manager removed in Java 25, skip that option
+)
+
 // Dependency versions
 val sparkVersion = "3.5.0"
 val catsVersion = "2.10.0"
@@ -35,8 +54,8 @@ lazy val commonDependencies = Seq(
 )
 
 lazy val sparkDependencies = Seq(
-  "org.apache.spark" %% "spark-core" % sparkVersion % Provided,
-  "org.apache.spark" %% "spark-sql" % sparkVersion % Provided
+  "org.apache.spark" %% "spark-core" % sparkVersion % "provided,test",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided,test"
 )
 
 lazy val circeDependencies = Seq(

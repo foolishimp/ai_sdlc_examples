@@ -186,42 +186,41 @@ object CdmeEngine {
     epoch: String
   ): Either[CdmeError, ExecutionResult] = {
 
-    for {
-      // Create registry
-      registry <- SchemaRegistryImpl.fromConfig(entities, bindings)
-        .leftMap(e => CdmeError.CompilationError(e.message))
+    // Create registry first
+    SchemaRegistryImpl.fromConfig(entities, bindings)
+      .leftMap(e => CdmeError.CompilationError(e.message))
+      .flatMap { registry =>
+        // Create Spark session
+        val spark = SparkSession.builder()
+          .appName("CDME-Direct")
+          .master("local[*]")
+          .getOrCreate()
 
-      // Create Spark session
-      spark = SparkSession.builder()
-        .appName("CDME-Direct")
-        .master("local[*]")
-        .getOrCreate()
+        // Create config (minimal)
+        val config = CdmeConfig(
+          version = "1.0",
+          registry = RegistryConfig("", ""),
+          execution = ExecutionConfig("BATCH", 0.05, "BASIC"),
+          output = OutputConfig("output/data", "output/errors", "output/lineage")
+        )
 
-      // Create config (minimal)
-      config = CdmeConfig(
-        version = "1.0",
-        registry = RegistryConfig("", ""),
-        execution = ExecutionConfig("BATCH", 0.05, "BASIC"),
-        output = OutputConfig("output/data", "output/errors", "output/lineage")
-      )
+        // Create context
+        val ctx = ExecutionContext(
+          runId = UUID.randomUUID().toString,
+          epoch = epoch,
+          spark = spark,
+          registry = registry,
+          config = config
+        )
 
-      // Create context
-      ctx = ExecutionContext(
-        runId = UUID.randomUUID().toString,
-        epoch = epoch,
-        spark = spark,
-        registry = registry,
-        config = config
-      )
+        // Compile and execute
+        val compiler = new Compiler(registry)
+        val executor = new Executor(ctx)
 
-      // Compile
-      compiler = new Compiler(registry)
-      plan <- compiler.compile(mapping, ctx)
-
-      // Execute
-      executor = new Executor(ctx)
-      result <- executor.execute(plan)
-
-    } yield result
+        for {
+          plan <- compiler.compile(mapping, ctx)
+          result <- executor.execute(plan)
+        } yield result
+      }
   }
 }

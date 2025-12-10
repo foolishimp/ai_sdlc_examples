@@ -1,6 +1,6 @@
 package cdme.core
 
-import cats.data.{Either, EitherT}
+import cats.data.EitherT
 import org.apache.spark.sql.Dataset
 
 /**
@@ -27,7 +27,12 @@ sealed trait CdmeError {
   def sourceKey: String
   def morphismPath: String
   def context: Map[String, String]
-  def errorType: String = getClass.getSimpleName
+
+  /** Returns snake_case error type for consistent DataFrame storage */
+  def errorType: String = {
+    val name = getClass.getSimpleName.stripSuffix("$")
+    name.replaceAll("([A-Z])", "_$1").toLowerCase.stripPrefix("_")
+  }
 }
 
 object CdmeError {

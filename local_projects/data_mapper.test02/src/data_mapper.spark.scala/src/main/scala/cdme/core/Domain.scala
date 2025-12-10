@@ -1,7 +1,7 @@
 package cdme.core
 
-import cats.implicits._
-import org.apache.spark.sql.{Dataset, SparkSession}
+import cdme.config.CdmeConfig
+import org.apache.spark.sql.SparkSession
 
 /**
  * Domain abstractions for CDME.

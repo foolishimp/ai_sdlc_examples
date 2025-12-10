@@ -1,7 +1,7 @@
 # Active Tasks
 
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
-**Last Updated**: 2025-12-10 14:00
+**Last Updated**: 2025-12-10 23:05
 
 ---
 
@@ -9,118 +9,109 @@
 
 | Status | Count |
 |--------|-------|
-| In Progress | 0 |
-| Pending | 4 |
+| In Progress | 1 |
+| Pending | 3 |
 | Blocked | 0 |
 
 ---
 
-## Design Variant Strategy
+## Current Stage: Code (Implementation)
 
-The CDME will have **3 design artifacts**:
-
-| Design | Purpose | Technology |
-|--------|---------|------------|
-| `data_mapper` | Generic reference design | Abstract/implementation-agnostic |
-| `design_spark` | Distributed batch/streaming | Apache Spark (Scala/PySpark) |
-| `design_dbt` | SQL-first transformation | dbt (SQL + Jinja) |
-
-Each variant implements the same 60 requirements with technology-specific ADRs.
+Design stage complete. Now implementing the Spark variant with TDD.
 
 ---
 
 ## Tasks
 
-### Task #2: Generic Reference Design (data_mapper)
+### Task #6: Spark Implementation - MVP Steel Thread
 
-**Status**: pending
+**Status**: in_progress
 **Priority**: High
-**Implements**: All 60 REQ-* requirements (abstract)
-**Traces To**: INT-001, INT-002, INT-003, INT-004, INT-005
+**Implements**: Core pipeline (CONFIG → INIT → COMPILE → EXECUTE → OUTPUT)
+**Traces To**: REQ-INT-01, REQ-TYP-*, REQ-CFG-*, ADR-006, ADR-007, ADR-010
 
 **Description**:
-Create the abstract/generic component architecture for CDME. This serves as the reference design that Spark and dbt variants will implement.
+Implement the Spark MVP steel thread following TDD. Core pipeline is implemented, needs testing and gap closure.
+
+**Implementation Status** (from code review):
+- [x] Error Domain (Types.scala) - CdmeError sealed trait, 8 error variants
+- [x] Domain Model (Domain.scala) - Entity, Grain, Morphism, Cardinality
+- [x] Algebra (Algebra.scala) - Aggregator trait, MonoidInstances
+- [x] Config Parsing (ConfigModel.scala, ConfigLoader.scala) - circe-yaml
+- [x] Schema Registry (SchemaRegistry.scala) - Path validation
+- [x] Compiler (Compiler.scala) - Plan generation, grain validation
+- [x] Executor (Executor.scala) - DataFrame transformations
+- [x] Morphisms (FilterMorphism.scala, AggregateMorphism.scala)
+- [x] Main entry point (Main.scala) - Steel thread
+
+**Gaps Identified** (design vs implementation):
+- [ ] Upgrade DataFrame to Dataset[T] (ADR-006)
+- [ ] Wire Algebra.scala Aggregator to Executor
+- [ ] Add SparkAdjointWrapper for reverse-join capture
+- [ ] Add accumulator-based error collection (SparkErrorDomain)
+- [ ] Add Executor unit tests
 
 **Acceptance Criteria**:
-- [ ] Abstract component interfaces defined (TopologicalCompiler, SheafManager, MorphismExecutor, etc.)
-- [ ] `Adjoint<T,U>` interface defined with `forward`, `backward`, `compositionalConsistency`
-- [ ] Data structures for LDM, PDM, Mapping artifacts defined (implementation-agnostic)
-- [ ] Component interaction diagrams
-- [ ] ADRs for implementation-agnostic decisions
-- [ ] Design document: `docs/design/data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md`
+- [x] Unit tests pass for Compiler (8/8 tests passing)
+- [ ] Unit tests pass for Executor
+- [ ] Integration test: end-to-end mapping execution
+- [ ] Error threshold checking implemented
+- [x] Build passes: `sbt compile` ✅
+
+**Build Environment**:
+- sbt 1.11.7 installed via Homebrew
+- Scala 2.12.18
+- Spark 3.5.0 (provided scope)
+- All 11 source files compile successfully
+- 8 tests passing (SchemaRegistry, GrainValidator, Compiler)
 
 **Dependencies**:
-- Requirements stage complete ✅
-
-**Notes**:
-- This is the "what" not the "how"
-- Variants will provide technology-specific "how"
+- Design stage complete ✅
+- Build tools installed ✅
 
 ---
 
-### Task #3: Spark Variant Design (design_spark)
+### Task #7: Spark Implementation - Adjoint Capture
 
 **Status**: pending
-**Priority**: High
-**Implements**: All 60 REQ-* requirements (Spark-specific)
-**Traces To**: INT-001, INT-002, INT-003, INT-004, INT-005
+**Priority**: Medium
+**Implements**: REQ-ADJ-01 through REQ-ADJ-07
+**Traces To**: ADR-005-adjoint-metadata, SPARK_IMPLEMENTATION_DESIGN.md
 
 **Description**:
-Create the Spark-specific implementation design for CDME. Maps abstract components to Spark primitives (DataFrames, Catalyst, etc.).
+Implement SparkAdjointWrapper to capture reverse-join metadata for aggregations, filters, and explode operations.
 
 **Acceptance Criteria**:
-- [ ] ADR-001: Execution Engine (Why Spark)
-- [ ] ADR-002: Language Choice (Scala vs PySpark)
-- [ ] ADR-003: Storage Format (Delta/Iceberg/Parquet)
-- [ ] ADR-004: Lineage Backend (OpenLineage/Spline)
-- [ ] ADR-005: Adjoint Metadata Storage (reverse-join tables)
-- [ ] TopologicalCompiler → Spark Catalyst integration
-- [ ] MorphismExecutor → DataFrame transformations
-- [ ] SheafManager → Epoch/partition management
-- [ ] ErrorDomain → Spark error handling patterns
-- [ ] Adjoint wrappers for groupBy, filter, join operations
-- [ ] Design document: `docs/design/design_spark/SPARK_IMPLEMENTATION_DESIGN.md`
+- [ ] `groupByWithAdjoint` captures group_key → source_keys mapping
+- [ ] `filterWithAdjoint` captures filtered-out keys (optional)
+- [ ] `explodeWithAdjoint` captures parent-child mapping
+- [ ] Adjoint metadata stored to Delta tables
+- [ ] Tests for backward reconstruction
 
 **Dependencies**:
-- Task #2 (Generic Reference Design) - can run in parallel for ADRs
-
-**Notes**:
-- Spark excels at: distributed aggregations, complex joins, streaming
-- Adjoint backward via reverse-join DataFrames
-- Consider Delta Lake for ACID + time travel
+- Task #6 (MVP Steel Thread)
 
 ---
 
-### Task #4: dbt Variant Design (design_dbt)
+### Task #8: Spark Implementation - Lineage & Error Domain
 
 **Status**: pending
-**Priority**: High
-**Implements**: All 60 REQ-* requirements (dbt-specific)
-**Traces To**: INT-001, INT-002, INT-003, INT-004, INT-005
+**Priority**: Medium
+**Implements**: REQ-INT-03, RIC-LIN-*, REQ-ERR-*
+**Traces To**: ADR-004-lineage-backend, ADR-008-openlineage-standard
 
 **Description**:
-Create the dbt-specific implementation design for CDME. Maps abstract components to dbt primitives (models, macros, tests, documentation).
+Implement SparkLineageCollector for OpenLineage events and SparkErrorDomain for accumulator-based error handling.
 
 **Acceptance Criteria**:
-- [ ] ADR-001: Execution Engine (Why dbt)
-- [ ] ADR-002: Warehouse Target (Snowflake/BigQuery/Databricks)
-- [ ] ADR-003: Lineage Integration (dbt lineage + OpenLineage)
-- [ ] ADR-004: Adjoint Strategy (SQL-based reverse lookups)
-- [ ] ADR-005: Type System Mapping (dbt contracts)
-- [ ] TopologicalCompiler → dbt model DAG + refs
-- [ ] MorphismExecutor → SQL transformations + macros
-- [ ] SheafManager → Incremental models + partitions
-- [ ] ErrorDomain → dbt tests + accepted_values
-- [ ] Adjoint backward via audit tables + window functions
-- [ ] Design document: `docs/design/design_dbt/DBT_IMPLEMENTATION_DESIGN.md`
+- [ ] SparkErrorDomain with Spark accumulators
+- [ ] Error threshold checking (absolute + percentage)
+- [ ] Dead-letter queue (DLQ) writes
+- [ ] SparkLineageCollector with FULL/KEY_DERIVABLE/SAMPLED modes
+- [ ] OpenLineage event emission
 
 **Dependencies**:
-- Task #2 (Generic Reference Design) - can run in parallel for ADRs
-
-**Notes**:
-- dbt excels at: SQL-first teams, warehouse-native, built-in testing
-- Adjoint backward via audit/history tables
-- dbt contracts for type enforcement (v1.5+)
+- Task #6 (MVP Steel Thread)
 
 ---
 
@@ -131,16 +122,16 @@ Create the dbt-specific implementation design for CDME. Maps abstract components
 **Implements**: Traceability maintenance
 
 **Description**:
-Update the traceability matrix to reflect the multi-variant design approach and map requirements to specific design components in each variant.
+Update the traceability matrix to reflect completed design stage and map requirements to implementation components.
 
 **Acceptance Criteria**:
-- [ ] Traceability matrix updated with variant columns
-- [ ] Each REQ-* mapped to data_mapper, design_spark, design_dbt components
-- [ ] Gap analysis per variant
-- [ ] Design stage coverage updated
+- [ ] Traceability matrix updated with implementation columns
+- [ ] Each REQ-* mapped to Scala source files
+- [ ] Gap analysis for unimplemented requirements
+- [ ] Design stage marked complete
 
 **Dependencies**:
-- Tasks #2, #3, #4 (at least started)
+- Task #6 (at least started)
 
 ---
 
@@ -149,50 +140,73 @@ Update the traceability matrix to reflect the multi-variant design approach and 
 - **Task #1**: Complete Requirements Stage for CDME
   - Archived: `.ai-workspace/tasks/finished/20251210_1200_requirements_stage_complete.md`
   - 60 requirements defined, 6 intents captured
-  - Adjoint interface adopted for reverse transformations
-  - Frobenius analysis deferred to appendix
+
+- **Task #2**: Generic Reference Design (data_mapper)
+  - Design document: `docs/design/data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md`
+  - 11 ADRs (ADR-000 through ADR-011)
+  - Abstract component interfaces defined
+
+- **Task #3**: Spark Variant Design (design_spark)
+  - Design document: `docs/design/design_spark/SPARK_IMPLEMENTATION_DESIGN.md`
+  - 10 ADRs (ADR-001 through ADR-010)
+  - Scala-specific patterns: Type system, Either monad, Aggregation, Config
+
+- **Task #4**: dbt Variant Design (design_dbt)
+  - Design document: `docs/design/design_dbt/DBT_IMPLEMENTATION_DESIGN.md`
+  - 5 ADRs (ADR-001 through ADR-005)
+  - SQL-first transformation patterns
 
 ---
 
-## Directory Structure (Target)
+## Implementation Structure
 
 ```
-docs/design/
-├── data_mapper/                    # Generic reference
-│   ├── AISDLC_IMPLEMENTATION_DESIGN.md
-│   └── adrs/
-│       ├── ADR-000-template.md
-│       └── ADR-001-adjoint-interface.md
-│
-├── design_spark/                   # Spark variant
-│   ├── SPARK_IMPLEMENTATION_DESIGN.md
-│   └── adrs/
-│       ├── ADR-001-execution-engine.md
-│       ├── ADR-002-language-choice.md
-│       ├── ADR-003-storage-format.md
-│       ├── ADR-004-lineage-backend.md
-│       └── ADR-005-adjoint-metadata.md
-│
-└── design_dbt/                     # dbt variant
-    ├── DBT_IMPLEMENTATION_DESIGN.md
-    └── adrs/
-        ├── ADR-001-execution-engine.md
-        ├── ADR-002-warehouse-target.md
-        ├── ADR-003-lineage-integration.md
-        ├── ADR-004-adjoint-strategy.md
-        └── ADR-005-type-system.md
+src/data_mapper.spark.scala/
+├── build.sbt
+├── project/
+└── src/
+    ├── main/scala/cdme/
+    │   ├── Main.scala              # Entry point
+    │   ├── core/
+    │   │   ├── Types.scala         # Error domain
+    │   │   ├── Domain.scala        # Entity, Morphism
+    │   │   └── Algebra.scala       # Aggregator, Monoid
+    │   ├── config/
+    │   │   ├── ConfigModel.scala   # Case classes
+    │   │   └── ConfigLoader.scala  # YAML parsing
+    │   ├── registry/
+    │   │   └── SchemaRegistry.scala
+    │   ├── compiler/
+    │   │   └── Compiler.scala
+    │   └── executor/
+    │       ├── Executor.scala
+    │       └── morphisms/
+    │           ├── FilterMorphism.scala
+    │           └── AggregateMorphism.scala
+    └── test/scala/cdme/
+        └── CompilerSpec.scala
+```
+
+---
+
+## TDD Workflow
+
+```
+RED    → Write failing test first
+GREEN  → Implement minimal solution
+REFACTOR → Improve code quality
+COMMIT → Save with REQ tags
 ```
 
 ---
 
 ## Recovery Commands
 
-If context is lost, run these commands to get back:
 ```bash
 cat .ai-workspace/tasks/active/ACTIVE_TASKS.md  # This file
 cat docs/TRACEABILITY_MATRIX.md                 # Full traceability
-cat docs/requirements/INTENT.md                 # Intents
 git status                                       # Current state
 git log --oneline -5                            # Recent commits
-/aisdlc-status                                   # Task queue status
+sbt compile                                      # Build Spark project
+sbt test                                         # Run tests
 ```
