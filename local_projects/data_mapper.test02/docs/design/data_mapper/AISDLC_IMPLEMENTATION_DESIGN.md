@@ -1386,107 +1386,145 @@ spec:
 
 ---
 
-### 9.4 Job Configuration Schema (Operational Parameters)
+### 9.4 Semantic Labels (Operational Grain Identification)
 
-Jobs declare **how** to execute a mapping - runtime parameters, error handling, cost limits.
+Semantic labels provide **machine-readable metadata** that enables orchestration tools, catalogs, and governance systems to understand mappings without parsing transformation logic.
+
+> **Note**: Job orchestration (scheduling, retries, notifications) is delegated to external tools (Airflow, Prefect, Step Functions). CDME defines *what* the mapping does; orchestrators define *when* and *how* to run it.
 
 ```yaml
-# jobs/daily_order_enrichment.yaml
+# Semantic labels in mapping metadata
 apiVersion: cdme/v1
-kind: Job
+kind: Mapping
 metadata:
-  name: daily_order_enrichment
-  description: Daily enrichment of order data
-  schedule: "0 6 * * *"  # 6am daily
-  owner: data-platform-team
-  notifications:
-    on_failure: ["data-alerts@company.com"]
-    on_success: ["data-reports@company.com"]
+  name: order_enrichment
+  version: 1.0.0
 
-spec:
-  # Which mapping to execute
-  mapping: order_enrichment
-  mapping_version: "1.0.0"
+  # Semantic labels for operational classification
+  labels:
+    # Temporal grain - how often this mapping produces new data
+    cdme.io/temporal-grain: daily
+    cdme.io/epoch-field: order_date
 
-  # Epoch configuration (what time window)
-  epoch:
-    type: daily
-    timestamp: "${execution_date}"  # Injected by scheduler
-    timezone: UTC
+    # Data classification
+    cdme.io/data-domain: sales
+    cdme.io/data-product: customer-360
+    cdme.io/pii-level: contains-pii
 
-  # Lookup versions (pinned for reproducibility)
-  lookups:
-    ExchangeRate:
-      version_semantics: AS_OF
-      as_of_field: order_date
-    CountryCode:
-      version: "2024.01.15"
-    ProductCatalog:
-      version: "v3.2.1"
+    # Lineage behavior
+    cdme.io/lineage-mode: key-derivable
+    cdme.io/adjoint-enabled: "true"
 
-  # Lineage mode
-  lineage:
-    mode: KEY_DERIVABLE       # Capture enough for key reconstruction
-    storage: s3://lineage-bucket/order_enrichment/
-    retention_days: 90
+    # Compliance/governance
+    cdme.io/retention-policy: 7-years
+    cdme.io/gdpr-relevant: "true"
 
-  # Error handling
-  error_handling:
-    strategy: ROUTE_TO_ERROR_DOMAIN
-    error_table: s3://errors/order_enrichment/
-    threshold:
-      type: percentage
-      value: 5                # Halt if > 5% fail
-    on_breach:
-      action: halt
-      alert: true
-      commit_successful: false
+    # Operational hints (for orchestrators)
+    cdme.io/estimated-duration: medium     # quick|medium|long|very-long
+    cdme.io/resource-profile: standard     # minimal|standard|memory-intensive|compute-intensive
+    cdme.io/idempotent: "true"
+    cdme.io/deterministic: "true"
 
-  # Cost limits (circuit breaker)
-  budget:
-    max_input_rows: 100_000_000
-    max_output_rows: 100_000_000
-    max_shuffle_size_gb: 500
-    max_duration_minutes: 120
+    # Dependency hints
+    cdme.io/upstream-freshness: "2h"       # Max staleness of inputs
+    cdme.io/downstream-sla: "6h"           # Must complete by this time after epoch
 
-  # Execution parameters
-  execution:
-    engine: spark             # or: athena, glue, dbt
-    parallelism: 200
-    memory_per_executor: "8g"
-    retry:
-      max_attempts: 3
-      backoff: exponential
+    # Custom organizational labels
+    acme.com/cost-center: analytics-team
+    acme.com/data-steward: jane.smith
+```
 
-  # Output configuration
-  output:
-    target:
-      type: glue_table
-      database: production_db
-      table: orders_enriched
-      partition_by: [order_date]
-      format: delta           # Or: parquet, iceberg
-    write_mode: overwrite_partition  # Idempotent rerun
+**Standard Label Taxonomy**:
 
-  # Adjoint configuration (for reverse lookups)
-  adjoint:
-    enabled: true
-    storage_strategy: SEPARATE_TABLE
-    table: orders_enriched_adjoint
+| Label | Values | Purpose |
+|-------|--------|---------|
+| `cdme.io/temporal-grain` | `realtime`, `hourly`, `daily`, `weekly`, `monthly`, `adhoc` | Epoch granularity |
+| `cdme.io/epoch-field` | Field name | Which field determines epoch membership |
+| `cdme.io/data-domain` | Domain name | Business domain classification |
+| `cdme.io/data-product` | Product name | Data product this mapping belongs to |
+| `cdme.io/pii-level` | `none`, `contains-pii`, `contains-sensitive-pii` | Privacy classification |
+| `cdme.io/lineage-mode` | `full`, `key-derivable`, `sampled`, `none` | Lineage capture strategy |
+| `cdme.io/adjoint-enabled` | `true`, `false` | Whether reverse lookup is captured |
+| `cdme.io/deterministic` | `true`, `false` | Same inputs → same outputs |
+| `cdme.io/idempotent` | `true`, `false` | Safe to re-run |
+| `cdme.io/estimated-duration` | `quick`, `medium`, `long`, `very-long` | Runtime estimate |
+| `cdme.io/resource-profile` | `minimal`, `standard`, `memory-intensive`, `compute-intensive` | Resource requirements |
 
-  # Manifest output (for reproducibility)
-  manifest:
-    enabled: true
-    output: s3://manifests/order_enrichment/${epoch_date}/
-    include:
-      - input_checksums
-      - lookup_versions
-      - output_checksums
+**Label Inheritance**:
+
+Labels can be defined at multiple levels with override semantics:
+
+```yaml
+# ldm/domains/sales.yaml - Domain-level defaults
+apiVersion: cdme/v1
+kind: Domain
+metadata:
+  name: sales
+  labels:
+    cdme.io/data-domain: sales
+    cdme.io/retention-policy: 7-years
+    cdme.io/gdpr-relevant: "true"
+    acme.com/cost-center: sales-analytics
+
+---
+# mappings/order_enrichment.yaml - Mapping overrides domain
+metadata:
+  name: order_enrichment
+  domain: sales                    # Inherits sales domain labels
+  labels:
+    cdme.io/temporal-grain: daily  # Mapping-specific
+    cdme.io/pii-level: contains-pii  # Override if needed
+```
+
+**Using Labels for Discovery**:
+
+```bash
+# Find all daily mappings in sales domain
+cdme list mappings \
+  --label cdme.io/temporal-grain=daily \
+  --label cdme.io/data-domain=sales
+
+# Find PII-containing mappings for compliance audit
+cdme list mappings \
+  --label cdme.io/pii-level=contains-pii
+
+# Find all mappings for a data product
+cdme list mappings \
+  --label cdme.io/data-product=customer-360
+```
+
+**Orchestrator Integration Example** (Airflow):
+
+```python
+# Airflow DAG generator reads CDME labels
+mapping = cdme.load_mapping("order_enrichment")
+
+# Extract operational hints from labels
+schedule = {
+    "daily": "@daily",
+    "hourly": "@hourly",
+    "weekly": "@weekly"
+}.get(mapping.labels.get("cdme.io/temporal-grain"), None)
+
+resource_pool = {
+    "minimal": "small_pool",
+    "standard": "default_pool",
+    "memory-intensive": "high_memory_pool",
+    "compute-intensive": "high_cpu_pool"
+}.get(mapping.labels.get("cdme.io/resource-profile"), "default_pool")
+
+# Generate DAG from mapping + labels
+dag = generate_dag(
+    mapping=mapping,
+    schedule_interval=schedule,
+    pool=resource_pool,
+    retries=3 if mapping.labels.get("cdme.io/idempotent") == "true" else 1
+)
 ```
 
 ---
 
-### 9.5 Complete Job Artifact Structure
+### 9.5 Complete Artifact Structure
 
 A complete CDME deployment includes:
 
@@ -1499,8 +1537,10 @@ cdme/
 │   │   └── product.yaml
 │   ├── relationships/
 │   │   └── order_relationships.yaml
-│   └── grains/
-│       └── hierarchy.yaml        # Grain levels
+│   ├── grains/
+│   │   └── hierarchy.yaml        # Grain levels
+│   └── domains/
+│       └── sales.yaml            # Domain-level label defaults
 │
 ├── pdm/                          # Physical Data Model
 │   ├── sources/
@@ -1513,10 +1553,6 @@ cdme/
 │   ├── order_enrichment.yaml
 │   └── customer_360.yaml
 │
-├── jobs/                         # Job configurations
-│   ├── daily_order_enrichment.yaml
-│   └── weekly_customer_rollup.yaml
-│
 ├── types/                        # Custom types
 │   ├── semantic_types.yaml       # Money, Percent, etc.
 │   └── refinement_types.yaml     # PositiveInteger, etc.
@@ -1525,6 +1561,8 @@ cdme/
     ├── exchange_rates.yaml
     └── country_codes.yaml
 ```
+
+> **Out of Scope**: Job orchestration configuration (DAGs, schedules, alerts) lives in orchestrator-specific tooling (Airflow, Prefect, etc.), not in CDME artifacts. CDME provides labels that orchestrators can consume.
 
 ---
 
