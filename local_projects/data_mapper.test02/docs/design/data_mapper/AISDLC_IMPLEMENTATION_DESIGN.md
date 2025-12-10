@@ -1,0 +1,1120 @@
+# CDME - Core Design Specification
+
+**For Senior Data Engineers & Architects**
+
+**Document Type**: Core Design Specification
+**Project**: Categorical Data Mapping & Computation Engine (CDME)
+**Variant**: `data_mapper` (Reference Architecture)
+**Version**: 2.0
+**Date**: 2025-12-10
+**Status**: Draft
+
+---
+
+## Executive Summary
+
+CDME is a **compile-time validated data transformation framework** that prevents the class of bugs that traditional ETL can't catch:
+
+- **Grain mixing** → You can't accidentally join daily aggregates to atomic transactions
+- **Silent type coercion** → No implicit `String → Int` that fails at 3am
+- **Broken lineage** → Every output row traces back to specific source records
+- **AI hallucinations** → LLM-generated mappings are validated against the actual schema
+
+**The core insight**: Your data schema is already a graph. CDME makes that graph explicit and uses it to validate transformations at definition time, not runtime.
+
+---
+
+## How to Read This Document
+
+This document translates the 60 CDME requirements into concepts you already know:
+
+| CDME Term | Data Engineering Equivalent |
+|-----------|----------------------------|
+| Entity | Table, View, Dataset, DataFrame |
+| Morphism | Transformation, JOIN, SELECT, UDF |
+| Topology | ERD, Schema Registry, Data Catalog |
+| Grain | Aggregation level (atomic, daily, monthly) |
+| Epoch | Batch window, partition, snapshot version |
+| Adjoint | Reverse lookup, impact analysis query |
+
+**AWS Reference Architecture**:
+- S3 + Glue Data Catalog = Physical storage + LDM registry
+- Glue/EMR/Athena = Morphism execution engines
+- Lake Formation = Access control on morphisms
+- OpenLineage = Lineage capture
+
+---
+
+## Part 1: The Logical Data Model (LDM)
+
+### What It Is
+
+The LDM is your **schema as a directed graph** where:
+- **Nodes** = Tables/Entities (Orders, Customers, Products)
+- **Edges** = Relationships/Transformations (Order.customer_id → Customer.id)
+
+This isn't new - it's what your ERD already represents. CDME just makes it machine-readable and uses it to validate transformations.
+
+### REQ-LDM-01: Schema as a Graph
+
+**The Problem**: Your schemas live in DDL files, ERD diagrams, and tribal knowledge. When someone writes a query joining `orders` to `customers`, there's no automated check that this join makes sense.
+
+**The Solution**: Register your schema as a graph in a **Schema Registry** (like AWS Glue Data Catalog, but with relationship metadata).
+
+```yaml
+# ldm/orders.yaml - Entity definition
+entity: Order
+grain: ATOMIC  # One row per order
+attributes:
+  - name: order_id
+    type: String
+    primary_key: true
+  - name: customer_id
+    type: String
+    foreign_key: Customer.customer_id
+  - name: order_date
+    type: Date
+  - name: total_amount
+    type: Decimal(18,2)
+    semantic_type: Money
+
+relationships:
+  - name: customer
+    target: Customer
+    cardinality: N:1  # Many orders per customer
+    join_key: customer_id
+  - name: line_items
+    target: OrderLineItem
+    cardinality: 1:N  # One order has many line items
+    join_key: order_id
+```
+
+**AWS Equivalent**: Glue Data Catalog + custom relationship metadata in table properties.
+
+**What You Get**:
+- Auto-complete in query builders (only show valid joins)
+- Validation that `Order.product_id → Product` is a real relationship
+- AI mapping validation (reject "Order.customer_name" if it doesn't exist)
+
+---
+
+### REQ-LDM-02: Cardinality Types (The Three Join Types)
+
+Every relationship is one of three types. Getting this wrong causes the most common ETL bugs.
+
+| Cardinality | SQL Equivalent | Data Behavior | Example |
+|-------------|---------------|---------------|---------|
+| **1:1** | Unique JOIN | Row count unchanged | `order_header` → `order_extended_info` |
+| **N:1** | INNER/LEFT JOIN | Row count unchanged | `order` → `customer` (lookup) |
+| **1:N** | EXPLODE/LATERAL | Row count multiplies | `order` → `line_items` |
+
+**The Bug This Prevents**:
+
+```sql
+-- Looks innocent, but blows up row count
+SELECT o.*, li.*
+FROM orders o
+JOIN line_items li ON o.order_id = li.order_id
+-- If order has 5 line items, you now have 5x rows
+
+-- Then someone aggregates without realizing:
+SELECT customer_id, SUM(order_total)  -- WRONG! order_total counted 5x
+```
+
+**CDME Validation**:
+- 1:N relationships are flagged as "context-lifting"
+- You must explicitly handle the fan-out (aggregate back down, or intentionally explode)
+- Compiler rejects mixing grains in the same SELECT
+
+**AWS Equivalent**: This is what Spark's `explode()` does, but with validation.
+
+---
+
+### REQ-LDM-03: Path Validation (The Dot Notation Compiler)
+
+**The Problem**: Data lineage tools show you what happened. CDME prevents bad things from happening.
+
+**The Solution**: Every transformation path is validated at definition time.
+
+```python
+# This path: Order.customer.region.name
+# Is validated as:
+#   Order --(N:1)--> Customer --(N:1)--> Region --(attribute)--> name
+#
+# Compiler checks:
+# 1. Does Order.customer relationship exist? ✓
+# 2. Does Customer.region relationship exist? ✓
+# 3. Does Region.name attribute exist? ✓
+# 4. Are grains compatible? ✓ (all N:1, no fan-out)
+# 5. Does user have access to each hop? ✓
+```
+
+**Invalid Path Example**:
+```python
+# Order.line_items.product.name
+#   Order --(1:N)--> LineItem --(N:1)--> Product --(attr)--> name
+#
+# Compiler WARNING: 1:N expansion at line_items
+# You're in List context after line_items
+# Cannot project scalar attribute without aggregation
+```
+
+**AWS Equivalent**: Think of this as a schema-aware SQL linter that runs at pipeline definition time, not execution time.
+
+---
+
+### REQ-LDM-04: Monoid Laws (Safe Aggregations)
+
+**The Problem**: Not all aggregations are created equal. Some can be parallelized and re-aggregated, others can't.
+
+**Safe (Monoidal) Aggregations**:
+```sql
+-- SUM: (a + b) + c = a + (b + c), identity = 0
+SUM(amount)  -- ✓ Can partition, aggregate, re-aggregate
+
+-- COUNT: Same
+COUNT(*)  -- ✓
+
+-- MIN/MAX: Same
+MAX(date)  -- ✓
+```
+
+**Unsafe (Non-Monoidal) Aggregations**:
+```sql
+-- FIRST_VALUE without ordering: non-deterministic
+FIRST_VALUE(status)  -- ✗ Different result on different partitions
+
+-- MEDIAN: Not associative
+MEDIAN(amount)  -- ✗ median(partition1) + median(partition2) ≠ median(all)
+
+-- String concatenation with separator:
+STRING_AGG(name, ',')  -- ✗ Order-dependent
+```
+
+**CDME Enforcement**:
+- Only registered monoidal aggregations are allowed by default
+- Non-monoidal aggregations require explicit `allow_non_associative=true` flag
+- Approximate aggregations (HyperLogLog, t-Digest) are marked as such
+
+**AWS Equivalent**: This is why Spark uses `Aggregator` with `reduce` semantics.
+
+---
+
+### REQ-LDM-04-A: Empty Aggregation Behavior
+
+**The Problem**: What does `SUM()` return when there are no rows?
+
+| Aggregation | Empty Result | Why |
+|-------------|--------------|-----|
+| SUM | 0 | Identity element |
+| COUNT | 0 | Identity element |
+| MIN/MAX | NULL or error? | No identity for "smallest of nothing" |
+| AVG | NULL or error? | Division by zero |
+
+**CDME Enforcement**: Every aggregation declares its identity element:
+- `SUM` → 0
+- `PRODUCT` → 1
+- `MIN` → `+∞` or NULL (configurable)
+- `STRING_AGG` → empty string
+
+No surprises at runtime.
+
+---
+
+### REQ-LDM-05: Column-Level Access Control
+
+**The Problem**: Lake Formation can restrict table access, but you want finer control. Some users can see `order_total`, but not `customer_ssn`.
+
+**CDME Model**: Access control is on **relationships**, not just tables.
+
+```yaml
+# ldm/customer.yaml
+entity: Customer
+attributes:
+  - name: customer_id
+    access: PUBLIC
+  - name: email
+    access: [ADMIN, SUPPORT]
+  - name: ssn
+    access: [COMPLIANCE]
+
+relationships:
+  - name: orders
+    target: Order
+    access: [SALES, ANALYTICS]  # Only these roles can traverse
+```
+
+**Compiler Behavior**: If user `analyst@company.com` (role: ANALYTICS) tries to build a path `Customer.ssn`, the compiler rejects with "relationship not found" - they don't even know it exists.
+
+**AWS Equivalent**: Lake Formation column-level + custom metadata for relationship ACLs.
+
+---
+
+### REQ-LDM-06: Grain Metadata (The Aggregation Hierarchy)
+
+**The Problem**: You have tables at different aggregation levels:
+- `transactions` (atomic, 1 row per event)
+- `daily_summary` (1 row per customer per day)
+- `monthly_rollup` (1 row per customer per month)
+
+Mixing them in a query without explicit aggregation is a bug.
+
+**CDME Grain Hierarchy**:
+```yaml
+grains:
+  - name: ATOMIC
+    level: 0
+    description: Raw events, one row per occurrence
+  - name: DAILY
+    level: 1
+    aggregates: ATOMIC
+    dimensions: [customer_id, date]
+  - name: MONTHLY
+    level: 2
+    aggregates: DAILY
+    dimensions: [customer_id, year_month]
+  - name: YEARLY
+    level: 3
+    aggregates: MONTHLY
+```
+
+**Compiler Behavior**:
+```sql
+-- INVALID: Mixing grains without aggregation
+SELECT
+  t.transaction_id,       -- ATOMIC
+  d.daily_total           -- DAILY
+FROM transactions t
+JOIN daily_summary d ON t.customer_id = d.customer_id
+-- ERROR: Cannot project ATOMIC and DAILY in same row without explicit aggregation
+```
+
+```sql
+-- VALID: Explicit aggregation
+SELECT
+  d.customer_id,
+  d.daily_total,
+  SUM(t.amount) as atomic_sum  -- Aggregating ATOMIC to DAILY
+FROM daily_summary d
+JOIN transactions t
+  ON t.customer_id = d.customer_id
+  AND t.date = d.date
+GROUP BY d.customer_id, d.daily_total
+```
+
+---
+
+## Part 2: Physical Data Model (PDM) - Storage Abstraction
+
+### REQ-PDM-01: Logical/Physical Separation
+
+**The Problem**: Your business logic is tangled with storage paths. Moving from `s3://prod-bucket/orders/` to `s3://new-bucket/orders_v2/` breaks everything.
+
+**CDME Solution**: Business logic references **logical names only**.
+
+```yaml
+# pdm/bindings.yaml
+bindings:
+  - entity: Order
+    environments:
+      dev:
+        type: glue_table
+        database: dev_db
+        table: orders
+      prod:
+        type: glue_table
+        database: prod_db
+        table: orders
+      test:
+        type: s3_parquet
+        path: s3://test-bucket/orders/
+```
+
+**Mapping Definition** (storage-agnostic):
+```yaml
+mapping:
+  source: Order
+  target: OrderEnriched
+  transformations:
+    - type: join
+      with: Customer
+      on: customer_id
+```
+
+**Benefit**: Same mapping works in dev (small Parquet files) and prod (partitioned Delta Lake).
+
+---
+
+### REQ-PDM-02: Event vs Snapshot Semantics
+
+**The Problem**: Not all data is the same "shape":
+- **Events**: Immutable occurrences (clicks, transactions, logs)
+- **Snapshots**: State at a point in time (customer profile, inventory level)
+
+Treating them the same causes bugs.
+
+**CDME Source Declaration**:
+```yaml
+# pdm/sources/clickstream.yaml
+source: Clickstream
+generation_grain: EVENT
+boundary: hourly  # Partition by hour
+immutable: true   # Events never change
+
+# pdm/sources/customer_profile.yaml
+source: CustomerProfile
+generation_grain: SNAPSHOT
+boundary: daily   # Daily snapshot
+supersedes: true  # Today's snapshot replaces yesterday's
+```
+
+**Compiler Behavior**:
+- Can't do "as-of" queries on pure event streams
+- Snapshot joins require temporal semantics declaration
+
+---
+
+### REQ-PDM-03: Epoch/Partition Boundaries
+
+**The Problem**: When you run a daily job, what data goes in?
+
+**CDME Epoch Definition**:
+```yaml
+job:
+  name: daily_order_summary
+  epoch:
+    type: temporal
+    field: order_date
+    granularity: daily
+    strategy: partition_filter  # Use S3 partition pruning
+```
+
+**AWS Equivalent**: Glue partition predicates, Athena partition pruning.
+
+---
+
+### REQ-PDM-04: Lookup Tables (Reference Data)
+
+**Two types of lookups**:
+
+1. **Data-backed**: Regular table (country codes, product catalog)
+2. **Logic-backed**: Function (calculate age from birthdate)
+
+```yaml
+lookups:
+  - name: CountryCode
+    type: data_backed
+    source: s3://reference-data/country_codes.parquet
+    version: 2024-01-15  # Pinned version for reproducibility
+
+  - name: AgeCalculator
+    type: logic_backed
+    function: |
+      def calculate_age(birthdate, as_of_date):
+        return (as_of_date - birthdate).years
+    version: v1.2.0  # Function version
+```
+
+**Key Requirement**: Lookups MUST be versioned. Same input + same lookup version = same output.
+
+---
+
+### REQ-PDM-05: Temporal Binding (Table Routing by Date)
+
+**The Problem**: You have `orders_2023`, `orders_2024` tables. Your logical model just says `Order`.
+
+**CDME Temporal Binding**:
+```yaml
+entity: Order
+temporal_binding:
+  strategy: yearly_partition
+  routing: |
+    if epoch.year == 2024:
+      return "orders_2024"
+    elif epoch.year == 2023:
+      return "orders_2023"
+    else:
+      raise EpochNotSupported
+```
+
+**AWS Equivalent**: Athena federation, Glue crawlers with pattern-based table creation.
+
+---
+
+## Part 3: Transformation Engine (TRV)
+
+### REQ-TRV-01: Context Lifting (Handling 1:N Joins)
+
+**The Problem**: When you traverse a 1:N relationship, you're no longer working with single rows.
+
+```python
+# Before: Working with Order (1 row)
+order = Order.get(123)
+
+# After: Traversing to line_items (N rows)
+items = order.line_items  # Now we have a List[LineItem]
+
+# The "context" has lifted from Scalar → List
+```
+
+**CDME Tracking**:
+```
+Path: Order.line_items.product.price
+Context: Scalar → List → List (after 1:N)
+         Must aggregate or intentionally work with lists
+```
+
+**Spark Equivalent**: This is what `explode()` does. CDME just makes it explicit and validated.
+
+---
+
+### REQ-TRV-02: Grain Safety (No Accidental Fan-Out)
+
+**The #1 ETL Bug**: Joining at wrong grain, causing duplicate aggregation.
+
+**CDME Prevention**:
+```sql
+-- Compiler rejects this
+SELECT
+  o.order_id,
+  SUM(o.order_total),      -- ATOMIC grain (orders)
+  SUM(d.daily_revenue)     -- DAILY grain (daily_summary)
+FROM orders o
+JOIN daily_summary d ON o.customer_id = d.customer_id
+GROUP BY o.order_id
+
+-- Error: Cannot aggregate attributes from incompatible grains (ATOMIC, DAILY)
+-- without explicit grain alignment
+```
+
+**Valid Pattern**:
+```sql
+-- First aggregate orders to daily grain
+WITH order_daily AS (
+  SELECT customer_id, DATE(order_date) as date, SUM(order_total) as daily_orders
+  FROM orders
+  GROUP BY customer_id, DATE(order_date)
+)
+-- Then join at same grain
+SELECT
+  od.customer_id,
+  od.daily_orders,
+  ds.daily_revenue
+FROM order_daily od
+JOIN daily_summary ds
+  ON od.customer_id = ds.customer_id
+  AND od.date = ds.date
+```
+
+---
+
+### REQ-TRV-03: Temporal Semantics (Cross-Epoch Joins)
+
+**The Problem**: Joining "today's orders" with "yesterday's reference data" - is that valid?
+
+**CDME Declaration**:
+```yaml
+mapping:
+  source: Order  # Today's epoch
+  lookups:
+    - entity: ProductCatalog
+      temporal_semantics: AS_OF  # Use catalog valid at order_date
+    - entity: ExchangeRate
+      temporal_semantics: LATEST  # Always use latest rate
+    - entity: TaxRules
+      temporal_semantics: EXACT   # Must match epoch exactly
+```
+
+**AWS Equivalent**: This is what Delta Lake Time Travel or Iceberg snapshots provide.
+
+---
+
+### REQ-TRV-04: Execution Telemetry
+
+Every morphism execution captures:
+
+```json
+{
+  "morphism_id": "order_enrichment",
+  "input_rows": 1000000,
+  "output_rows": 1000000,
+  "dropped_rows": 0,
+  "error_rows": 150,
+  "duration_ms": 4532,
+  "memory_peak_mb": 2048,
+  "partitions_read": 24,
+  "partitions_written": 24
+}
+```
+
+**AWS Equivalent**: Glue job metrics, Spark UI stats, exported to CloudWatch/OpenLineage.
+
+---
+
+### REQ-TRV-05: Deterministic Reproducibility
+
+**The Contract**: Same inputs + same mapping + same lookups = bit-identical outputs.
+
+**What This Means**:
+- No `current_timestamp()` in transformations (use job-level epoch timestamp)
+- No `random()` (use deterministic hash if needed)
+- All lookups are versioned
+- Partition ordering doesn't affect output
+
+**AWS Enforcement**:
+- Glue job parameters include all dependency versions
+- Output includes manifest of exact inputs used
+
+---
+
+### REQ-TRV-06: Cost Estimation (Prevent Runaway Jobs)
+
+**The Problem**: A bad join blows up to 10B rows and bankrupts your Athena budget.
+
+**CDME Cost Estimation**:
+```yaml
+job:
+  name: customer_enrichment
+  budget:
+    max_output_rows: 100_000_000
+    max_shuffle_size_gb: 500
+    max_duration_minutes: 60
+```
+
+**Before Execution**:
+```
+Cost Estimate:
+- Input: 10M orders, 1M customers
+- Join: orders ⋈ customers (N:1, no fan-out)
+- Expected output: 10M rows
+- Estimated shuffle: 2GB
+- Estimated duration: 5 minutes
+
+✓ Within budget, proceeding...
+```
+
+**Over Budget**:
+```
+Cost Estimate:
+- Input: 10M orders, 500M line_items
+- Join: orders ⋈ line_items (1:N fan-out!)
+- Expected output: 500M+ rows (exceeds max_output_rows: 100M)
+
+✗ BLOCKED: Estimated output 500M exceeds budget 100M
+  Suggestion: Add aggregation or filter before expansion
+```
+
+---
+
+### REQ-SHF-01: Partition Compatibility (Sheaf Consistency)
+
+**The Problem**: Joining two datasets with incompatible partitioning causes massive shuffles.
+
+**CDME Validation**:
+```yaml
+# Source A: partitioned by (customer_id, date)
+# Source B: partitioned by (product_id)
+# Join on: customer_id
+
+# Compiler warning:
+# "Join requires shuffle on B (not partitioned by customer_id)"
+# Consider co-partitioning sources or accepting shuffle cost
+```
+
+**AWS Equivalent**: This is what Spark's partition pruning optimizes, but CDME validates at definition time.
+
+---
+
+## Part 4: Type System (TYP)
+
+### REQ-TYP-01: Rich Types (Not Just Primitives)
+
+**Beyond SQL Types**:
+
+| CDME Type | SQL Equivalent | Benefit |
+|-----------|---------------|---------|
+| `Int` | INTEGER | Basic |
+| `Option[Int]` | INTEGER (nullable) | Explicit null handling |
+| `Either[Error, Int]` | - | Failures are data, not exceptions |
+| `Money(amount, currency)` | DECIMAL + VARCHAR | Semantic type |
+| `Percent(value, 0..100)` | DECIMAL | Refined type with constraint |
+
+**Type Declaration**:
+```yaml
+entity: Order
+attributes:
+  - name: total_amount
+    type: Money
+    currency_field: currency_code
+
+  - name: discount_percent
+    type: Percent
+    constraint: value >= 0 AND value <= 100
+
+  - name: customer_id
+    type: Option[String]  # Explicitly nullable
+```
+
+---
+
+### REQ-TYP-02: Refinement Types (Data Quality as Types)
+
+**The Problem**: A column is "INTEGER" but business rules say it must be positive.
+
+**CDME Refinement**:
+```yaml
+types:
+  PositiveInteger:
+    base: Int
+    constraint: value > 0
+    on_violation: route_to_error_domain
+
+  ValidEmail:
+    base: String
+    pattern: "^[a-zA-Z0-9+_.-]+@[a-zA-Z0-9.-]+$"
+    on_violation: route_to_error_domain
+
+  FutureDate:
+    base: Date
+    constraint: value > CURRENT_DATE
+```
+
+**Usage**:
+```yaml
+entity: Order
+attributes:
+  - name: quantity
+    type: PositiveInteger  # Negative values go to error domain
+```
+
+---
+
+### REQ-TYP-03: Error Domain (Failures as Data)
+
+**The Problem**: One bad record shouldn't crash the entire job.
+
+**CDME Strategy**: Bad records are routed, not thrown.
+
+```python
+# Traditional ETL:
+try:
+    result = transform(row)
+except:
+    log.error("Failed!")
+    raise  # Job dies
+
+# CDME approach:
+result = transform(row)  # Returns Either[Error, Row]
+if result.is_error:
+    error_domain.append(result.error)  # Continue processing
+else:
+    output.append(result.value)
+```
+
+**Error Domain Table**:
+```sql
+CREATE TABLE error_domain (
+  job_id STRING,
+  epoch_id STRING,
+  source_entity STRING,
+  source_key STRING,
+  morphism_path STRING,
+  error_type STRING,        -- 'REFINEMENT_VIOLATION', 'TYPE_ERROR', etc.
+  error_detail JSON,
+  offending_values JSON,
+  created_at TIMESTAMP
+);
+```
+
+**AWS Equivalent**: Dead Letter Queue pattern, but for data transformation.
+
+---
+
+### REQ-TYP-03-A: Batch Failure Threshold
+
+**The Problem**: If 90% of records fail, it's probably a config error, not bad data.
+
+**CDME Circuit Breaker**:
+```yaml
+job:
+  error_handling:
+    threshold:
+      type: percentage
+      value: 5  # Halt if > 5% of records fail
+    on_breach:
+      action: halt
+      commit_successful: false  # Rollback everything
+```
+
+**Behavior**: First 10K rows, 7% fail → halt immediately, don't process 100M rows.
+
+---
+
+### REQ-TYP-05: No Implicit Casting
+
+**The Problem**: Spark happily casts `"123abc"` to `123` (truncating), causing silent data loss.
+
+**CDME Enforcement**:
+```sql
+-- REJECTED at compile time:
+SELECT CAST(order_id AS INT) FROM orders  -- Implicit string→int
+
+-- REQUIRED explicit morphism:
+SELECT safe_cast_to_int(order_id) FROM orders
+-- Returns Either[CastError, Int]
+-- Failures routed to error domain
+```
+
+**AWS Equivalent**: Use Glue data quality rules + custom cast UDFs.
+
+---
+
+### REQ-TYP-06: Type Unification (Join Compatibility)
+
+**The Problem**: Joining `orders.customer_id (VARCHAR)` with `customers.id (INT)` - Spark allows it, but it's a bug waiting to happen.
+
+**CDME Validation**:
+```
+Join: orders.customer_id (String) ⋈ customers.customer_id (String)
+✓ Types match
+
+Join: orders.customer_id (String) ⋈ customers.id (Int)
+✗ Type mismatch: String cannot join Int without explicit cast morphism
+```
+
+---
+
+### REQ-TYP-07: Semantic Types (Prevent Category Errors)
+
+**The Problem**: Adding `order_amount` (dollars) to `discount_rate` (percentage) is nonsense.
+
+**CDME Semantic Types**:
+```yaml
+semantic_types:
+  Money:
+    base: Decimal(18,2)
+    operations:
+      add: Money + Money → Money
+      multiply: Money * Number → Money
+      invalid: Money + Percent  # Compile error
+
+  Percent:
+    base: Decimal(5,4)
+    constraint: 0 <= value <= 1
+    operations:
+      apply: Percent * Money → Money  # Discount calculation
+      add: Percent + Percent → Percent
+      invalid: Percent + Money  # Compile error
+```
+
+**Compile-Time Check**:
+```sql
+SELECT order_amount + discount_rate
+-- ERROR: Cannot add Money + Percent
+-- Did you mean: order_amount * (1 - discount_rate)?
+```
+
+---
+
+## Part 5: Lineage & Backward Traversal (INT, ADJ)
+
+### REQ-INT-03: Full Lineage (Target → Source)
+
+**The Promise**: For any output row, tell me exactly which source rows contributed.
+
+**Lineage Record**:
+```json
+{
+  "target_table": "customer_360",
+  "target_key": "cust_12345",
+  "target_epoch": "2024-01-15",
+  "sources": [
+    {
+      "entity": "orders",
+      "keys": ["ord_001", "ord_002", "ord_003"],
+      "epoch": "2024-01-15"
+    },
+    {
+      "entity": "customer_profile",
+      "keys": ["cust_12345"],
+      "epoch": "2024-01-14",
+      "temporal_semantics": "AS_OF"
+    }
+  ],
+  "morphism_path": "Order → CustomerEnriched → Customer360",
+  "lookup_versions": {
+    "CountryCode": "v2024.01",
+    "ProductCatalog": "v3.2.1"
+  }
+}
+```
+
+**AWS Equivalent**: OpenLineage events → S3 → Athena for querying.
+
+---
+
+### REQ-ADJ-04: Reverse Lookups for Aggregations
+
+**The Problem**: You have `customer_daily_summary` with aggregated revenue. Which orders contributed?
+
+**Traditional Approach**: Re-run the aggregation query filtered by customer. Expensive.
+
+**CDME Adjoint Approach**: Capture the mapping during forward execution.
+
+```sql
+-- Forward execution creates:
+-- 1. customer_daily_summary (the output)
+-- 2. customer_daily_summary_adjoint (the reverse mapping)
+
+-- Adjoint table:
+CREATE TABLE customer_daily_summary_adjoint (
+  summary_key STRING,      -- PK of aggregated row
+  source_keys ARRAY<STRING>, -- PKs of contributing orders
+  morphism_id STRING,
+  epoch_id STRING
+);
+
+-- Impact analysis query:
+SELECT source_keys
+FROM customer_daily_summary_adjoint
+WHERE summary_key = 'cust_123_2024-01-15';
+-- Returns: ['ord_001', 'ord_002', 'ord_003']
+```
+
+**Storage Strategies**:
+| Strategy | Storage Overhead | Query Speed | Use Case |
+|----------|-----------------|-------------|----------|
+| Inline array | +20-50% | O(1) | Small groups |
+| Separate table | +10-20% | O(log n) | Large groups |
+| Roaring Bitmap | +5-10% | O(1) | High cardinality |
+
+---
+
+### REQ-ADJ-08: Data Reconciliation
+
+**The Use Case**: Verify that your pipeline didn't lose any data.
+
+```python
+# Reconciliation check:
+# backward(forward(input)) ⊇ input
+
+# For aggregations:
+# If I have 1000 orders → aggregate to 100 daily summaries
+# Then expand daily summaries back to contributing orders
+# I should get >= 1000 orders (maybe duplicates if order spans days)
+
+recon_result = reconcile(
+  input_dataset=orders,
+  output_dataset=daily_summary,
+  adjoint_table=daily_summary_adjoint
+)
+
+assert recon_result.missing_records == 0
+assert recon_result.containment_valid == True
+```
+
+---
+
+### REQ-ADJ-09: Impact Analysis
+
+**The Use Case**: A customer complains about their January invoice. Which source records contributed?
+
+```python
+# Start from the target (invoice line)
+invoice_line = InvoiceLine.get("inv_2024_001_line_5")
+
+# Traverse backward through the pipeline
+impact = analyze_impact(
+  target_record=invoice_line,
+  pipeline="order_to_invoice"
+)
+
+# Returns:
+{
+  "invoice_line": "inv_2024_001_line_5",
+  "contributing_sources": {
+    "orders": ["ord_123", "ord_456"],
+    "payments": ["pay_789"],
+    "adjustments": ["adj_001"]
+  },
+  "morphism_path": [
+    "InvoiceLine ← InvoiceCalc ← OrderAgg ← Order",
+    "InvoiceLine ← InvoiceCalc ← PaymentAgg ← Payment"
+  ]
+}
+```
+
+**Performance**: O(|target_subset|), not O(|full_dataset|).
+
+---
+
+## Part 6: AI Assurance (AI)
+
+### REQ-AI-01: Hallucination Prevention
+
+**The Problem**: LLM generates: "Join orders.customer_email with customers.email"
+But `orders.customer_email` doesn't exist.
+
+**CDME Validation**:
+```python
+# AI generates mapping
+ai_mapping = llm.generate_mapping(intent="Enrich orders with customer info")
+
+# CDME validates against LDM
+validation = compiler.validate(ai_mapping, ldm=schema_registry)
+
+# Result:
+{
+  "valid": false,
+  "errors": [
+    {
+      "type": "MORPHISM_NOT_FOUND",
+      "path": "orders.customer_email",
+      "suggestion": "Did you mean orders.customer_id → customers.email?"
+    }
+  ]
+}
+```
+
+**What CDME Catches**:
+- Non-existent columns/relationships (hallucinated paths)
+- Type mismatches (String joined to Int)
+- Grain violations (atomic + daily mixed)
+- Access control violations (column user can't see)
+
+**What CDME Doesn't Catch**:
+- Semantic correctness (is this the RIGHT business logic?)
+- Human review still required for business validation
+
+---
+
+### REQ-AI-03: Dry Run Mode
+
+**The Use Case**: Validate a mapping without executing it.
+
+```bash
+cdme validate --mapping order_enrichment.yaml --dry-run
+
+Output:
+┌──────────────────────────────────────────────────┐
+│ CDME Dry Run Report                              │
+├──────────────────────────────────────────────────┤
+│ Topology Validation     ✓ All paths valid        │
+│ Type Unification        ✓ All types compatible   │
+│ Grain Safety            ✓ No grain violations    │
+│ Access Control          ✓ All morphisms allowed  │
+│ Cost Estimate           15M input → 15M output   │
+│ Estimated Duration      ~8 minutes               │
+│ Lineage Graph           Generated (see attached) │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 7: AWS Reference Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         CDME on AWS                                      │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐     │
+│  │  Schema         │    │  CDME           │    │  Glue Job /     │     │
+│  │  Registry       │───▶│  Compiler       │───▶│  EMR / Athena   │     │
+│  │  (Glue Catalog) │    │  (Lambda/Step)  │    │  (Execution)    │     │
+│  └─────────────────┘    └─────────────────┘    └────────┬────────┘     │
+│         │                        │                       │              │
+│         │                        ▼                       ▼              │
+│  ┌──────▼──────────┐    ┌─────────────────┐    ┌─────────────────┐     │
+│  │  LDM Definitions│    │  Mapping        │    │  S3 Data Lake   │     │
+│  │  (S3/DynamoDB)  │    │  Artifacts      │    │  (Output)       │     │
+│  └─────────────────┘    │  (S3)           │    └────────┬────────┘     │
+│                         └─────────────────┘             │              │
+│                                                         ▼              │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐     │
+│  │  Lake Formation │    │  OpenLineage    │    │  Adjoint        │     │
+│  │  (Access Ctrl)  │    │  (Lineage)      │    │  Metadata (S3)  │     │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘     │
+│                                                                          │
+│  ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐     │
+│  │  CloudWatch     │    │  Error Domain   │    │  SNS/EventBridge│     │
+│  │  (Telemetry)    │    │  (S3/Athena)    │    │  (Alerts)       │     │
+│  └─────────────────┘    └─────────────────┘    └─────────────────┘     │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Part 8: Requirement to Implementation Mapping
+
+| Requirement | What It Means | AWS Implementation |
+|-------------|---------------|-------------------|
+| REQ-LDM-01 | Schema as graph | Glue Catalog + relationship metadata |
+| REQ-LDM-02 | Cardinality (1:1, N:1, 1:N) | Glue table properties + CDME validation |
+| REQ-LDM-03 | Path validation | Lambda compiler before Glue job |
+| REQ-LDM-04 | Monoidal aggregations | Registered aggregators, reject non-associative |
+| REQ-LDM-05 | Column-level ACL | Lake Formation + CDME path filtering |
+| REQ-LDM-06 | Grain metadata | Glue table properties, validated at compile |
+| REQ-PDM-01 | Logical/physical separation | Glue Catalog abstraction |
+| REQ-PDM-02 | Event vs Snapshot | Source configuration metadata |
+| REQ-PDM-03 | Epoch boundaries | Glue partition predicates |
+| REQ-PDM-04 | Versioned lookups | S3 versioning + manifest |
+| REQ-PDM-05 | Temporal binding | Athena table routing |
+| REQ-TRV-01 | Context lifting (1:N) | Spark explode() + CDME tracking |
+| REQ-TRV-02 | Grain safety | Compile-time validation |
+| REQ-TRV-03 | Temporal semantics | Delta Lake time travel |
+| REQ-TRV-04 | Telemetry | CloudWatch + OpenLineage |
+| REQ-TRV-05 | Deterministic execution | Versioned dependencies, no random/timestamp |
+| REQ-TRV-06 | Cost estimation | EXPLAIN output, budget enforcement |
+| REQ-SHF-01 | Partition compatibility | Glue partition metadata check |
+| REQ-INT-03 | Full lineage | OpenLineage to S3, Athena queryable |
+| REQ-TYP-01 | Rich types | CDME type system, Glue schema |
+| REQ-TYP-02 | Refinement types | Glue data quality + CDME validation |
+| REQ-TYP-03 | Error domain | DLQ pattern, error table in S3 |
+| REQ-TYP-05 | No implicit casting | CDME compile-time rejection |
+| REQ-TYP-06 | Type unification | Join type compatibility check |
+| REQ-AI-01 | Hallucination prevention | LDM validation of AI mappings |
+| REQ-AI-03 | Dry run | Lambda validation endpoint |
+| REQ-ADJ-04 | Aggregation reverse lookup | Adjoint tables in S3 |
+| REQ-ADJ-08 | Reconciliation | Containment check job |
+| REQ-ADJ-09 | Impact analysis | Backward traversal query |
+
+---
+
+## Appendix A: Glossary for Data Engineers
+
+| CDME Term | Plain English |
+|-----------|--------------|
+| **Morphism** | Any transformation: SELECT, JOIN, UDF, aggregation |
+| **Topology** | Your schema graph (tables + relationships) |
+| **Grain** | Aggregation level (atomic row vs daily summary vs monthly rollup) |
+| **Epoch** | Batch window (today's partition, this hour's data) |
+| **Adjoint** | Reverse lookup (given output, find contributing inputs) |
+| **Functor** | A consistent mapping (LDM entity → S3 path) |
+| **Monoidal** | Aggregation that can be parallelized and combined (SUM, COUNT) |
+| **Kleisli** | 1:N expansion (one order → many line items) |
+| **Sheaf** | Data that belongs together (same epoch, same partition key) |
+| **Either** | Result that's either Success or Error (not exception) |
+
+---
+
+## Appendix B: When to Use CDME
+
+**Use CDME when:**
+- Regulatory compliance requires full lineage (BCBS 239, FRTB)
+- AI/LLM generates data mappings that need validation
+- You have complex multi-grain data models
+- Silent data corruption has cost you in the past
+- You need to answer "which source records affected this output?"
+
+**Maybe skip CDME when:**
+- Simple single-table transformations
+- Exploratory/ad-hoc analysis
+- Prototyping (add validation later)
+
+---
+
+**Document Status**: Draft
+**Last Updated**: 2025-12-10
+**Audience**: Senior Data Engineers, Data Architects

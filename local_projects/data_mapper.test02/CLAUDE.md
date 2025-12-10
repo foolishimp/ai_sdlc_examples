@@ -80,8 +80,8 @@ Run these slash commands in Claude Code:
 - `/aisdlc-finish-task <id>` - Complete task with full documentation
 - `/aisdlc-commit-task <id>` - Generate proper commit message
 - `/aisdlc-status` - Show current task queue status
-- `/aisdlc-apply-persona <name>` - Apply development persona
-- `/aisdlc-list-personas` - List available personas
+- `/apply-persona <name>` - Apply development persona
+- `/list-personas` - List available personas
 
 View all commands: `ls .claude/commands/`
 
@@ -174,8 +174,8 @@ If plugins are installed, additional capabilities include:
 **Documentation:**
 - [Developer Workspace Guide](.ai-workspace/README.md)
 - [AI SDLC Method Overview](docs/ai_sdlc_method.md) - If available
-- [TDD Workflow](claude-code/claude-code/plugins/aisdlc-methodology/docs/processes/TDD_WORKFLOW.md) - If plugins installed
-- [Key Principles](claude-code/claude-code/plugins/aisdlc-methodology/docs/principles/KEY_PRINCIPLES.md) - If plugins installed
+- [TDD Workflow](plugins/aisdlc-methodology/docs/processes/TDD_WORKFLOW.md) - If plugins installed
+- [Key Principles](plugins/aisdlc-methodology/docs/principles/KEY_PRINCIPLES.md) - If plugins installed
 
 **Templates:**
 - Task Template: `.ai-workspace/templates/TASK_TEMPLATE.md`
