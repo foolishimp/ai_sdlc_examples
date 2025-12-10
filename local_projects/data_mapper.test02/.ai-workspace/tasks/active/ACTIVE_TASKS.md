@@ -142,19 +142,19 @@ Update the traceability matrix to reflect completed design stage and map require
   - 60 requirements defined, 6 intents captured
 
 - **Task #2**: Generic Reference Design (data_mapper)
+  - Archived: `.ai-workspace/tasks/finished/20251210_1400_generic_reference_design.md`
   - Design document: `docs/design/data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md`
   - 11 ADRs (ADR-000 through ADR-011)
-  - Abstract component interfaces defined
 
 - **Task #3**: Spark Variant Design (design_spark)
+  - Archived: `.ai-workspace/tasks/finished/20251210_1600_spark_variant_design.md`
   - Design document: `docs/design/design_spark/SPARK_IMPLEMENTATION_DESIGN.md`
   - 10 ADRs (ADR-001 through ADR-010)
-  - Scala-specific patterns: Type system, Either monad, Aggregation, Config
 
 - **Task #4**: dbt Variant Design (design_dbt)
+  - Archived: `.ai-workspace/tasks/finished/20251210_1800_dbt_variant_design.md`
   - Design document: `docs/design/design_dbt/DBT_IMPLEMENTATION_DESIGN.md`
   - 5 ADRs (ADR-001 through ADR-005)
-  - SQL-first transformation patterns
 
 ---
 
