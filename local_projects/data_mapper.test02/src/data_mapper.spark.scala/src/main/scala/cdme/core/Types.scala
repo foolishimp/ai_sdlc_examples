@@ -101,6 +101,20 @@ object CdmeError {
     morphismPath: String = "compilation",
     context: Map[String, String] = Map.empty
   ) extends CdmeError
+
+  /**
+   * Error when error rate exceeds configured threshold.
+   * Implements: REQ-ERR-02 (Error Threshold Configuration)
+   */
+  case class ThresholdExceededError(
+    sourceKey: String,
+    morphismPath: String,
+    threshold: Double,
+    actualRate: Double,
+    totalRecords: Long,
+    errorCount: Long,
+    context: Map[String, String] = Map.empty
+  ) extends CdmeError
 }
 
 /**
@@ -132,6 +146,7 @@ object CdmeErrorRecord {
       case e: CdmeError.GrainSafetyError => (e.targetGrain, e.sourceGrain)
       case e: CdmeError.CompilationError => ("valid config", e.message)
       case e: CdmeError.PathNotFoundError => ("valid path", e.path)
+      case e: CdmeError.ThresholdExceededError => (s"<= ${e.threshold}", s"${e.actualRate}")
     }
 
     CdmeErrorRecord(
@@ -155,6 +170,7 @@ object CdmeErrorRecord {
     case _: CdmeError.ValidationError => "CDME-004"
     case _: CdmeError.NullFieldError => "CDME-005"
     case _: CdmeError.GrainSafetyError => "CDME-006"
+    case _: CdmeError.ThresholdExceededError => "CDME-007"
     case _: CdmeError.CompilationError => "CDME-100"
     case _: CdmeError.PathNotFoundError => "CDME-101"
   }

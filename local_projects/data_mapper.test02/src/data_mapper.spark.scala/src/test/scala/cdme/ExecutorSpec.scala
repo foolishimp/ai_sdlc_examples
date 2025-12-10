@@ -227,6 +227,91 @@ class ExecutorSpec extends AnyFlatSpec with Matchers with EitherValues {
   }
 
   // ============================================
+  // Unit Tests for Error Threshold Checking
+  // Implements: REQ-ERR-02 (Error Threshold Configuration)
+  // ============================================
+
+  "ErrorThresholdChecker" should "pass when error rate is below threshold" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.05)
+    val result = checker.check(totalRecords = 1000, errorCount = 40)
+
+    result.isRight shouldBe true
+    result.value shouldBe ThresholdCheckResult(
+      passed = true,
+      errorRate = 0.04,
+      threshold = 0.05,
+      totalRecords = 1000,
+      errorCount = 40
+    )
+  }
+
+  it should "fail when error rate exceeds threshold" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.05)
+    val result = checker.check(totalRecords = 1000, errorCount = 60)
+
+    result.isLeft shouldBe true
+    result.left.value shouldBe a[CdmeError.ThresholdExceededError]
+  }
+
+  it should "pass when error rate equals threshold (boundary)" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.05)
+    val result = checker.check(totalRecords = 1000, errorCount = 50)
+
+    result.isRight shouldBe true
+    result.value.passed shouldBe true
+  }
+
+  it should "handle zero tolerance (0% threshold)" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.0)
+    val result = checker.check(totalRecords = 1000, errorCount = 1)
+
+    result.isLeft shouldBe true
+    val error = result.left.value.asInstanceOf[CdmeError.ThresholdExceededError]
+    error.threshold shouldBe 0.0
+    error.actualRate shouldBe 0.001
+  }
+
+  it should "pass with zero errors on zero tolerance" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.0)
+    val result = checker.check(totalRecords = 1000, errorCount = 0)
+
+    result.isRight shouldBe true
+    result.value.errorRate shouldBe 0.0
+  }
+
+  it should "handle empty dataset (zero records)" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 0.05)
+    val result = checker.check(totalRecords = 0, errorCount = 0)
+
+    result.isRight shouldBe true
+    result.value.passed shouldBe true
+    result.value.errorRate shouldBe 0.0
+  }
+
+  it should "handle 100% threshold (accept all errors)" in {
+    val checker = ErrorThresholdChecker(errorThreshold = 1.0)
+    val result = checker.check(totalRecords = 100, errorCount = 100)
+
+    result.isRight shouldBe true
+    result.value.passed shouldBe true
+  }
+
+  "ThresholdExceededError" should "have correct error type" in {
+    val error = CdmeError.ThresholdExceededError(
+      sourceKey = "batch_001",
+      morphismPath = "validate_records",
+      threshold = 0.05,
+      actualRate = 0.08,
+      totalRecords = 1000,
+      errorCount = 80
+    )
+
+    error.errorType shouldBe "threshold_exceeded_error"
+    error.threshold shouldBe 0.05
+    error.actualRate shouldBe 0.08
+  }
+
+  // ============================================
   // Integration Test Placeholders (require Spark)
   // ============================================
 

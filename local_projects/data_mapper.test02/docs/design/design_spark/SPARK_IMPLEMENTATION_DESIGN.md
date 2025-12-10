@@ -3,8 +3,9 @@
 **Document Type**: Implementation Design Specification
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
 **Variant**: `design_spark` (Apache Spark)
-**Version**: 1.0
+**Version**: 1.1
 **Date**: 2025-12-10
+**Updated**: 2025-12-11 (Spark 4.0 migration)
 **Status**: Draft
 **Derived From**:
 - [Generic Reference Design](../data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md)
@@ -28,11 +29,16 @@ This document defines the **Apache Spark-specific implementation** of the CDME a
 
 | Layer | Technology | Version | Notes |
 |-------|------------|---------|-------|
-| Execution Engine | Apache Spark | 3.5.x | See ADR-001 |
-| Language | TBD | - | Scala vs PySpark (ADR-002) |
+| Execution Engine | Apache Spark | 4.0.1 | See ADR-001, ADR-011 |
+| Language | Scala | 2.13.12 | See ADR-002 |
+| Java Runtime | OpenJDK | 17 or 21 (LTS) | See ADR-011 |
 | Storage Format | TBD | - | Delta/Iceberg/Parquet (ADR-003) |
 | Lineage | TBD | - | OpenLineage/Spline (ADR-004) |
 | Metadata Store | TBD | - | Hive Metastore/Unity Catalog |
+
+**Version History**:
+- v1.0 (2025-12-10): Initial design with Spark 3.5.0, Scala 2.12.18
+- v1.1 (2025-12-11): Updated to Spark 4.0.1, Scala 2.13.12, Java 17/21 (ADR-011)
 
 ---
 
@@ -446,11 +452,17 @@ See [adrs/](adrs/) for all technology decisions.
 
 | ADR | Decision | Status |
 |-----|----------|--------|
-| [ADR-001](adrs/ADR-001-execution-engine.md) | Why Apache Spark | Proposed |
+| [ADR-001](adrs/ADR-001-execution-engine.md) | Why Apache Spark | Superseded by ADR-011 |
 | [ADR-002](adrs/ADR-002-language-choice.md) | Scala vs PySpark | Proposed |
 | [ADR-003](adrs/ADR-003-storage-format.md) | Delta Lake vs Iceberg vs Parquet | Proposed |
 | [ADR-004](adrs/ADR-004-lineage-backend.md) | OpenLineage vs Spline | Proposed |
 | [ADR-005](adrs/ADR-005-adjoint-metadata.md) | Adjoint Metadata Storage Strategy | Proposed |
+| [ADR-006](adrs/ADR-006-scala-type-system.md) | Scala Type System for CDME | Accepted |
+| [ADR-007](adrs/ADR-007-scala-either-monad.md) | Either Monad for Error Handling | Accepted |
+| [ADR-008](adrs/ADR-008-scala-aggregation-patterns.md) | Scala Aggregation Patterns | Accepted |
+| [ADR-009](adrs/ADR-009-scala-project-structure.md) | Scala Project Structure and Build System | Accepted |
+| [ADR-010](adrs/ADR-010-scala-config-parsing.md) | Scala Configuration Parsing | Accepted |
+| [ADR-011](adrs/ADR-011-spark-4-0-migration.md) | **Migration to Spark 4.0.1** | **Accepted** |
 
 ---
 
@@ -488,5 +500,31 @@ See [adrs/](adrs/) for all technology decisions.
 
 ---
 
+## Migration to Spark 4.0
+
+**Important**: This design has been updated for Apache Spark 4.0.1 (see ADR-011).
+
+### Key Changes from Spark 3.5
+
+| Aspect | Spark 3.5 | Spark 4.0 |
+|--------|-----------|-----------|
+| Scala Version | 2.12.18 | 2.13.12 |
+| Java Support | 8, 11, 17 | 17, 21 (25 TBD) |
+| ANSI SQL Mode | Optional | Default-enabled |
+| VARIANT Type | N/A | Available |
+| Spark Connect | Optional | Default-enabled |
+
+### Impact on CDME Design
+
+- **Type Safety**: ANSI SQL mode aligns with REQ-TYP-01 goals
+- **Performance**: Catalyst optimizer improvements benefit complex joins
+- **Adjoint Metadata**: VARIANT type enables flexible metadata storage
+- **Future-Proof**: Java 17/21 LTS support through 2029/2031
+
+See [ADR-011](adrs/ADR-011-spark-4-0-migration.md) for complete migration details.
+
+---
+
 **Document Status**: Draft
-**Last Updated**: 2025-12-10
+**Last Updated**: 2025-12-11
+**Version**: 1.1

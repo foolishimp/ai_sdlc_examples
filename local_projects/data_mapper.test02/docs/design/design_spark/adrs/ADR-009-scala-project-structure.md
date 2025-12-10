@@ -2,8 +2,9 @@
 
 **Status**: Accepted
 **Date**: 2025-12-10
+**Updated**: 2025-12-11 (Spark 4.0 migration - ADR-011)
 **Deciders**: Design Agent
-**Depends On**: ADR-002 (Language Choice - Scala)
+**Depends On**: ADR-002 (Language Choice - Scala), ADR-011 (Spark 4.0 Migration)
 **Implements**: Best practices for maintainability, testability, deployment
 
 ---
@@ -165,10 +166,13 @@ cdme-spark/
 ```scala
 // build.sbt
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.12.18"  // Spark 3.5.x compatibility
+ThisBuild / scalaVersion := "2.13.12"  // Spark 4.0.x compatibility (was 2.12.18)
 ThisBuild / organization := "com.cdme"
 
-// Compiler options
+// Java version requirement (Spark 4.0 requires Java 17+)
+ThisBuild / javacOptions ++= Seq("-source", "17", "-target", "17")
+
+// Compiler options (updated for Scala 2.13)
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
@@ -177,7 +181,8 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ywarn-unused:imports",
   "-Ywarn-dead-code",
   "-language:higherKinds",
-  "-language:implicitConversions"
+  "-language:implicitConversions",
+  "-Xsource:3"  // Forward compatibility with Scala 3
 )
 
 // Test options
@@ -268,8 +273,9 @@ lazy val benchmarks = (project in file("benchmarks"))
 import sbt._
 
 object Dependencies {
-  // Versions
-  val sparkVersion = "3.5.0"
+  // Versions (updated for Spark 4.0 - see ADR-011)
+  val sparkVersion = "4.0.1"        // Was: 3.5.0
+  val scalaVersion = "2.13.12"      // Was: 2.12.18
   val catsVersion = "2.10.0"
   val circeVersion = "0.14.6"
   val refinedVersion = "0.11.0"
@@ -488,7 +494,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: coursier/setup-action@v1
         with:
-          jvm: temurin:11
+          jvm: temurin:21  # Updated for Spark 4.0 (was temurin:11)
           apps: sbt
 
       - name: Cache sbt
@@ -542,3 +548,13 @@ jobs:
 - [sbt-assembly Plugin](https://github.com/sbt/sbt-assembly)
 - [sbt-native-packager](https://www.scala-sbt.org/sbt-native-packager/)
 - [Spark Scala Style Guide](https://spark.apache.org/contributing.html)
+
+---
+
+## Updates
+
+- **2025-12-11**: Updated for Spark 4.0.1 migration (ADR-011)
+  - Scala version: 2.12.18 → 2.13.12
+  - Spark version: 3.5.0 → 4.0.1
+  - Java requirement: 11+ → 17+
+  - Added Scala 2.13 compiler options

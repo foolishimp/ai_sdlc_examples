@@ -1,9 +1,10 @@
 # ADR-001: Apache Spark as Execution Engine
 
-**Status**: Proposed
+**Status**: Superseded by ADR-011
 **Date**: 2025-12-10
 **Deciders**: [TBD]
 **Implements**: All 60 REQ-* requirements (Spark variant)
+**Superseded By**: ADR-011 (Apache Spark 4.0.1 Migration)
 
 ---
 
@@ -20,7 +21,10 @@ CDME requires a distributed execution engine capable of:
 
 ## Decision
 
-**Use Apache Spark 3.5.x as the execution engine for the Spark variant**
+**Use Apache Spark as the execution engine for the Spark variant**
+
+**Original**: Spark 3.5.x with Scala 2.12.18, Java 8/11/17
+**Current**: Spark 4.0.1 with Scala 2.13, Java 17/21 (see ADR-011)
 
 ---
 
@@ -79,3 +83,9 @@ CDME requires a distributed execution engine capable of:
 
 - [Apache Spark Documentation](https://spark.apache.org/docs/latest/)
 - [Catalyst Optimizer](https://databricks.com/glossary/catalyst-optimizer)
+
+---
+
+## Updates
+
+- **2025-12-11**: Superseded by ADR-011 for Spark 4.0.1 migration

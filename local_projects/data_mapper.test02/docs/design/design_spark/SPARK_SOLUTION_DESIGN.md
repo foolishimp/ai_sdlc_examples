@@ -1,11 +1,13 @@
 # CDME Spark Solution Design
 
 **Document Type**: Solution Design
-**Solution**: `design_spark` (Spark/PySpark/Scala Implementation)
-**Version**: 1.0
+**Solution**: `design_spark` (Spark/Scala Implementation)
+**Version**: 1.1
 **Date**: 2025-12-10
+**Updated**: 2025-12-11 (Spark 4.0 migration)
 **Status**: Draft
 **References**: [data_mapper Core Design](../data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md)
+**Technology**: Apache Spark 4.0.1, Scala 2.13.12 (see ADR-011)
 
 ---
 

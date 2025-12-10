@@ -172,3 +172,53 @@ case class ExecutionResult(
   sourceRowCount: Long,
   outputRowCount: Long
 )
+
+/**
+ * Error threshold checker.
+ * Implements: REQ-ERR-02 (Error Threshold Configuration)
+ *
+ * @param errorThreshold Maximum allowed error rate (0.0 to 1.0)
+ */
+case class ErrorThresholdChecker(errorThreshold: Double) {
+
+  /**
+   * Check if error count is within threshold.
+   *
+   * @param totalRecords Total records processed
+   * @param errorCount Number of errors encountered
+   * @return Right(ThresholdCheckResult) if within threshold, Left(ThresholdExceededError) if exceeded
+   */
+  def check(totalRecords: Long, errorCount: Long): Either[CdmeError, ThresholdCheckResult] = {
+    val errorRate = if (totalRecords == 0) 0.0 else errorCount.toDouble / totalRecords.toDouble
+
+    if (errorRate <= errorThreshold) {
+      Right(ThresholdCheckResult(
+        passed = true,
+        errorRate = errorRate,
+        threshold = errorThreshold,
+        totalRecords = totalRecords,
+        errorCount = errorCount
+      ))
+    } else {
+      Left(CdmeError.ThresholdExceededError(
+        sourceKey = s"batch_${System.currentTimeMillis()}",
+        morphismPath = "threshold_check",
+        threshold = errorThreshold,
+        actualRate = errorRate,
+        totalRecords = totalRecords,
+        errorCount = errorCount
+      ))
+    }
+  }
+}
+
+/**
+ * Result of threshold check.
+ */
+case class ThresholdCheckResult(
+  passed: Boolean,
+  errorRate: Double,
+  threshold: Double,
+  totalRecords: Long,
+  errorCount: Long
+)

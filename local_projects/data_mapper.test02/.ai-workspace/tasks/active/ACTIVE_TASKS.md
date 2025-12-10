@@ -1,7 +1,7 @@
 # Active Tasks
 
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
-**Last Updated**: 2025-12-11 00:47
+**Last Updated**: 2025-12-11 01:08
 
 ---
 
@@ -34,13 +34,13 @@ Design stage complete. Now implementing the Spark variant with TDD.
 Implement the Spark MVP steel thread following TDD. Core pipeline is implemented, needs testing and gap closure.
 
 **Implementation Status** (from code review):
-- [x] Error Domain (Types.scala) - CdmeError sealed trait, 8 error variants
+- [x] Error Domain (Types.scala) - CdmeError sealed trait, 9 error variants
 - [x] Domain Model (Domain.scala) - Entity, Grain, Morphism, Cardinality
 - [x] Algebra (Algebra.scala) - Aggregator trait, MonoidInstances
 - [x] Config Parsing (ConfigModel.scala, ConfigLoader.scala) - circe-yaml
 - [x] Schema Registry (SchemaRegistry.scala) - Path validation
 - [x] Compiler (Compiler.scala) - Plan generation, grain validation
-- [x] Executor (Executor.scala) - DataFrame transformations
+- [x] Executor (Executor.scala) - DataFrame transformations, ErrorThresholdChecker
 - [x] Morphisms (FilterMorphism.scala, AggregateMorphism.scala)
 - [x] Main entry point (Main.scala) - Steel thread
 
@@ -49,15 +49,15 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - [ ] Wire Algebra.scala Aggregator to Executor
 - [ ] Add SparkAdjointWrapper for reverse-join capture
 - [ ] Add accumulator-based error collection (SparkErrorDomain)
-- [x] Add Executor unit tests ✅ (18 tests in ExecutorSpec.scala)
+- [x] Add Executor unit tests ✅ (26 tests in ExecutorSpec.scala)
 - [x] Add UAT tests ✅ (33 BDD scenarios in UATSpec.scala)
 
 **Acceptance Criteria**:
 - [x] Unit tests pass for Compiler (8/8 tests passing)
-- [x] Unit tests pass for Executor (18/18 tests passing) ✅
+- [x] Unit tests pass for Executor (26/26 tests passing) ✅
 - [x] UAT tests pass (33/33 BDD scenarios passing) ✅
 - [ ] Integration test: end-to-end mapping execution (requires Java 17)
-- [ ] Error threshold checking implemented
+- [x] Error threshold checking implemented ✅ (ErrorThresholdChecker + ThresholdExceededError)
 - [x] Build passes: `sbt compile` ✅
 
 **Build Environment**:
@@ -65,7 +65,7 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - Scala 2.12.18
 - Spark 3.5.0 (provided scope)
 - All 11 source files compile successfully
-- 59 tests passing (CompilerSpec: 8, ExecutorSpec: 18, UATSpec: 33)
+- 67 tests passing (CompilerSpec: 8, ExecutorSpec: 26, UATSpec: 33)
 
 **Dependencies**:
 - Design stage complete ✅
@@ -107,7 +107,7 @@ Implement SparkLineageCollector for OpenLineage events and SparkErrorDomain for 
 
 **Acceptance Criteria**:
 - [ ] SparkErrorDomain with Spark accumulators
-- [ ] Error threshold checking (absolute + percentage)
+- [x] Error threshold checking (percentage) ✅ - Done in Task #6
 - [ ] Dead-letter queue (DLQ) writes
 - [ ] SparkLineageCollector with FULL/KEY_DERIVABLE/SAMPLED modes
 - [ ] OpenLineage event emission

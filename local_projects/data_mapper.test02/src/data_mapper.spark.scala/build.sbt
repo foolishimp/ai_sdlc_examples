@@ -2,17 +2,17 @@
 // Implements: Design from docs/design/design_spark/
 
 ThisBuild / version := "0.1.0-SNAPSHOT"
-ThisBuild / scalaVersion := "2.12.18"  // Spark 3.5.x compatibility
+ThisBuild / scalaVersion := "2.13.12"  // Spark 4.0.x compatibility
 ThisBuild / organization := "com.cdme"
 
-// Compiler options
+// Compiler options (Scala 2.13 compatible)
 ThisBuild / scalacOptions ++= Seq(
   "-deprecation",
   "-feature",
   "-unchecked",
   "-Xlint",
-  "-Ywarn-unused:imports",
-  "-Ywarn-dead-code",
+  "-Wunused:imports",  // Changed from -Ywarn-unused:imports in 2.13
+  "-Wdead-code",       // Changed from -Ywarn-dead-code in 2.13
   "-language:higherKinds",
   "-language:implicitConversions"
 )
@@ -41,10 +41,10 @@ ThisBuild / Test / javaOptions ++= Seq(
 )
 
 // Dependency versions
-val sparkVersion = "3.5.0"
+val sparkVersion = "4.0.1"  // Upgraded from 3.5.0
 val catsVersion = "2.10.0"
 val circeVersion = "0.14.6"
-val refinedVersion = "0.11.0"
+val refinedVersion = "0.11.1"  // Updated for Scala 2.13 compatibility
 val scalaTestVersion = "3.2.17"
 
 // Dependencies
