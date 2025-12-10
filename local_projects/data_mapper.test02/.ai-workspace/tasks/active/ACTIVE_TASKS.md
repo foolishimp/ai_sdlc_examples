@@ -1,7 +1,7 @@
 # Active Tasks
 
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
-**Last Updated**: 2025-12-10 23:35
+**Last Updated**: 2025-12-11 00:05
 
 ---
 
@@ -50,12 +50,12 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - [ ] Add SparkAdjointWrapper for reverse-join capture
 - [ ] Add accumulator-based error collection (SparkErrorDomain)
 - [x] Add Executor unit tests ✅ (18 tests in ExecutorSpec.scala)
-- [x] Add UAT tests ✅ (15 tests in UATSpec.scala)
+- [x] Add UAT tests ✅ (17 BDD scenarios in UATSpec.scala)
 
 **Acceptance Criteria**:
 - [x] Unit tests pass for Compiler (8/8 tests passing)
 - [x] Unit tests pass for Executor (18/18 tests passing) ✅
-- [x] UAT tests pass (15/15 tests passing) ✅
+- [x] UAT tests pass (17/17 BDD scenarios passing) ✅
 - [ ] Integration test: end-to-end mapping execution (requires Java 17)
 - [ ] Error threshold checking implemented
 - [x] Build passes: `sbt compile` ✅
@@ -65,7 +65,7 @@ Implement the Spark MVP steel thread following TDD. Core pipeline is implemented
 - Scala 2.12.18
 - Spark 3.5.0 (provided scope)
 - All 11 source files compile successfully
-- 41 tests passing (CompilerSpec: 8, ExecutorSpec: 18, UATSpec: 15)
+- 43 tests passing (CompilerSpec: 8, ExecutorSpec: 18, UATSpec: 17)
 
 **Dependencies**:
 - Design stage complete ✅
@@ -147,23 +147,24 @@ Update the traceability matrix to reflect completed design stage and map require
 **Description**:
 Complete User Acceptance Testing for CDME Spark implementation. Validate all business scenarios and obtain stakeholder sign-off.
 
-**UAT Tests Implemented** (15 tests in UATSpec.scala):
-- [x] UAT-001: Schema Registry Setup (2 tests)
-- [x] UAT-002: Path Validation (3 tests)
-- [x] UAT-003: Simple Mapping Compilation (1 test)
-- [x] UAT-004: Grain Safety Enforcement (3 tests)
-- [x] UAT-005: Filter Morphism Definition (1 test)
-- [x] UAT-006: Aggregation Mapping (1 test)
-- [x] UAT-007: Error Messages (2 tests)
-- [x] UAT-008: Multiple Morphisms (1 test)
-- [x] UAT-009: Relationship References (1 test)
+**UAT Tests Implemented** (17 BDD scenarios in UATSpec.scala):
+- [x] UAT-001: Schema Registry Setup (2 scenarios)
+- [x] UAT-002: Relationship Path Validation (3 scenarios)
+- [x] UAT-003: Simple Mapping Compilation (1 scenario)
+- [x] UAT-004: Grain Safety Enforcement (3 scenarios)
+- [x] UAT-005: Filter Morphism Definition (1 scenario)
+- [x] UAT-006: Aggregation Mapping (1 scenario)
+- [x] UAT-007: Clear Error Messages (2 scenarios)
+- [x] UAT-008: Chained Morphisms (1 scenario)
+- [x] UAT-009: Relationship Traversal (1 scenario)
+- [x] UAT-010: Consistent Error Typing (2 scenarios)
 
 **Remaining UAT Scenarios**:
-- [ ] UAT-010: Window functions and temporal aggregations
-- [ ] UAT-011: Data quality validations
-- [ ] UAT-012: Performance with large datasets
-- [ ] UAT-013: Error recovery and retry logic
-- [ ] UAT-014: Configuration validation edge cases
+- [ ] UAT-011: Window functions and temporal aggregations
+- [ ] UAT-012: Data quality validations
+- [ ] UAT-013: Performance with large datasets
+- [ ] UAT-014: Error recovery and retry logic
+- [ ] UAT-015: Configuration validation edge cases
 
 **Business Sign-off**:
 - [ ] Data Engineers sign-off
