@@ -2137,6 +2137,1112 @@ The categorical foundations provide these data quality guarantees:
 
 ---
 
+## Part 11: Cross-Domain Fidelity Architecture
+
+**Implements**: REQ-COV-01, REQ-COV-02, REQ-COV-03, REQ-COV-04, REQ-COV-05, REQ-COV-06, REQ-COV-07, REQ-COV-08
+
+### 11.1 Overview: Why Cross-Domain Fidelity
+
+Complex enterprises operate multiple data domains that must maintain consistent views of the same business reality:
+
+```
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│    FINANCE      │     │      RISK       │     │   REGULATORY    │
+│                 │     │                 │     │                 │
+│  P&L, Positions │◄───►│  VaR, Exposure  │◄───►│  BCBS, FRTB     │
+│  Trade Capture  │     │  Stress Testing │     │  Reporting      │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+        │                       │                       │
+        └───────────────────────┼───────────────────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │   FIDELITY CONTRACT   │
+                    │                       │
+                    │ "These domains MUST   │
+                    │  agree on positions,  │
+                    │  valuations, and      │
+                    │  risk metrics"        │
+                    └───────────────────────┘
+```
+
+**The Problem**: Without formal contracts, domains diverge silently:
+- Finance books a trade, Risk doesn't see it for 3 days
+- P&L says +$1M, Risk says +$950K - which is right?
+- Regulatory report uses stale Risk data
+
+**CDME Solution**: Formal covariance contracts with mathematical fidelity invariants and cryptographic verification.
+
+---
+
+### 11.2 Covariance Contract Schema (REQ-COV-01)
+
+A covariance contract defines how entities in one domain relate to entities in another:
+
+```yaml
+# Covariance Contract Definition
+contract:
+  id: contract_finance_risk_positions
+  version: "1.0.0"
+  status: ACTIVE
+
+  domains:
+    source:
+      name: finance
+      entity: Position
+      grain: ATOMIC
+      grain_key: [position_id]
+    target:
+      name: risk
+      entity: RiskPosition
+      grain: ATOMIC
+      grain_key: [position_id]
+
+  # Cross-domain morphism
+  mapping:
+    type: COVARIANT  # Changes propagate source → target
+    cardinality: "1:1"
+    join_key: position_id
+
+  # Grain alignment requirement
+  grain_alignment:
+    required: true
+    source_grain: ATOMIC
+    target_grain: ATOMIC
+    # Cross-grain requires explicit aggregation morphism
+
+  # Fidelity invariants (Section 11.3)
+  invariants:
+    - ref: position_conservation
+    - ref: valuation_alignment
+    - ref: exposure_containment
+
+  # Enforcement mode
+  enforcement:
+    mode: STRICT  # STRICT | DEFERRED | ADVISORY
+    on_violation: HALT
+```
+
+**Contract Registry**: Contracts are versioned artifacts in the Schema Registry, subject to the same immutability rules as LDM entities (REQ-TRV-05-B).
+
+---
+
+### 11.3 Fidelity Invariants (REQ-COV-02)
+
+Fidelity invariants are mathematical assertions that must hold between domains:
+
+```yaml
+# Fidelity Invariant Definitions
+invariants:
+
+  # Conservation: Value preservation across domains
+  - id: position_conservation
+    type: CONSERVATION
+    description: "Total notional must match between Finance and Risk"
+    expression: |
+      sum(finance.Position.notional) == sum(risk.RiskPosition.notional)
+    grain: ATOMIC
+    materiality_threshold:
+      type: ABSOLUTE
+      value: 0.01  # $0.01 tolerance
+      currency: USD
+    justification: "Rounding tolerance for currency conversion"
+
+  # Coverage: Completeness guarantee
+  - id: position_coverage
+    type: COVERAGE
+    description: "Risk must have all Finance positions"
+    expression: |
+      count(risk.RiskPosition) >= count(finance.Position)
+    grain: ATOMIC
+    materiality_threshold:
+      type: PERCENTAGE
+      value: 0.0  # Zero tolerance - all positions required
+
+  # Alignment: Temporal consistency
+  - id: valuation_alignment
+    type: ALIGNMENT
+    description: "Valuation dates must match"
+    expression: |
+      finance.Position.valuation_date == risk.RiskPosition.as_of_date
+    grain: ATOMIC
+    materiality_threshold: null  # Exact match required
+
+  # Containment: Subset relationship
+  - id: exposure_containment
+    type: CONTAINMENT
+    description: "Risk exposure keys must be subset of Finance"
+    expression: |
+      keys(risk.RiskPosition.exposure_id) ⊆ keys(finance.Position.position_id)
+    grain: ATOMIC
+```
+
+**Invariant Types**:
+
+| Type | Mathematical Form | Use Case |
+|------|------------------|----------|
+| CONSERVATION | `sum(A) == sum(B)` | Value preservation (P&L, notional) |
+| COVERAGE | `count(B) >= count(A)` | Completeness (all records present) |
+| ALIGNMENT | `A.field == B.field` | Temporal/value consistency |
+| CONTAINMENT | `keys(A) ⊆ keys(B)` | Subset relationships |
+
+**Materiality Thresholds**: Explicit, auditable tolerances for immaterial differences:
+- ABSOLUTE: Fixed value ($0.01, 1 record)
+- PERCENTAGE: Relative value (0.1% of total)
+- NONE: Exact match required
+
+---
+
+### 11.4 Fidelity Verification Service (REQ-COV-03)
+
+The verification service proves that invariants hold at a point in time:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  FIDELITY VERIFICATION SERVICE                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────┐   ┌──────────────┐   ┌────────────────────────┐  │
+│  │ Contract │──►│  Invariant   │──►│  Fidelity Certificate  │  │
+│  │ Registry │   │  Evaluator   │   │  (Cryptographic Proof) │  │
+│  └──────────┘   └──────────────┘   └────────────────────────┘  │
+│       │               │                        │                │
+│       │               ▼                        ▼                │
+│       │        ┌──────────────┐        ┌──────────────┐        │
+│       │        │   Domain     │        │  Certificate │        │
+│       └───────►│   Snapshots  │        │    Chain     │        │
+│                │  (Hash-bound)│        │  (Immutable) │        │
+│                └──────────────┘        └──────────────┘        │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Verification Process**:
+
+```python
+# Conceptual verification flow
+def verify_fidelity(contract_id: str, epoch: str) -> FidelityCertificate:
+
+    # 1. Load contract and invariants
+    contract = contract_registry.get(contract_id)
+
+    # 2. Snapshot both domains at epoch
+    source_snapshot = snapshot_domain(contract.source, epoch)
+    target_snapshot = snapshot_domain(contract.target, epoch)
+
+    # 3. Evaluate each invariant
+    results = []
+    for invariant in contract.invariants:
+        result = evaluate_invariant(
+            invariant=invariant,
+            source=source_snapshot,
+            target=target_snapshot
+        )
+        results.append(InvariantResult(
+            invariant_id=invariant.id,
+            status=result.status,  # PASS | BREACH_IMMATERIAL | BREACH_MATERIAL | BREACH_CRITICAL
+            expected=result.expected,
+            actual=result.actual,
+            difference=result.difference,
+            within_threshold=result.within_threshold
+        ))
+
+    # 4. Generate cryptographic certificate
+    certificate = FidelityCertificate(
+        certificate_id=generate_certificate_id(),
+        contract_id=contract_id,
+        contract_version=contract.version,
+        epoch=epoch,
+        timestamp=utc_now(),
+        source_snapshot_hash=source_snapshot.hash,
+        target_snapshot_hash=target_snapshot.hash,
+        invariant_results=results,
+        overall_status=compute_overall_status(results),
+        previous_certificate=get_previous_certificate(contract_id),
+        signature=sign_certificate(...)
+    )
+
+    # 5. Store immutably
+    certificate_store.store(certificate)
+
+    return certificate
+```
+
+**Verification Modes**:
+- **EXHAUSTIVE**: Check all records (O(n))
+- **STATISTICAL**: Sample-based verification with confidence interval
+- **INCREMENTAL**: Delta verification since last certificate
+
+---
+
+### 11.5 Contract Breach Detection (REQ-COV-04)
+
+When invariants fail, breaches are classified and handled:
+
+```yaml
+# Breach Classification
+breach_severity:
+  IMMATERIAL:
+    description: "Difference within materiality threshold"
+    action: LOG_ONLY
+    escalation: NONE
+
+  MATERIAL:
+    description: "Difference exceeds threshold but not structural"
+    action: ALERT_AND_QUARANTINE
+    escalation: DATA_STEWARD
+    sla_hours: 24
+
+  CRITICAL:
+    description: "Structural breach - missing entities, broken relationships"
+    action: HALT_DEPENDENT_PROCESSING
+    escalation: DATA_OWNER
+    sla_hours: 4
+```
+
+**Breach Record Structure**:
+
+```yaml
+breach:
+  id: breach_20241215_001
+  certificate_id: cert_abc123
+  contract_id: contract_finance_risk_positions
+  invariant_id: position_conservation
+
+  severity: MATERIAL
+
+  details:
+    expected: 1000000.00
+    actual: 999500.00
+    difference: 500.00
+    threshold: 0.01
+    threshold_exceeded_by: 499.99
+
+  contributing_records:
+    # Via adjoint backward traversal (REQ-ADJ-09)
+    source_keys: [pos_001, pos_002, pos_003]
+    target_keys: [risk_001, risk_002]
+
+  context:
+    source_snapshot_hash: sha256:abc
+    target_snapshot_hash: sha256:def
+    epoch: "2024-12-15"
+
+  response:
+    action_taken: QUARANTINE
+    quarantine_flag: FIDELITY_BREACH_MATERIAL
+    notification_sent: true
+    assigned_to: data_steward_team
+
+  remediation:
+    status: PENDING  # PENDING | IN_PROGRESS | RESOLVED | ACCEPTED
+    resolution: null
+    resolved_by: null
+    resolved_at: null
+```
+
+---
+
+### 11.6 Contract Enforcement (REQ-COV-07)
+
+Enforcement prevents violations **before** they corrupt domain state:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ENFORCEMENT PIPELINE                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Proposed    ┌──────────────┐   ┌──────────────┐   Committed    │
+│  Change  ───►│  Pre-flight  │──►│ Transactional│──►  State      │
+│              │  Validation  │   │   Commit     │                │
+│              └──────────────┘   └──────────────┘                │
+│                     │                  │                        │
+│                     ▼                  ▼                        │
+│              ┌──────────────┐   ┌──────────────┐                │
+│              │   Reject if  │   │  Both domains│                │
+│              │   invariants │   │  succeed or  │                │
+│              │   would fail │   │  both fail   │                │
+│              └──────────────┘   └──────────────┘                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Enforcement Modes**:
+
+| Mode | Behavior | Use Case |
+|------|----------|----------|
+| STRICT | Reject any operation that would violate invariants | Production, regulated |
+| DEFERRED | Allow operation, require remediation within window | Migration periods |
+| ADVISORY | Warn but allow (audit trail only) | Development, testing |
+
+**Pre-flight Validation**:
+
+```python
+# Conceptual enforcement check
+def enforce_contract(
+    contract: CovarianceContract,
+    proposed_changes: List[DomainChange]
+) -> EnforcementResult:
+
+    # Simulate the change
+    simulated_source = apply_changes(current_source, proposed_changes)
+    simulated_target = current_target  # Or also apply if bidirectional
+
+    # Check invariants against simulated state
+    violations = []
+    for invariant in contract.invariants:
+        result = evaluate_invariant(invariant, simulated_source, simulated_target)
+        if result.status != PASS:
+            violations.append(result)
+
+    if violations and contract.enforcement.mode == STRICT:
+        return EnforcementResult(
+            allowed=False,
+            reason="Invariant violations detected",
+            violations=violations,
+            remediation_suggestions=suggest_fixes(violations)
+        )
+
+    return EnforcementResult(allowed=True)
+```
+
+---
+
+### 11.7 Fidelity Certificate Chain (REQ-COV-08)
+
+Certificates form an immutable chain proving continuous fidelity:
+
+```
+┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+│  Cert N-2   │──►│  Cert N-1   │──►│   Cert N    │──►│  Cert N+1   │
+│             │   │             │   │             │   │             │
+│ hash: abc   │   │ hash: def   │   │ hash: ghi   │   │ hash: jkl   │
+│ prev: ...   │   │ prev: abc   │   │ prev: def   │   │ prev: ghi   │
+│ status: OK  │   │ status: OK  │   │ status: OK  │   │ status: ?   │
+└─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘
+      │                 │                 │                 │
+      ▼                 ▼                 ▼                 ▼
+   Dec 12            Dec 13            Dec 14            Dec 15
+```
+
+**Chain Properties**:
+- Each certificate references previous certificate hash
+- Gaps are detectable (missing verification runs)
+- Tamper-evident (hash chain)
+- Supports branching (different grain levels, different contracts)
+
+**Chain Query API**:
+
+```python
+# Query continuous fidelity proof
+def prove_continuous_fidelity(
+    contract_id: str,
+    start_date: date,
+    end_date: date
+) -> ContinuousFidelityProof:
+
+    certificates = certificate_store.get_range(
+        contract_id=contract_id,
+        start=start_date,
+        end=end_date
+    )
+
+    return ContinuousFidelityProof(
+        contract_id=contract_id,
+        period=(start_date, end_date),
+        certificate_count=len(certificates),
+        all_passed=all(c.status == PASS for c in certificates),
+        gaps=detect_gaps(certificates),
+        breaches=extract_breaches(certificates),
+        coverage_percentage=compute_coverage(certificates, start_date, end_date)
+    )
+```
+
+---
+
+### 11.8 Multi-Grain Fidelity (REQ-COV-06)
+
+Fidelity must hold across grain boundaries:
+
+```
+Finance Domain                    Risk Domain
+
+┌─────────────────┐              ┌─────────────────┐
+│ ATOMIC (Trade)  │              │ ATOMIC (Risk)   │
+│ trade_id        │─────────────►│ trade_id        │
+│ notional        │   1:1        │ notional        │
+└────────┬────────┘              └────────┬────────┘
+         │ aggregation                    │ aggregation
+         ▼                                ▼
+┌─────────────────┐              ┌─────────────────┐
+│ DAILY (Book)    │              │ DAILY (Desk)    │
+│ book_id, date   │─────────────►│ desk_id, date   │
+│ sum(notional)   │   N:1        │ sum(notional)   │
+└────────┬────────┘              └────────┬────────┘
+         │ aggregation                    │ aggregation
+         ▼                                ▼
+┌─────────────────┐              ┌─────────────────┐
+│ MONTHLY (Firm)  │              │ MONTHLY (Firm)  │
+│ firm_id, month  │─────────────►│ firm_id, month  │
+│ sum(notional)   │   1:1        │ sum(notional)   │
+└─────────────────┘              └─────────────────┘
+
+INVARIANTS:
+  - sum(finance.ATOMIC) == sum(finance.DAILY) == sum(finance.MONTHLY)
+  - sum(risk.ATOMIC) == sum(risk.DAILY) == sum(risk.MONTHLY)
+  - sum(finance.MONTHLY) == sum(risk.MONTHLY)  # Cross-domain at top grain
+```
+
+**Multi-Grain Invariant**:
+
+```yaml
+invariant:
+  id: cross_grain_conservation
+  type: CONSERVATION
+  multi_grain: true
+
+  levels:
+    - grain: ATOMIC
+      source_expr: sum(finance.Trade.notional)
+      target_expr: sum(risk.RiskTrade.notional)
+
+    - grain: DAILY
+      source_expr: sum(finance.DailyBook.notional)
+      target_expr: sum(risk.DailyDesk.notional)
+
+    - grain: MONTHLY
+      source_expr: sum(finance.MonthlyFirm.notional)
+      target_expr: sum(risk.MonthlyFirm.notional)
+
+  consistency_rule: |
+    # Each level must match AND aggregations must be consistent
+    all levels pass AND
+    sum(ATOMIC) == sum(DAILY) == sum(MONTHLY)
+```
+
+---
+
+### 11.9 AWS Reference Implementation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AWS ARCHITECTURE                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────┐│
+│  │   Contract   │   │  Invariant   │   │     Certificate      ││
+│  │   Registry   │   │  Evaluator   │   │       Store          ││
+│  │              │   │              │   │                      ││
+│  │  DynamoDB    │   │  Step Func + │   │  S3 + DynamoDB       ││
+│  │  + S3        │   │  Athena/Spark│   │  (Object Lock)       ││
+│  └──────────────┘   └──────────────┘   └──────────────────────┘│
+│         │                  │                     │              │
+│         └──────────────────┼─────────────────────┘              │
+│                            │                                    │
+│                    ┌───────▼───────┐                           │
+│                    │  EventBridge  │                           │
+│                    │  (Scheduling) │                           │
+│                    └───────────────┘                           │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation Notes**:
+- Contract Registry: DynamoDB for metadata, S3 for contract YAML
+- Invariant Evaluator: Athena for SQL invariants, Spark for complex
+- Certificate Store: S3 with Object Lock (WORM), DynamoDB for index
+- Scheduling: EventBridge for periodic verification runs
+- Integration: SNS for breach notifications, CloudWatch for metrics
+
+---
+
+### 11.10 Solution Design Extension Points
+
+The following details are deferred to solution-specific designs:
+
+| Aspect | Data Mapper Level | Solution Design Level |
+|--------|------------------|----------------------|
+| Contract schema | YAML structure defined | Concrete field mappings |
+| Invariant types | 4 types defined | Domain-specific expressions |
+| Verification service | API contract defined | Implementation code |
+| Certificate format | Structure defined | Cryptographic algorithms |
+| AWS implementation | Reference architecture | Terraform/CDK modules |
+| UI/Dashboard | Not in scope | Solution-specific |
+
+---
+
+## Part 12: Data Quality Monitoring & Validation
+
+**Implements**: REQ-PDM-06, REQ-DQ-01, REQ-DQ-02, REQ-DQ-03, REQ-DQ-04
+
+### 12.1 Overview: Data Quality in CDME
+
+CDME provides compile-time guarantees through the type system, but runtime data quality monitoring is essential for:
+
+1. **Late-arriving data** - Records that arrive after epoch closure
+2. **Volume anomalies** - Unexpected row counts indicating upstream issues
+3. **Distribution drift** - Statistical changes in data characteristics
+4. **Business rule validation** - Domain-specific checks beyond types
+5. **Profiling** - Understanding data characteristics for baseline establishment
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    DATA QUALITY LAYERS                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  COMPILE TIME (Type System)                                     │
+│  ├── Schema validation (REQ-LDM-03)                             │
+│  ├── Type unification (REQ-TYP-06)                              │
+│  ├── Refinement types (REQ-TYP-02)                              │
+│  └── Grain safety (REQ-TRV-02)                                  │
+│                                                                  │
+│  RUNTIME (Data Quality Monitor)                                 │
+│  ├── Volume thresholds (REQ-DQ-01)                              │
+│  ├── Distribution monitoring (REQ-DQ-02)                        │
+│  ├── Custom validation rules (REQ-DQ-03)                        │
+│  ├── Late arrival handling (REQ-PDM-06)                         │
+│  └── Profiling integration (REQ-DQ-04)                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 12.2 Late Arrival Handling (REQ-PDM-06)
+
+Late-arriving data requires explicit handling strategies:
+
+```yaml
+# Source configuration with late arrival handling
+source:
+  entity: Order
+  physical:
+    location: s3://data-lake/orders/
+    format: parquet
+
+  boundaries:
+    epoch:
+      type: partition_filter
+      field: order_date
+
+  late_arrival:
+    # Detection: How to identify late records
+    detection:
+      event_time_field: order_timestamp
+      processing_time_field: _processing_timestamp
+      watermark: "2 hours"  # Records arriving >2h after epoch close are "late"
+
+    # Strategy: What to do with late records
+    strategy: ACCUMULATE  # REJECT | REPROCESS | ACCUMULATE | BACKFILL
+
+    # Strategy-specific configuration
+    accumulate_config:
+      buffer_location: s3://data-lake/late-arrivals/orders/
+      max_buffer_epochs: 3  # Accumulate for up to 3 epochs
+      flush_to_next_epoch: true
+
+    # Lineage marking
+    lineage:
+      mark_as_late: true
+      late_arrival_flag: "_is_late_arrival"
+      original_epoch_field: "_original_epoch"
+```
+
+**Late Arrival Strategies**:
+
+| Strategy | Behavior | Use Case |
+|----------|----------|----------|
+| REJECT | Route to Error Domain with LATE_ARRIVAL code | Strict SLA, no tolerance |
+| REPROCESS | Trigger reprocessing of affected epoch | High accuracy required |
+| ACCUMULATE | Buffer for next epoch with lineage marking | Streaming with eventual consistency |
+| BACKFILL | Separate pipeline with different SLAs | Historical corrections |
+
+**Late Arrival Flow**:
+
+```
+┌────────────┐   ┌────────────────┐   ┌────────────────────────┐
+│  Incoming  │──►│  Late Arrival  │──►│  Strategy Handler      │
+│   Record   │   │   Detector     │   │                        │
+└────────────┘   └────────────────┘   │  REJECT → Error Domain │
+                        │             │  REPROCESS → Trigger   │
+                        │             │  ACCUMULATE → Buffer   │
+                        │             │  BACKFILL → Separate   │
+                        │             └────────────────────────┘
+                        │
+                        ▼
+                 ┌──────────────┐
+                 │   Metrics    │
+                 │ late_count   │
+                 │ late_rate    │
+                 │ avg_lateness │
+                 └──────────────┘
+```
+
+---
+
+### 12.3 Volume Threshold Monitoring (REQ-DQ-01)
+
+Volume monitoring detects anomalous data volumes:
+
+```yaml
+# Volume threshold configuration
+source:
+  entity: Order
+
+  volume_thresholds:
+    enabled: true
+
+    # Absolute thresholds
+    absolute:
+      min_records: 1000      # Fail if fewer than 1000 records
+      max_records: 10000000  # Fail if more than 10M records
+
+    # Relative thresholds (vs historical baseline)
+    relative:
+      baseline_window: "7d"  # 7-day rolling average
+      min_percentage: 0.5    # Fail if <50% of baseline
+      max_percentage: 2.0    # Fail if >200% of baseline
+
+    # Zero tolerance
+    zero_records: HALT  # WARN | HALT - empty input handling
+
+    # Response to violations
+    on_violation:
+      below_min: HALT
+      above_max: WARN
+
+    # Metrics capture
+    metrics:
+      emit_to_telemetry: true
+      include_baseline: true
+      include_trend: true  # 7-day trend
+```
+
+**Volume Check Flow**:
+
+```python
+# Conceptual volume validation
+def validate_volume(source: SourceConfig, epoch_data: DataFrame) -> VolumeResult:
+
+    actual_count = epoch_data.count()
+
+    # Check absolute thresholds
+    if actual_count < source.volume_thresholds.absolute.min_records:
+        return VolumeResult(
+            status=VIOLATION,
+            type=BELOW_MIN_ABSOLUTE,
+            actual=actual_count,
+            threshold=source.volume_thresholds.absolute.min_records,
+            action=source.volume_thresholds.on_violation.below_min
+        )
+
+    # Check relative thresholds
+    baseline = compute_baseline(
+        source=source,
+        window=source.volume_thresholds.relative.baseline_window
+    )
+
+    ratio = actual_count / baseline.average
+
+    if ratio < source.volume_thresholds.relative.min_percentage:
+        return VolumeResult(
+            status=VIOLATION,
+            type=BELOW_MIN_RELATIVE,
+            actual=actual_count,
+            baseline=baseline.average,
+            ratio=ratio,
+            action=source.volume_thresholds.on_violation.below_min
+        )
+
+    return VolumeResult(status=PASS, actual=actual_count, baseline=baseline)
+```
+
+---
+
+### 12.4 Distribution Monitoring (REQ-DQ-02)
+
+Distribution monitoring detects statistical drift in data:
+
+```yaml
+# Distribution monitoring configuration
+source:
+  entity: Order
+
+  distribution_monitoring:
+    enabled: true
+
+    fields:
+      - name: order_amount
+        type: NUMERIC
+        metrics:
+          - null_rate
+          - min_max
+          - percentiles: [25, 50, 75, 95, 99]
+          - mean_stddev
+        thresholds:
+          null_rate_max: 0.01      # Max 1% null
+          null_rate_change: 0.005  # Max 0.5% change from baseline
+          percentile_99_change: 0.20  # Max 20% change in P99
+
+      - name: customer_id
+        type: CATEGORICAL
+        metrics:
+          - null_rate
+          - distinct_count
+          - top_n: 10
+        thresholds:
+          null_rate_max: 0.0  # No nulls allowed
+          cardinality_change: 0.10  # Max 10% change in distinct count
+
+      - name: order_status
+        type: CATEGORICAL
+        metrics:
+          - value_distribution
+        thresholds:
+          distribution_divergence:
+            method: chi_squared
+            p_value_threshold: 0.01
+
+    baseline:
+      window: "30d"
+      min_samples: 7  # Need at least 7 days of data
+
+    on_violation: WARN  # WARN | HALT | QUARANTINE
+```
+
+**Distribution Metrics**:
+
+| Metric | Applicable Types | Description |
+|--------|-----------------|-------------|
+| null_rate | All | Percentage of null/missing values |
+| distinct_count | Categorical | Cardinality of unique values |
+| min_max | Numeric | Range boundaries |
+| percentiles | Numeric | Distribution shape (P25, P50, P75, P95, P99) |
+| mean_stddev | Numeric | Central tendency and spread |
+| top_n | Categorical | Most frequent values |
+| value_distribution | Categorical | Full frequency distribution |
+| distribution_divergence | Categorical | Statistical test for distribution change |
+
+---
+
+### 12.5 Custom Validation Rules (REQ-DQ-03)
+
+Custom validation rules express domain-specific constraints:
+
+```yaml
+# Custom validation rules
+validation_rules:
+
+  - id: rule_order_date_sequence
+    description: "Order date must be before or equal to ship date"
+    entity: Order
+    expression: |
+      order_date <= ship_date OR ship_date IS NULL
+    severity: ERROR  # ERROR | WARNING
+    on_failure: ERROR_DOMAIN
+    error_code: INVALID_DATE_SEQUENCE
+    error_message: "Ship date {ship_date} is before order date {order_date}"
+
+  - id: rule_closed_order_has_close_date
+    description: "Closed orders must have a close date"
+    entity: Order
+    expression: |
+      status != 'CLOSED' OR close_date IS NOT NULL
+    severity: ERROR
+    on_failure: ERROR_DOMAIN
+    error_code: MISSING_CLOSE_DATE
+
+  - id: rule_amount_reasonable
+    description: "Order amount should be reasonable"
+    entity: Order
+    expression: |
+      order_amount > 0 AND order_amount < 10000000
+    severity: WARNING
+    on_failure: QUARANTINE
+    error_code: SUSPICIOUS_AMOUNT
+
+  - id: rule_valid_country
+    description: "Country code must exist in reference data"
+    entity: Order
+    expression: |
+      country_code IN (SELECT code FROM lookup.CountryCode)
+    references:
+      - lookup: CountryCode
+        version: LATEST
+    severity: ERROR
+    on_failure: ERROR_DOMAIN
+```
+
+**Rule Execution Order**:
+
+```
+1. Type validation (compile-time, REQ-TYP-01)
+2. Refinement type validation (runtime, REQ-TYP-02)
+3. Custom validation rules (runtime, REQ-DQ-03) ← HERE
+4. Transformation execution
+5. Output validation
+```
+
+---
+
+### 12.6 Profiling Integration (REQ-DQ-04)
+
+Profiling provides data understanding and baseline establishment:
+
+```yaml
+# Profiling configuration
+profiling:
+  enabled: true
+  mode: DRY_RUN  # DRY_RUN | CONTINUOUS | ON_DEMAND
+
+  output:
+    format: JSON  # JSON | OPENMETADATA | CUSTOM
+    location: s3://data-lake/profiling/
+
+  metrics:
+    schema:
+      infer_types: true
+      compare_to_declared: true
+
+    completeness:
+      null_rates: true
+      empty_string_rates: true
+
+    uniqueness:
+      unique_percentage: true
+      duplicate_keys: true
+
+    statistics:
+      numeric:
+        min_max: true
+        mean_median: true
+        stddev: true
+        percentiles: [5, 25, 50, 75, 95]
+        histogram_bins: 20
+      string:
+        min_max_length: true
+        pattern_detection: true  # Email, phone, etc.
+
+    referential:
+      foreign_key_validity: true
+      orphan_detection: true
+
+  sampling:
+    enabled: true
+    sample_size: 100000
+    method: RANDOM  # RANDOM | STRATIFIED | RESERVOIR
+```
+
+**Profiling Output Example**:
+
+```json
+{
+  "entity": "Order",
+  "epoch": "2024-12-15",
+  "record_count": 1500000,
+  "profiled_at": "2024-12-15T10:30:00Z",
+
+  "fields": {
+    "order_id": {
+      "type_declared": "String",
+      "type_inferred": "String",
+      "null_rate": 0.0,
+      "unique_rate": 1.0,
+      "min_length": 10,
+      "max_length": 10,
+      "pattern": "ORD-[0-9]{6}"
+    },
+    "order_amount": {
+      "type_declared": "Decimal(18,2)",
+      "type_inferred": "Decimal",
+      "null_rate": 0.001,
+      "min": 0.01,
+      "max": 999999.99,
+      "mean": 250.50,
+      "median": 125.00,
+      "stddev": 450.25,
+      "percentiles": {
+        "p5": 10.00,
+        "p25": 50.00,
+        "p50": 125.00,
+        "p75": 300.00,
+        "p95": 1000.00
+      }
+    },
+    "customer_id": {
+      "type_declared": "String",
+      "null_rate": 0.0,
+      "distinct_count": 50000,
+      "top_values": [
+        {"value": "CUST-001", "count": 15000},
+        {"value": "CUST-002", "count": 12000}
+      ]
+    }
+  },
+
+  "referential_integrity": {
+    "customer_id → Customer.id": {
+      "valid": 1499850,
+      "orphan": 150,
+      "orphan_rate": 0.0001
+    }
+  }
+}
+```
+
+---
+
+### 12.7 Data Quality Monitor Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                   DATA QUALITY MONITOR                           │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────┐│
+│  │    Config    │   │   Baseline   │   │      Metrics         ││
+│  │    Store     │   │    Store     │   │      Store           ││
+│  │              │   │              │   │                      ││
+│  │  (Thresholds,│   │ (Historical  │   │  (Results, Trends,   ││
+│  │   Rules)     │   │  profiles)   │   │   Alerts)            ││
+│  └──────────────┘   └──────────────┘   └──────────────────────┘│
+│         │                  │                     │              │
+│         └──────────────────┼─────────────────────┘              │
+│                            │                                    │
+│                    ┌───────▼───────┐                           │
+│                    │   DQ Engine   │                           │
+│                    │               │                           │
+│                    │ Late Arrival  │                           │
+│                    │ Volume Check  │                           │
+│                    │ Distribution  │                           │
+│                    │ Custom Rules  │                           │
+│                    │ Profiling     │                           │
+│                    └───────────────┘                           │
+│                            │                                    │
+│              ┌─────────────┼─────────────┐                     │
+│              ▼             ▼             ▼                     │
+│        ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│        │  PASS    │  │ QUARANTINE│  │  ERROR   │               │
+│        │ (proceed)│  │ (flagged) │  │  DOMAIN  │               │
+│        └──────────┘  └──────────┘  └──────────┘               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 12.8 Integration with Error Domain
+
+Data quality violations integrate with the standard Error Domain (REQ-TYP-03):
+
+```yaml
+# Error Domain entries for DQ violations
+error_domain:
+
+  # Late arrival error
+  - error_type: LATE_ARRIVAL
+    source_key: "order_123"
+    morphism_path: "source.Order"
+    context:
+      event_time: "2024-12-14T23:59:00Z"
+      processing_time: "2024-12-15T04:30:00Z"
+      epoch: "2024-12-14"
+      lateness_hours: 4.5
+      strategy_applied: REJECT
+
+  # Volume threshold error
+  - error_type: VOLUME_THRESHOLD_VIOLATION
+    source_key: null  # Epoch-level error
+    morphism_path: "source.Order"
+    context:
+      epoch: "2024-12-15"
+      actual_count: 500
+      threshold: 1000
+      threshold_type: MIN_ABSOLUTE
+      baseline_average: 1500
+
+  # Distribution drift error
+  - error_type: DISTRIBUTION_DRIFT
+    source_key: null  # Field-level error
+    morphism_path: "source.Order.order_amount"
+    context:
+      epoch: "2024-12-15"
+      field: "order_amount"
+      metric: "null_rate"
+      expected: 0.001
+      actual: 0.05
+      threshold: 0.005
+
+  # Custom rule violation
+  - error_type: CUSTOM_RULE_VIOLATION
+    source_key: "order_456"
+    morphism_path: "source.Order"
+    context:
+      rule_id: "rule_order_date_sequence"
+      rule_description: "Order date must be before ship date"
+      values:
+        order_date: "2024-12-15"
+        ship_date: "2024-12-10"
+```
+
+---
+
+### 12.9 AWS Reference Implementation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        AWS ARCHITECTURE                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────────────┐│
+│  │    Config    │   │   Baseline   │   │      Metrics         ││
+│  │  DynamoDB    │   │     S3 +     │   │    CloudWatch +      ││
+│  │              │   │   Athena     │   │    OpenSearch        ││
+│  └──────────────┘   └──────────────┘   └──────────────────────┘│
+│         │                  │                     │              │
+│         └──────────────────┼─────────────────────┘              │
+│                            │                                    │
+│                    ┌───────▼───────┐                           │
+│                    │  Glue / EMR   │                           │
+│                    │  (DQ Engine)  │                           │
+│                    └───────────────┘                           │
+│                            │                                    │
+│              ┌─────────────┼─────────────┐                     │
+│              ▼             ▼             ▼                     │
+│        ┌──────────┐  ┌──────────┐  ┌──────────┐               │
+│        │   SNS    │  │    S3    │  │    S3    │               │
+│        │ (Alerts) │  │(Quarantine)│ │(Error DQ)│               │
+│        └──────────┘  └──────────┘  └──────────┘               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**AWS Services Mapping**:
+- Config Store: DynamoDB (thresholds, rules)
+- Baseline Store: S3 + Athena (historical profiles, queryable)
+- Metrics Store: CloudWatch Metrics + OpenSearch (visualization)
+- DQ Engine: Glue ETL or EMR Spark (execution)
+- Alerts: SNS → Slack/PagerDuty
+- Quarantine: S3 bucket with lifecycle policies
+- Error Domain: S3 (parquet) + Glue Catalog
+
+---
+
+### 12.10 Solution Design Extension Points
+
+The following details are deferred to solution-specific designs:
+
+| Aspect | Data Mapper Level | Solution Design Level |
+|--------|------------------|----------------------|
+| Late arrival strategy | Options defined | Strategy selection per source |
+| Volume thresholds | Schema defined | Specific threshold values |
+| Distribution metrics | Metric types defined | Field-specific configuration |
+| Custom rules | Rule schema defined | Domain-specific rules |
+| Profiling output | Format defined | Dashboard integration |
+| AWS implementation | Reference architecture | Terraform/CDK modules |
+| Alerting | Integration points | PagerDuty/Slack configuration |
+
+---
+
 ## Appendix A: Glossary for Data Engineers
 
 | CDME Term | Plain English |
