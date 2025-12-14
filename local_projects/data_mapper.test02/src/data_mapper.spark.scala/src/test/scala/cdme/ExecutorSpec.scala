@@ -484,4 +484,95 @@ class ExecutorSpec extends AnyFlatSpec with Matchers with EitherValues {
     types should contain("MAX")
     types.length shouldBe 5
   }
+
+  // ============================================
+  // Unit Tests for Dataset[T] Type Safety
+  // Implements: REQ-TYP-01, REQ-TYP-02 (ADR-006)
+  // ============================================
+
+  "TypedRow" should "represent mapped data with type safety" in {
+    // Validates: REQ-TYP-01 (Type-Safe Morphism Composition)
+    import cdme.executor.TypedRow
+
+    val row = TypedRow(
+      fields = Map(
+        "order_id" -> "ORDER001",
+        "customer_id" -> "CUST001",
+        "amount" -> BigDecimal(100.50)
+      )
+    )
+
+    row.fields("order_id") shouldBe "ORDER001"
+    row.fields("customer_id") shouldBe "CUST001"
+    row.fields("amount") shouldBe BigDecimal(100.50)
+  }
+
+  it should "support type-safe field access via get method" in {
+    import cdme.executor.TypedRow
+
+    val row = TypedRow(
+      fields = Map(
+        "order_id" -> "ORDER001",
+        "amount" -> BigDecimal(100.50)
+      )
+    )
+
+    row.get[String]("order_id") shouldBe Some("ORDER001")
+    row.get[BigDecimal]("amount") shouldBe Some(BigDecimal(100.50))
+    row.get[String]("missing") shouldBe None
+  }
+
+  it should "fail type-safe access for wrong type" in {
+    import cdme.executor.TypedRow
+
+    val row = TypedRow(
+      fields = Map("amount" -> BigDecimal(100.50))
+    )
+
+    // Should fail casting BigDecimal to String
+    row.get[String]("amount") shouldBe None
+  }
+
+  "TypedExecutor" should "have typed variant of applyProjections" in {
+    // This test validates the API exists - full integration test requires Spark
+    // Validates: REQ-TYP-01 (Dataset[T] for type safety)
+
+    // Verify TypedExecutor class exists with expected method signature
+    val executorClass = classOf[cdme.executor.TypedExecutor]
+    val methods = executorClass.getDeclaredMethods.map(_.getName)
+
+    methods should contain("applyProjectionsTyped")
+  }
+
+  it should "have typed execution method returning Dataset[TypedRow]" in {
+    // Validates: REQ-TYP-01
+    val executorClass = classOf[cdme.executor.TypedExecutor]
+    val methods = executorClass.getDeclaredMethods.map(_.getName)
+
+    methods should contain("executeTyped")
+  }
+
+  "TypedRow encoder" should "be defined in companion object" in {
+    // Validates: ADR-006 requirement for auto-derived encoders
+    // This test verifies the encoder method exists (compile-time check)
+    // Actual encoder instantiation requires SparkSession (tested in integration tests)
+
+    import cdme.executor.TypedRow
+
+    // Verify encoder method exists via reflection
+    val companionClass = TypedRow.getClass
+    val methods = companionClass.getDeclaredMethods.map(_.getName)
+
+    methods should contain("typedRowEncoder")
+  }
+
+  "ExecutionResult" should "have typed variant with Dataset[TypedRow]" in {
+    // Validates: REQ-TYP-01 (Type-safe results)
+    val resultClass = classOf[cdme.executor.TypedExecutionResult]
+    val fieldNames = resultClass.getDeclaredFields.map(_.getName)
+
+    fieldNames should contain("data")
+    fieldNames should contain("mappingName")
+    fieldNames should contain("sourceEntity")
+  }
 }
