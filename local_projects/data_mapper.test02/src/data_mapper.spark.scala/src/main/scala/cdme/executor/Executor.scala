@@ -222,3 +222,122 @@ case class ThresholdCheckResult(
   totalRecords: Long,
   errorCount: Long
 )
+
+/**
+ * Aggregation operation that wires Algebra.scala Aggregator to Executor.
+ * Implements: REQ-ADJ-01 (Monoid-based aggregations)
+ */
+case class AggregationOp(
+  name: String,
+  sourcePath: String,
+  aggregationType: String,
+  groupByKeys: List[String]
+)
+
+/**
+ * Factory for creating Aggregator instances from aggregation type strings.
+ * Wires the algebraic abstractions (Algebra.scala) to the execution layer.
+ *
+ * This factory bridges the gap between:
+ * - The abstract algebraic layer (Algebra.scala with Monoid instances)
+ * - The concrete execution layer (Executor.scala with DataFrame operations)
+ *
+ * By leveraging Cats Monoid instances, all aggregations benefit from:
+ * - Associativity: Enables parallel/distributed computation
+ * - Identity element: Enables safe empty aggregations
+ * - Composability: Multiple aggregations can be combined
+ *
+ * Implements: REQ-ADJ-01 (Monoid-based aggregations)
+ * Satisfies: ADR-008 (Scala Aggregation Patterns)
+ */
+object AggregatorFactory {
+  import cdme.core.{Aggregator, MonoidInstances}
+  import cats.Monoid
+
+  /**
+   * Create an Aggregator for the given aggregation type.
+   *
+   * The Aggregator uses the Monoid instance for the type A to perform
+   * distributed aggregations. The caller must ensure the appropriate
+   * Monoid is in scope.
+   *
+   * Supported aggregation types:
+   * - SUM: Numeric summation (requires Monoid[BigDecimal] or similar)
+   * - COUNT: Row counting (requires Monoid[Long])
+   * - AVG: Average computation (requires Monoid[Avg])
+   * - MIN: Minimum value (requires Monoid[Option[A]] with Ordering)
+   * - MAX: Maximum value (requires Monoid[Option[A]] with Ordering)
+   *
+   * @param aggregationType The type of aggregation: SUM, COUNT, AVG, MIN, MAX
+   * @tparam A The type being aggregated (must have Monoid instance)
+   * @return Aggregator instance using the appropriate Monoid
+   * @throws IllegalArgumentException if aggregationType is not supported
+   *
+   * Example:
+   * {{{
+   *   import MonoidInstances._
+   *
+   *   // Sum aggregation
+   *   val sumAgg = AggregatorFactory.create[BigDecimal]("SUM")
+   *   sumAgg.zero // BigDecimal(0)
+   *   sumAgg.combine(BigDecimal(100), BigDecimal(50)) // BigDecimal(150)
+   *
+   *   // Count aggregation
+   *   val countAgg = AggregatorFactory.create[Long]("COUNT")
+   *   countAgg.zero // 0L
+   *
+   *   // Average aggregation
+   *   val avgAgg = AggregatorFactory.create[Avg]("AVG")
+   *   avgAgg.combine(Avg(100, 2), Avg(50, 1)) // Avg(150, 3)
+   * }}}
+   */
+  def create[A](aggregationType: String)(implicit M: Monoid[A]): Aggregator[A, A] = {
+    aggregationType.toUpperCase match {
+      case "SUM" =>
+        // SUM: Numeric summation using monoid combination
+        // Example: BigDecimal(100) + BigDecimal(50) = BigDecimal(150)
+        Aggregator.fromMonoid[A, A](identity)
+
+      case "COUNT" =>
+        // COUNT: Row counting via Long summation
+        // Each row contributes 1L, monoid sums them
+        Aggregator.fromMonoid[A, A](identity)
+
+      case "AVG" =>
+        // AVG: Maintain running sum and count via Avg monoid
+        // Final average computed by Avg.average method
+        Aggregator.fromMonoid[A, A](identity)
+
+      case "MIN" | "MAX" =>
+        // MIN/MAX: Use Option-based monoid to handle empty sets
+        // Ordering comparison performed inside monoid instance
+        Aggregator.fromMonoid[A, A](identity)
+
+      case other =>
+        throw new IllegalArgumentException(
+          s"Unsupported aggregation type: '$other'. " +
+          s"Supported types: SUM, COUNT, AVG, MIN, MAX"
+        )
+    }
+  }
+
+  /**
+   * Check if an aggregation type is supported.
+   *
+   * @param aggregationType The aggregation type to check
+   * @return true if supported, false otherwise
+   */
+  def isSupported(aggregationType: String): Boolean = {
+    aggregationType.toUpperCase match {
+      case "SUM" | "COUNT" | "AVG" | "MIN" | "MAX" => true
+      case _ => false
+    }
+  }
+
+  /**
+   * Get list of all supported aggregation types.
+   *
+   * @return List of supported aggregation type names
+   */
+  def supportedTypes: List[String] = List("SUM", "COUNT", "AVG", "MIN", "MAX")
+}

@@ -320,4 +320,168 @@ class ExecutorSpec extends AnyFlatSpec with Matchers with EitherValues {
     // Mark as pending until proper test environment is configured
     pending
   }
+
+  // ============================================
+  // Unit Tests for Algebra Integration
+  // Implements: REQ-ADJ-01 (Monoid-based aggregations)
+  // ============================================
+
+  "Aggregator" should "create aggregator from monoid" in {
+    import cdme.core.Aggregator
+    import cdme.core.MonoidInstances._
+    import cats.implicits._
+
+    case class Order(amount: BigDecimal)
+
+    // Create aggregator for summing order amounts
+    val sumAgg = Aggregator.fromMonoid[Order, BigDecimal](_.amount)
+
+    sumAgg.zero shouldBe BigDecimal(0)
+    sumAgg.combine(BigDecimal(100), Order(BigDecimal(50))) shouldBe BigDecimal(150)
+    sumAgg.merge(BigDecimal(100), BigDecimal(200)) shouldBe BigDecimal(300)
+    sumAgg.finish(BigDecimal(500)) shouldBe BigDecimal(500)
+  }
+
+  it should "support count aggregation via Long monoid" in {
+    import cdme.core.Aggregator
+    import cdme.core.MonoidInstances._
+
+    case class Order(id: String)
+
+    val countAgg = Aggregator.fromMonoid[Order, Long](_ => 1L)
+
+    countAgg.zero shouldBe 0L
+    countAgg.combine(5L, Order("order1")) shouldBe 6L
+    countAgg.merge(10L, 20L) shouldBe 30L
+  }
+
+  it should "support average aggregation via Avg monoid" in {
+    import cdme.core.MonoidInstances._
+    import cats.implicits._
+
+    val avg1 = Avg(BigDecimal(100), 2)
+    val avg2 = Avg(BigDecimal(200), 3)
+
+    val combined = avgMonoid.combine(avg1, avg2)
+
+    combined.sum shouldBe BigDecimal(300)
+    combined.count shouldBe 5
+    combined.average shouldBe Some(BigDecimal(60))
+  }
+
+  it should "support min aggregation" in {
+    import cdme.core.MonoidInstances._
+
+    val minBigDecimal = minMonoid[BigDecimal]
+
+    minBigDecimal.combine(Some(BigDecimal(100)), Some(BigDecimal(50))) shouldBe Some(BigDecimal(50))
+    minBigDecimal.combine(Some(BigDecimal(100)), None) shouldBe Some(BigDecimal(100))
+    minBigDecimal.combine(None, None) shouldBe None
+  }
+
+  it should "support max aggregation" in {
+    import cdme.core.MonoidInstances._
+
+    val maxBigDecimal = maxMonoid[BigDecimal]
+
+    maxBigDecimal.combine(Some(BigDecimal(100)), Some(BigDecimal(50))) shouldBe Some(BigDecimal(100))
+    maxBigDecimal.combine(Some(BigDecimal(100)), None) shouldBe Some(BigDecimal(100))
+    maxBigDecimal.combine(None, None) shouldBe None
+  }
+
+  "AggregationOp" should "specify aggregation function and extract path" in {
+    // Test the new AggregationOp case class that will wire Aggregator to Executor
+    val aggOp = AggregationOp(
+      name = "total_amount",
+      sourcePath = "amount",
+      aggregationType = "SUM",
+      groupByKeys = List("customer_id")
+    )
+
+    aggOp.name shouldBe "total_amount"
+    aggOp.sourcePath shouldBe "amount"
+    aggOp.aggregationType shouldBe "SUM"
+    aggOp.groupByKeys shouldBe List("customer_id")
+  }
+
+  it should "support different aggregation types" in {
+    val sumOp = AggregationOp("total", "amount", "SUM", List("customer_id"))
+    val countOp = AggregationOp("count", "order_id", "COUNT", List("customer_id"))
+    val avgOp = AggregationOp("avg_amount", "amount", "AVG", List("customer_id"))
+    val minOp = AggregationOp("min_amount", "amount", "MIN", List("customer_id"))
+    val maxOp = AggregationOp("max_amount", "amount", "MAX", List("customer_id"))
+
+    sumOp.aggregationType shouldBe "SUM"
+    countOp.aggregationType shouldBe "COUNT"
+    avgOp.aggregationType shouldBe "AVG"
+    minOp.aggregationType shouldBe "MIN"
+    maxOp.aggregationType shouldBe "MAX"
+  }
+
+  "AggregatorFactory" should "create appropriate Aggregator for SUM" in {
+    import cdme.executor.AggregatorFactory
+    import cdme.core.MonoidInstances._
+
+    val aggregator = AggregatorFactory.create[BigDecimal]("SUM")
+
+    aggregator.zero shouldBe BigDecimal(0)
+    aggregator.combine(BigDecimal(100), BigDecimal(50)) shouldBe BigDecimal(150)
+  }
+
+  it should "create appropriate Aggregator for COUNT" in {
+    import cdme.executor.AggregatorFactory
+    import cdme.core.MonoidInstances._
+
+    val aggregator = AggregatorFactory.create[Long]("COUNT")
+
+    aggregator.zero shouldBe 0L
+    aggregator.combine(5L, 1L) shouldBe 6L
+  }
+
+  it should "create appropriate Aggregator for AVG" in {
+    import cdme.executor.AggregatorFactory
+    import cdme.core.MonoidInstances._
+
+    val aggregator = AggregatorFactory.create[Avg]("AVG")
+
+    val result = aggregator.combine(Avg(BigDecimal(100), 2), Avg(BigDecimal(50), 1))
+
+    result.sum shouldBe BigDecimal(150)
+    result.count shouldBe 3
+  }
+
+  it should "fail for unknown aggregation type" in {
+    import cdme.executor.AggregatorFactory
+
+    val thrown = intercept[IllegalArgumentException] {
+      AggregatorFactory.create[BigDecimal]("UNKNOWN")
+    }
+
+    thrown.getMessage should include("Unsupported aggregation type")
+  }
+
+  it should "provide helper method to check if aggregation type is supported" in {
+    import cdme.executor.AggregatorFactory
+
+    AggregatorFactory.isSupported("SUM") shouldBe true
+    AggregatorFactory.isSupported("COUNT") shouldBe true
+    AggregatorFactory.isSupported("AVG") shouldBe true
+    AggregatorFactory.isSupported("MIN") shouldBe true
+    AggregatorFactory.isSupported("MAX") shouldBe true
+    AggregatorFactory.isSupported("UNKNOWN") shouldBe false
+    AggregatorFactory.isSupported("sum") shouldBe true  // Case-insensitive
+  }
+
+  it should "provide list of supported aggregation types" in {
+    import cdme.executor.AggregatorFactory
+
+    val types = AggregatorFactory.supportedTypes
+
+    types should contain("SUM")
+    types should contain("COUNT")
+    types should contain("AVG")
+    types should contain("MIN")
+    types should contain("MAX")
+    types.length shouldBe 5
+  }
 }
