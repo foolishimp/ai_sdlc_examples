@@ -1,0 +1,28 @@
+{% if convergence %}
+<table>
+    <thead>
+        <tr>
+            <th>Edge</th>
+            <th>Status</th>
+            <th>Iterations</th>
+            <th>Evaluators</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in convergence %}
+        <tr>
+            <td>{{ c.edge }}</td>
+            <td>
+                <span class="badge badge-{{ 'converged' if c.status == 'converged' else ('in-progress' if c.status == 'in_progress' else 'not-started') }}">
+                    {{ c.status }}
+                </span>
+            </td>
+            <td>{{ c.iterations }}</td>
+            <td>{{ c.evaluator_summary }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No convergence data.</em></p>
+{% endif %}

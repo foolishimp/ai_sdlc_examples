@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} — Genesis Monitor{% endblock %}
+
+{% block content %}
+<hgroup>
+    <h1>{{ project.name }}</h1>
+    <p>{{ project.path }}</p>
+</hgroup>
+
+<div class="grid-2">
+    <!-- Asset Graph -->
+    <div class="card">
+        <h3>Asset Graph</h3>
+        <div id="graph-section"
+             hx-get="/fragments/project/{{ project.project_id }}/graph"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML">
+            {% include "fragments/_graph.html" %}
+        </div>
+    </div>
+
+    <!-- Convergence -->
+    <div class="card">
+        <h3>Edge Convergence</h3>
+        <div id="convergence-section"
+             hx-get="/fragments/project/{{ project.project_id }}/convergence"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML">
+            {% include "fragments/_convergence.html" %}
+        </div>
+    </div>
+</div>
+
+<!-- Edge Status Table -->
+<div class="card">
+    <h3>Edge Status</h3>
+    <div id="edges-section"
+         hx-get="/fragments/project/{{ project.project_id }}/edges"
+         hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+         hx-swap="innerHTML">
+        {% include "fragments/_edges.html" %}
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Feature Vectors -->
+    <div class="card">
+        <h3>Feature Vectors</h3>
+        <div id="features-section"
+             hx-get="/fragments/project/{{ project.project_id }}/features"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML">
+            {% include "fragments/_features.html" %}
+        </div>
+    </div>
+
+    <!-- Gantt -->
+    <div class="card">
+        <h3>Timeline</h3>
+        <div id="gantt-section"
+             hx-get="/fragments/project/{{ project.project_id }}/gantt"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML">
+            {% include "fragments/_gantt.html" %}
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- TELEM Signals -->
+    <div class="card">
+        <h3>TELEM Signals</h3>
+        <div id="telem-section"
+             hx-get="/fragments/project/{{ project.project_id }}/telem"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML">
+            {% include "fragments/_telem.html" %}
+        </div>
+    </div>
+
+    <!-- Recent Events -->
+    <div class="card">
+        <h3>Recent Events</h3>
+        <div id="events-section"
+             hx-get="/fragments/project/{{ project.project_id }}/events"
+             hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+             hx-swap="innerHTML"
+             class="event-feed">
+            {% include "fragments/_events.html" %}
+        </div>
+    </div>
+</div>
+{% endblock %}

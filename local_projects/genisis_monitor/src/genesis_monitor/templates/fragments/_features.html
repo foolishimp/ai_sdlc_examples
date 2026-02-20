@@ -1,0 +1,32 @@
+{% if features %}
+{% for f in features %}
+<details>
+    <summary>
+        <strong>{{ f.feature_id }}</strong> — {{ f.title }}
+        <span class="badge badge-{{ 'converged' if f.status == 'converged' else ('in-progress' if f.status == 'in_progress' else 'not-started') }}">
+            {{ f.status }}
+        </span>
+    </summary>
+    {% if f.trajectory %}
+    <table>
+        <thead>
+            <tr><th>Edge</th><th>Status</th><th>Iterations</th></tr>
+        </thead>
+        <tbody>
+            {% for edge_name, traj in f.trajectory.items() %}
+            <tr>
+                <td>{{ edge_name }}</td>
+                <td><span class="status-{{ traj.status }}">{{ traj.status }}</span></td>
+                <td>{{ traj.iteration }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p><em>No trajectory data.</em></p>
+    {% endif %}
+</details>
+{% endfor %}
+{% else %}
+<p><em>No feature vectors found.</em></p>
+{% endif %}

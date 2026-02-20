@@ -1,0 +1,28 @@
+{% if convergence %}
+<table>
+    <thead>
+        <tr>
+            <th>Edge</th>
+            <th>Status</th>
+            <th>Iterations</th>
+            <th>Evaluators</th>
+            <th>Findings</th>
+            <th>Gaps</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in convergence %}
+        <tr>
+            <td>{{ c.edge }}</td>
+            <td><span class="status-{{ c.status }}">{{ c.status }}</span></td>
+            <td>{{ c.iterations }}</td>
+            <td>{{ c.evaluator_summary }}</td>
+            <td>{{ c.source_findings }}</td>
+            <td>{{ c.process_gaps }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No edge data available.</em></p>
+{% endif %}

@@ -1,0 +1,24 @@
+{% if signals %}
+<table>
+    <thead>
+        <tr>
+            <th>Signal</th>
+            {% if aggregate is defined and aggregate %}<th>Project</th>{% endif %}
+            <th>Category</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in signals %}
+        <tr>
+            <td><code>{{ s.signal_id }}</code></td>
+            {% if aggregate is defined and aggregate %}<td>{{ s.project_id or '—' }}</td>{% endif %}
+            <td>{{ s.category }}</td>
+            <td>{{ s.description }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No TELEM signals.</em></p>
+{% endif %}

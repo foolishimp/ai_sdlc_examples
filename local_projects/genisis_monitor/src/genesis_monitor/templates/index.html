@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Genesis Monitor — Projects{% endblock %}
+
+{% block content %}
+<h1>Monitored Projects</h1>
+
+<div id="project-list"
+     hx-get="/fragments/project-list"
+     hx-trigger="sse:project_updated, sse:project_added, sse:project_removed"
+     hx-swap="innerHTML">
+    {% include "fragments/_project_list.html" %}
+</div>
+{% endblock %}

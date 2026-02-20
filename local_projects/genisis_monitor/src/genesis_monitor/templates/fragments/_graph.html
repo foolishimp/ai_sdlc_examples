@@ -1,0 +1,11 @@
+{% if mermaid_code is defined and mermaid_code %}
+<pre class="mermaid">
+{{ mermaid_code }}
+</pre>
+{% elif graph_mermaid is defined and graph_mermaid %}
+<pre class="mermaid">
+{{ graph_mermaid }}
+</pre>
+{% else %}
+<p><em>No graph topology data available.</em></p>
+{% endif %}

@@ -1,0 +1,48 @@
+{% if projects %}
+<table>
+    <thead>
+        <tr>
+            <th>Project</th>
+            <th>Phase</th>
+            <th>Convergence</th>
+            <th>Last Updated</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in projects %}
+        <tr>
+            <td><a href="/project/{{ p.project_id }}">{{ p.name }}</a></td>
+            <td>
+                {% if p.status and p.status.phase_summary %}
+                    {% set active_phases = p.status.phase_summary | selectattr("status", "equalto", "in_progress") | list %}
+                    {% if active_phases %}
+                        <span class="badge badge-in-progress">{{ active_phases[0].edge }}</span>
+                    {% else %}
+                        {% set done = p.status.phase_summary | selectattr("status", "equalto", "converged") | list %}
+                        {% if done %}
+                            <span class="badge badge-converged">{{ done[-1].edge }}</span>
+                        {% else %}
+                            <span class="badge badge-not-started">not started</span>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <span class="badge badge-not-started">no status</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if p.status and p.status.phase_summary %}
+                    {% set total = p.status.phase_summary | length %}
+                    {% set done = p.status.phase_summary | selectattr("status", "equalto", "converged") | list | length %}
+                    {{ done }}/{{ total }} edges
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ p.last_updated.strftime('%Y-%m-%d %H:%M') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No projects found. Check your <code>--watch-dir</code> configuration.</p>
+{% endif %}

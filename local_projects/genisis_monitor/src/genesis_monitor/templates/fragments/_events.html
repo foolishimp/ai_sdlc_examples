@@ -1,0 +1,18 @@
+{% if events %}
+<table>
+    <thead>
+        <tr><th>Time</th><th>Type</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+        {% for e in events | reverse %}
+        <tr>
+            <td><small>{{ e.timestamp.strftime('%H:%M:%S') }}</small></td>
+            <td><code>{{ e.event_type }}</code></td>
+            <td><small>{{ e.data | string | truncate(80) }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No events recorded.</em></p>
+{% endif %}
