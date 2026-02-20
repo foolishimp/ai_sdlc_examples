@@ -1,0 +1,114 @@
+# Edge Parameterisation: Intent → Requirements
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "intent→requirements"
+pattern: requirements_extraction
+description: |
+  Transform raw intent into structured, testable requirements
+  with unique immutable keys. Each requirement must trace back
+  to the originating intent.
+
+# REQ key format
+key_format:
+  pattern: "REQ-{TYPE}-{DOMAIN}-{SEQ}"
+  types:
+    F: "Functional"
+    NFR: "Non-Functional"
+    DATA: "Data Quality"
+    BR: "Business Rule"
+  domain: "2-5 uppercase letters describing the domain (e.g., AUTH, PERF, SEC)"
+  sequence: "3-digit zero-padded number (001, 002, ...)"
+  immutability: "Once assigned, a REQ key never changes. Evolution produces new versions."
+  versioned_form: "REQ-{TYPE}-{DOMAIN}-{SEQ}.MAJOR.MINOR.PATCH (tracks statement changes)"
+
+# Requirement template
+template: |
+  ### REQ-{TYPE}-{DOMAIN}-{SEQ}: {Title}
+
+  **Priority**: Critical | High | Medium
+  **Type**: {Functional | Non-Functional | Data Quality | Business Rule}
+
+  **Description**: {What the system must do or constrain}
+
+  **Acceptance Criteria**:
+  - {Testable criterion 1}
+  - {Testable criterion 2}
+
+  **Traces To**: INT-{SEQ}
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "all_intent_aspects_covered"
+    type: agent
+    criterion: "Every problem/opportunity described in the intent has at least one requirement."
+    source: default
+    required: true
+
+  - name: "requirements_are_testable"
+    type: agent
+    criterion: "Each requirement can be verified by a deterministic test or human observation."
+    source: default
+    required: true
+
+  - name: "acceptance_criteria_specific"
+    type: agent
+    criterion: "Each requirement has specific, measurable acceptance criteria (not vague)."
+    source: default
+    required: true
+
+  - name: "no_ambiguous_language"
+    type: agent
+    criterion: |
+      Requirements must not use: "should", "might", "could", "appropriate", "reasonable".
+      Use "must" or "shall" for mandatory behaviour. Use "may" for explicitly optional behaviour.
+    source: default
+    required: true
+
+  - name: "correct_key_format"
+    type: agent
+    criterion: "All REQ keys follow REQ-{TYPE}-{DOMAIN}-{SEQ} format with valid types (F, NFR, DATA, BR)."
+    source: default
+    required: true
+
+  - name: "traces_to_intent"
+    type: agent
+    criterion: "Every requirement has 'Traces To: INT-*' linking to the originating intent."
+    source: default
+    required: true
+
+  - name: "no_compound_requirements"
+    type: agent
+    criterion: "No requirement uses 'and' to combine multiple behaviours — split into separate keys."
+    source: default
+    required: true
+
+  - name: "human_validates_completeness"
+    type: human
+    criterion: "Human confirms all expected requirements are present (nothing missing, nothing out of scope)."
+    source: default
+    required: true
+
+  - name: "human_validates_priorities"
+    type: human
+    criterion: "Human confirms priority assignments (critical/high/medium) are correct."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When extracting requirements from intent:
+  1. Build effective checklist (edge defaults + any project overrides)
+  2. Read the intent document — understand the problem, not just features
+  3. Generate F → NFR → DATA → BR requirements in that order
+  4. Each requirement: independently testable, no ambiguity, traces to intent
+  5. Present to human for completeness and priority validation
+  6. Report checklist: "N of M required checks pass"
+  7. Keys are immutable once assigned

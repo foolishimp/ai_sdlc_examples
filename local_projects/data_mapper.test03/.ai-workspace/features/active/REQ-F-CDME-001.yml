@@ -1,0 +1,72 @@
+# Feature Vector: CDME Core Engine
+# Created by iterate agent on intent->requirements edge
+# Updated with timestamps for Gantt chart support
+
+---
+
+feature: "REQ-F-CDME-001"
+title: "Categorical Data Mapping & Computation Engine"
+intent: "INT-001"
+vector_type: feature
+profile: standard
+status: in_progress
+convergence_type: ""
+created: "2026-02-20T10:00:00Z"
+updated: "2026-02-20T12:30:00Z"
+
+time_box:
+  enabled: false
+
+parent:
+  feature: ""
+  edge: ""
+  reason: ""
+
+children: []
+
+trajectory:
+  requirements:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T10:00:00Z"
+    converged_at: "2026-02-20T10:30:00Z"
+    context_hash: "sha256:pending"
+    asset: "docs/specification/REQUIREMENTS.md"
+    evaluator_results:
+      agent: pass
+      human: pass
+
+  design:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T10:30:00Z"
+    converged_at: "2026-02-20T11:30:00Z"
+    context_hash: "sha256:pending"
+    asset: "docs/design/cdme/CDME_DESIGN.md"
+    evaluator_results:
+      agent: pass
+      human: pass
+
+  code:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T11:30:00Z"
+    converged_at: "2026-02-20T12:30:00Z"
+    context_hash: "sha256:pending"
+    asset: "src/main/scala/cdme/"
+    evaluator_results:
+      agent: pass
+      deterministic: skipped
+
+  unit_tests:
+    status: pending
+
+  uat_tests:
+    status: pending
+
+dependencies: []
+
+constraints:
+  acceptance_criteria: []
+  threshold_overrides: {}
+  additional_checks: []

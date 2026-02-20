@@ -1,0 +1,87 @@
+# Edge Parameterisation: Design → Code
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "design→code"
+pattern: code_generation
+description: |
+  Generate implementation code from design specifications.
+  Code must be tagged with REQ keys and follow project standards.
+  Note: this edge typically feeds into the TDD co-evolution edge
+  (code↔unit_tests) for the actual implementation cycle.
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "code_matches_design"
+    type: agent
+    criterion: "Code implements the component interfaces and structure defined in the design document."
+    source: default
+    required: true
+
+  - name: "req_tags_present"
+    type: agent
+    criterion: "Every code file has '# Implements: REQ-*' tags for the requirements it satisfies."
+    source: default
+    required: true
+
+  - name: "follows_coding_standards"
+    type: agent
+    criterion: "Code follows $standards.style_guide, $standards.docstrings, and $standards.type_hints policies."
+    source: default
+    required: true
+
+  - name: "compiles_or_parses"
+    type: deterministic
+    criterion: "Code compiles/parses without syntax errors"
+    source: default
+    required: true
+    command: "$tools.syntax_checker.command $tools.syntax_checker.args"
+    pass_criterion: "$tools.syntax_checker.pass_criterion"
+
+  - name: "lint_passes"
+    type: deterministic
+    criterion: "Linter reports zero violations"
+    source: default
+    required: true
+    command: "$tools.linter.command $tools.linter.args"
+    pass_criterion: "$tools.linter.pass_criterion"
+
+  - name: "type_check"
+    type: deterministic
+    criterion: "Type checker reports zero errors"
+    source: default
+    required: "$tools.type_checker.required"
+    command: "$tools.type_checker.command $tools.type_checker.args"
+    pass_criterion: "$tools.type_checker.pass_criterion"
+
+# ─── Traceability checks (composed from traceability.yml Layer 1) ────
+  - name: "req_tags_in_code"
+    type: deterministic
+    criterion: "Every production code file has at least one 'Implements: REQ-*' tag"
+    source: traceability
+    required: true
+    # See traceability.yml for command — resolve at runtime
+
+  - name: "req_tags_valid_format"
+    type: deterministic
+    criterion: "All REQ tags follow format: (Implements|Validates): REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    source: traceability
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When generating code from design:
+  1. Build effective checklist (edge defaults + project constraints)
+  2. Implement component interfaces from the design
+  3. Tag every file with # Implements: REQ-*
+  4. Follow coding standards from project_constraints.yml
+  5. Start minimal — TDD edge will drive detailed implementation
+  6. Run traceability Layer 1 checks (REQ tag coverage) — see traceability.yml
+  7. Report checklist: "N of M required checks pass"

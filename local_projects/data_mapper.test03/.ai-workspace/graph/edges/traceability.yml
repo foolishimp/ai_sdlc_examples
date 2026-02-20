@@ -1,0 +1,187 @@
+# Edge Parameterisation: Traceability Validation
+# Implements: REQ-TOOL-005 (Test Gap Analysis), REQ-TOOL-009 (Feature Views)
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §6.3, §6.4
+#
+# Cross-cutting concern: validates REQ key coverage across the asset graph.
+# These checks are COMPOSED INTO other edge checklists or run standalone
+# via /aisdlc-gaps. They formalise the grep-based feature views into
+# evaluator checks with pass/fail criteria.
+
+---
+
+pattern: traceability_validation
+description: |
+  Three-layer traceability validation:
+  1. REQ tag coverage — code has Implements tags, tests have Validates tags
+  2. Test gap analysis — every REQ key has at least one test
+  3. Telemetry gap analysis — every REQ key in code has telemetry tagging
+
+  Each layer runs independently. Layer 1 is required on all code-producing
+  edges. Layers 2 and 3 are required on later edges (TDD, CI/CD, telemetry).
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST — Layer 1: REQ Tag Coverage
+# ═══════════════════════════════════════════════════════════════════════
+# Validates that code and tests carry the correct REQ key tags.
+# Deterministic: grep-based, no LLM judgment needed.
+
+layer_1_req_coverage:
+
+  - name: "req_tags_in_code"
+    type: deterministic
+    criterion: "Every production code file has at least one 'Implements: REQ-*' tag"
+    command: |
+      # Find code files without Implements tags
+      # Returns exit 0 if all files tagged, exit 1 if any missing
+      MISSING=$(find src/ lib/ app/ -name '*.py' -o -name '*.js' -o -name '*.ts' -o -name '*.go' -o -name '*.rs' -o -name '*.java' 2>/dev/null | while read f; do
+        grep -q 'Implements: REQ-' "$f" || echo "$f"
+      done)
+      if [ -z "$MISSING" ]; then echo "PASS: All code files tagged"; exit 0
+      else echo "FAIL: Untagged files:"; echo "$MISSING"; exit 1; fi
+    pass_criterion: "exit code 0 — all code files have Implements: REQ-* tags"
+    source: default
+    required: true
+
+  - name: "req_tags_in_tests"
+    type: deterministic
+    criterion: "Every test file has at least one 'Validates: REQ-*' tag"
+    command: |
+      MISSING=$(find tests/ test/ spec/ -name 'test_*.py' -o -name '*.test.js' -o -name '*.test.ts' -o -name '*_test.go' -o -name '*_test.rs' 2>/dev/null | while read f; do
+        grep -q 'Validates: REQ-' "$f" || echo "$f"
+      done)
+      if [ -z "$MISSING" ]; then echo "PASS: All test files tagged"; exit 0
+      else echo "FAIL: Untagged test files:"; echo "$MISSING"; exit 1; fi
+    pass_criterion: "exit code 0 — all test files have Validates: REQ-* tags"
+    source: default
+    required: true
+
+  - name: "req_tags_valid_format"
+    type: deterministic
+    criterion: "All REQ tags follow the format: (Implements|Validates): REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    command: |
+      # Extract all tags, check format
+      INVALID=$(grep -rn 'Implements:\|Validates:' src/ lib/ app/ tests/ test/ spec/ 2>/dev/null | grep -v 'REQ-[A-Z]\+-[A-Z]\+-[0-9]\+' || true)
+      if [ -z "$INVALID" ]; then echo "PASS: All tags valid format"; exit 0
+      else echo "FAIL: Invalid tag format:"; echo "$INVALID"; exit 1; fi
+    pass_criterion: "exit code 0 — all tags match REQ-{TYPE}-{DOMAIN}-{SEQ} format"
+    source: default
+    required: true
+
+  - name: "req_keys_exist_in_spec"
+    type: agent
+    criterion: |
+      Every REQ key referenced in code (Implements: REQ-*) and tests
+      (Validates: REQ-*) exists in the requirements specification.
+      No orphan references — every tagged key must trace back to a
+      defined requirement.
+    source: default
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST — Layer 2: Test Gap Analysis
+# ═══════════════════════════════════════════════════════════════════════
+# For each REQ key in the spec, verify test coverage exists.
+
+layer_2_test_gaps:
+
+  - name: "all_req_keys_have_tests"
+    type: agent
+    criterion: |
+      For every REQ key defined in the requirements specification:
+      1. Grep tests/ for "Validates: {REQ_KEY}"
+      2. If no test references the key, it's a TEST GAP
+
+      Report:
+      - Total REQ keys in spec
+      - REQ keys with test coverage
+      - REQ keys WITHOUT test coverage (the gaps)
+      - Gap percentage
+
+      PASS: All REQ keys have at least one test. FAIL: Any gap exists.
+    source: default
+    required: true
+
+  - name: "test_to_req_ratio"
+    type: agent
+    criterion: |
+      Each functional REQ key (REQ-F-*) should have at least 2 tests:
+      one happy-path, one error-path. Report the ratio.
+      Advisory: low ratio suggests shallow coverage.
+    source: default
+    required: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST — Layer 3: Telemetry Gap Analysis
+# ═══════════════════════════════════════════════════════════════════════
+# For each REQ key in code, verify telemetry tagging exists.
+# Reference: REQ-LIFE-004 (Feature Lineage in Telemetry)
+
+layer_3_telemetry_gaps:
+
+  - name: "code_req_keys_have_telemetry"
+    type: agent
+    criterion: |
+      For every REQ key tagged in code (Implements: REQ-*):
+      1. Search for telemetry references: req="REQ-*" or req='REQ-*' in
+         logging, metrics, and observability code
+      2. If no telemetry references the key, it's a TELEMETRY GAP
+
+      Report:
+      - Total REQ keys in code
+      - REQ keys with telemetry tagging
+      - REQ keys WITHOUT telemetry (the gaps)
+      - Gap percentage
+
+      PASS: All REQ keys in code have telemetry. FAIL: Any gap exists.
+
+      Note: This check is advisory in early phases (design→code, TDD)
+      and becomes required at CI/CD and telemetry edges.
+    source: default
+    required: false
+
+  - name: "telemetry_tag_format"
+    type: deterministic
+    criterion: "All telemetry REQ tags use structured format: req=\"REQ-*\" or req='REQ-*'"
+    command: |
+      # Find telemetry references with incorrect format
+      REFS=$(grep -rn 'req=' src/ lib/ app/ 2>/dev/null || true)
+      if [ -z "$REFS" ]; then echo "SKIP: No telemetry tags found yet"; exit 0; fi
+      INVALID=$(echo "$REFS" | grep -v "req=['\"]REQ-[A-Z]\+-[A-Z]\+-[0-9]\+" || true)
+      if [ -z "$INVALID" ]; then echo "PASS: All telemetry tags valid format"; exit 0
+      else echo "FAIL: Invalid telemetry tag format:"; echo "$INVALID"; exit 1; fi
+    pass_criterion: "exit code 0 — all telemetry tags use req=\"REQ-*\" format"
+    source: default
+    required: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# COMPOSITION RULES
+# ═══════════════════════════════════════════════════════════════════════
+# These checks compose INTO other edge checklists:
+#
+# Edge                  | Layer 1 | Layer 2 | Layer 3
+# ─────────────────────────────────────────────────────
+# design→code           | required| —       | —
+# code↔unit_tests       | required| required| advisory
+# code→cicd             | required| required| required
+# telemetry→intent      | —       | —       | required
+#
+# The /aisdlc-gaps command runs all 3 layers as a standalone report.
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When running traceability validation:
+  1. Collect the REQ key inventory from docs/specification/ (the spec is the source of truth)
+  2. Grep code for "Implements: REQ-*" tags — build code coverage map
+  3. Grep tests for "Validates: REQ-*" tags — build test coverage map
+  4. Grep telemetry/logging for req="REQ-*" — build telemetry coverage map
+  5. Cross-reference: spec → code → tests → telemetry
+  6. Report gaps at each layer
+  7. Suggest /aisdlc-iterate commands to close each gap
+
+  The grep patterns are:
+  - Code:      grep -rn "Implements: REQ-" src/ lib/ app/
+  - Tests:     grep -rn "Validates: REQ-" tests/ test/ spec/
+  - Telemetry: grep -rn 'req="REQ-\|req=.REQ-' src/ lib/ app/
+  - Spec:      grep -n "REQ-" docs/specification/

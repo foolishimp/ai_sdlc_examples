@@ -1,0 +1,107 @@
+# Edge Parameterisation: Requirements → Design
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "requirements→design"
+pattern: technical_design
+description: |
+  Transform structured requirements into technical solution architecture.
+  Includes component design, data models, API specs, and ADRs.
+  Every component must trace to the requirements it satisfies.
+
+# Design outputs
+outputs:
+  components:
+    description: "System components with responsibilities and interfaces"
+    required: true
+    template: |
+      ### Component: {Name}
+
+      **Implements**: {list of REQ-* keys}
+
+      **Responsibilities**:
+      - {What this component does}
+
+      **Interfaces**:
+      - {How other components interact with it}
+
+      **Dependencies**:
+      - {What this component needs}
+
+  data_models:
+    description: "Data structures and schemas"
+    required_if: "requirements include DATA type"
+
+  api_specs:
+    description: "API endpoints and contracts"
+    required_if: "requirements imply external interfaces"
+
+  adrs:
+    description: "Architecture Decision Records for significant choices"
+    required: true
+    edge_config: "adr.yml"  # Uses the ADR edge parameterisation
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "all_reqs_traced_to_components"
+    type: agent
+    criterion: "Every REQ key in scope maps to at least one component's 'Implements' list."
+    source: default
+    required: true
+
+  - name: "no_orphan_components"
+    type: agent
+    criterion: "Every component implements at least one REQ key (no unjustified components)."
+    source: default
+    required: true
+
+  - name: "interfaces_consistent"
+    type: agent
+    criterion: "Component interfaces are consistent — no mismatched types, missing endpoints, or undefined contracts."
+    source: default
+    required: true
+
+  - name: "dependencies_sound"
+    type: agent
+    criterion: |
+      Dependencies are acyclic or justified.
+      Dependencies respect $architecture.dependency_rules from project_constraints.
+      No $architecture.forbidden patterns present.
+    source: default
+    required: true
+
+  - name: "adrs_for_decisions"
+    type: agent
+    criterion: "ADRs exist for every significant decision (technology choice, pattern selection, trade-off)."
+    source: default
+    required: true
+
+  - name: "data_models_present"
+    type: agent
+    criterion: "Data models defined for all DATA-type requirements in scope."
+    source: default
+    required: true
+
+  - name: "human_approves_architecture"
+    type: human
+    criterion: "Human confirms architecture is sound and trade-offs are acceptable."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When designing from requirements:
+  1. Build effective checklist (edge defaults + project architecture constraints)
+  2. Group requirements into components with clear interfaces
+  3. Create ADRs for decisions with alternatives
+  4. Include traceability table: component → REQ-* keys
+  5. Consider NFR requirements when choosing architecture
+  6. Present to human for review
+  7. Report checklist: "N of M required checks pass"

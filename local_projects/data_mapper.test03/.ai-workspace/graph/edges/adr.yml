@@ -1,0 +1,124 @@
+# Edge Parameterisation: Requirements → Design (ADR Generation)
+# Implements: REQ-EDGE-003
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §4.1
+
+---
+
+edge: "requirements→design"
+pattern: adr_generation
+description: |
+  Architecture Decision Records capture significant design decisions.
+  Generated at the Requirements → Design edge, ADRs document
+  context, decision, rationale, alternatives, and consequences.
+
+# ADR template
+template: |
+  # ADR-{SEQ}: {Decision Title}
+
+  **Status**: Proposed | Accepted | Superseded
+  **Date**: {date}
+  **Requirements**: {list of REQ-* addressed}
+
+  ## Context
+
+  {What forces are at play? What problem or decision are we facing?}
+
+  ## Decision
+
+  We will {describe the decision}.
+
+  ## Rationale
+
+  {Why this decision over alternatives?}
+
+  ### Alternatives Considered
+
+  1. **{Alternative 1}**: {description} — rejected because {reason}
+  2. **{Alternative 2}**: {description} — rejected because {reason}
+
+  ## Consequences
+
+  ### Positive
+  - {Positive consequence}
+
+  ### Negative
+  - {Negative consequence}
+
+  ### Mitigations
+  - {How negative consequences are addressed}
+
+  ## References
+
+  - {Related requirements}
+  - {Related design documents}
+
+# What triggers ADR creation
+triggers:
+  - significant_technology_choice
+  - architectural_pattern_selection
+  - trade_off_between_requirements
+  - deviation_from_standard_practice
+  - irreversible_or_costly_to_change
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "has_context"
+    type: agent
+    criterion: "ADR has a Context section explaining the forces at play and the problem being addressed."
+    source: default
+    required: true
+
+  - name: "has_decision"
+    type: agent
+    criterion: "ADR has a clear Decision section stating what was decided in 'We will...' form."
+    source: default
+    required: true
+
+  - name: "has_rationale"
+    type: agent
+    criterion: "ADR has a Rationale section explaining WHY this decision over alternatives."
+    source: default
+    required: true
+
+  - name: "alternatives_documented"
+    type: agent
+    criterion: "At least 2 alternatives are documented with reasons for rejection."
+    source: default
+    required: true
+
+  - name: "traces_to_requirements"
+    type: agent
+    criterion: "ADR references specific REQ-* keys it addresses in the Requirements field."
+    source: default
+    required: true
+
+  - name: "consequences_documented"
+    type: agent
+    criterion: "ADR documents positive consequences, negative consequences, and mitigations."
+    source: default
+    required: true
+
+  - name: "human_approves_decision"
+    type: human
+    criterion: "Human confirms the architectural decision is sound and the rationale is convincing."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When generating ADRs at this edge:
+  1. Build effective checklist (edge defaults + any project overrides)
+  2. Review all requirements being addressed
+  3. Identify decisions where there are meaningful alternatives
+  4. Document WHY, not just WHAT — rationale is the most important section
+  5. Always list at least 2 alternatives with reasons for rejection
+  6. Be honest about negative consequences and how to mitigate them
+  7. Link every ADR to the specific REQ-* keys it addresses
+  8. Present to human for approval — they own the architectural decision
+  9. Report checklist: "N of M required checks pass"
