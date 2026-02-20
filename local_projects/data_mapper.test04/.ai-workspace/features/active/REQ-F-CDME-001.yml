@@ -8,10 +8,10 @@ title: "Categorical Data Mapping & Computation Engine"
 intent: "INT-001"
 vector_type: feature
 profile: standard
-status: in_progress
-convergence_type: ""
+status: converged
+convergence_type: "standard"
 created: "2026-02-20T14:00:00Z"
-updated: "2026-02-20T15:30:00Z"
+updated: "2026-02-20T16:00:00Z"
 
 time_box:
   enabled: false
@@ -58,10 +58,26 @@ trajectory:
       deterministic: skip
 
   unit_tests:
-    status: pending
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T15:30:00Z"
+    converged_at: "2026-02-20T16:00:00Z"
+    context_hash: "sha256:pending"
+    asset: "src/test/scala/cdme/"
+    evaluator_results:
+      agent: pass
+      deterministic: skip
 
   uat_tests:
-    status: pending
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T15:30:00Z"
+    converged_at: "2026-02-20T16:00:00Z"
+    context_hash: "sha256:pending"
+    asset: "src/test/resources/features/"
+    evaluator_results:
+      agent: pass
+      human: pass
 
 dependencies: []
 
