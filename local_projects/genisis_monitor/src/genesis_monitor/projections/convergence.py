@@ -11,9 +11,15 @@ def build_convergence_table(status: StatusReport | None) -> list[EdgeConvergence
 
     rows: list[EdgeConvergence] = []
     for entry in status.phase_summary:
-        total = len(entry.evaluator_results)
-        passed = sum(1 for v in entry.evaluator_results.values() if v.lower() == "pass")
-        summary = f"{passed}/{total} pass" if total else "no evaluators"
+        # If evaluator_results has a "summary" key, use the raw summary string
+        if "summary" in entry.evaluator_results:
+            summary = entry.evaluator_results["summary"]
+        elif entry.evaluator_results:
+            total = len(entry.evaluator_results)
+            passed = sum(1 for v in entry.evaluator_results.values() if v.lower() == "pass")
+            summary = f"{passed}/{total} pass"
+        else:
+            summary = "no evaluators"
 
         rows.append(EdgeConvergence(
             edge=entry.edge,

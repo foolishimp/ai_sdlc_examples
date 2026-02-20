@@ -41,32 +41,71 @@ def parse_status(workspace: Path) -> StatusReport | None:
 
 
 def _parse_phase_table(text: str) -> list[PhaseEntry]:
-    """Extract the phase completion summary table."""
+    """Extract the phase completion summary table.
+
+    Handles format: | Edge | Status | Iterations | Evaluators | Source Findings | Process Gaps |
+    """
     entries: list[PhaseEntry] = []
 
-    # Find table rows that look like phase entries
-    # Pattern: | edge | status | iterations | ... |
-    table_pattern = re.compile(
-        r"^\|\s*(.+?)\s*\|\s*(converged|in.progress|not.started|complete|pending|done)\s*\|"
-        r"\s*(\d+)\s*\|",
-        re.MULTILINE | re.IGNORECASE,
-    )
+    # Match full table rows with 4+ pipe-separated columns
+    row_pattern = re.compile(r"^\|(.+)\|$", re.MULTILINE)
 
-    for m in table_pattern.finditer(text):
-        edge = m.group(1).strip()
-        # Skip header rows
-        if edge.startswith("-") or edge.lower() in ("edge", "phase", "stage"):
+    for m in row_pattern.finditer(text):
+        cells = [c.strip() for c in m.group(1).split("|")]
+        if len(cells) < 3:
             continue
 
-        status_raw = m.group(2).strip().lower()
+        edge = cells[0]
+        # Skip header, separator, and totals rows
+        if (edge.startswith("-") or edge.startswith("*")
+                or edge.lower() in ("edge", "phase", "stage", "")
+                or set(edge) <= {"-", " ", ":"}):
+            continue
+
+        status_raw = cells[1].strip().lower().strip("*")
+        if status_raw not in ("converged", "in_progress", "in progress", "not_started",
+                              "not started", "complete", "done", "pending", "active"):
+            continue
+
         status = "converged" if status_raw in ("converged", "complete", "done") else (
-            "in_progress" if "progress" in status_raw else "not_started"
+            "in_progress" if "progress" in status_raw or status_raw == "active" else "not_started"
         )
+
+        try:
+            iterations = int(cells[2].strip().strip("*"))
+        except (ValueError, IndexError):
+            iterations = 0
+
+        # Evaluators column (index 3) — store as summary string
+        evaluator_results: dict[str, str] = {}
+        if len(cells) > 3:
+            eval_text = cells[3].strip()
+            if eval_text and eval_text != "-":
+                evaluator_results["summary"] = eval_text
+
+        # Source findings (index 4)
+        source_findings = 0
+        if len(cells) > 4:
+            try:
+                source_findings = int(cells[4].strip().strip("*"))
+            except ValueError:
+                pass
+
+        # Process gaps (index 5)
+        process_gaps = 0
+        if len(cells) > 5:
+            try:
+                process_gaps = int(cells[5].strip().strip("*"))
+            except ValueError:
+                pass
 
         entries.append(PhaseEntry(
             edge=edge,
             status=status,
-            iterations=int(m.group(3)),
+            iterations=iterations,
+            evaluator_results=evaluator_results,
+            source_findings=source_findings,
+            process_gaps=process_gaps,
         ))
 
     return entries

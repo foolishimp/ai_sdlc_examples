@@ -49,6 +49,9 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         convergence = build_convergence_table(project.status)
         gantt = build_gantt_mermaid(project.status)
 
+        signals = project.status.telem_signals if project.status else []
+        events = project.events[-50:]
+
         return request.app.state.templates.TemplateResponse(
             "project.html",
             {
@@ -57,6 +60,9 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                 "graph_mermaid": graph_mermaid,
                 "convergence": convergence,
                 "gantt": gantt,
+                "features": project.features,
+                "signals": signals,
+                "events": events,
             },
         )
 

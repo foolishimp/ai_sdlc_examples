@@ -1,6 +1,6 @@
 {% if gantt %}
 <pre class="mermaid">
-{{ gantt }}
+{{ gantt | safe }}
 </pre>
 {% else %}
 <p><em>No timeline data available.</em></p>

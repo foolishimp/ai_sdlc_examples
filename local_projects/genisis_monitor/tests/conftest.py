@@ -22,11 +22,11 @@ def tmp_workspace(tmp_path: Path) -> Path:
 
 ## Phase Completion Summary
 
-| Edge | Status | Iterations | Agent | Human | Deterministic | Source Findings | Process Gaps |
-|------|--------|------------|-------|-------|---------------|----------------|-------------|
-| intent→requirements | converged | 1 | pass | skip | pass | 3 | 0 |
-| requirements→design | converged | 1 | pass | pass | skip | 2 | 1 |
-| design→code | in_progress | 2 | pass | skip | fail | 1 | 0 |
+| Edge | Status | Iterations | Evaluators | Source Findings | Process Gaps |
+|------|--------|------------|------------|-----------------|-------------|
+| intent→requirements | converged | 1 | 13/13 (11a+2h) | 3 | 0 |
+| requirements→design | converged | 1 | 14/14 (12a+2h) | 2 | 1 |
+| design→code | in_progress | 2 | 5/8 (3 skipped) | 1 | 0 |
 
 ```mermaid
 gantt
