@@ -1,0 +1,113 @@
+# AI SDLC — Evaluator Defaults
+# Version: 2.1.0
+# Reference: AISDLC_IMPLEMENTATION_REQUIREMENTS.md REQ-EVAL-001, REQ-EVAL-002, REQ-EVAL-003
+#
+# Defines the three evaluator types and their default behaviour.
+# Edge parameterisations can override these defaults.
+
+---
+
+evaluator_types:
+
+  human:
+    type: human
+    description: "Human judgment — approval, rejection, or refinement guidance"
+    mechanism: |
+      Present the current asset candidate to the user.
+      Ask for explicit approval, rejection, or refinement instructions.
+      Record the human's decision and any feedback in iteration history.
+    convergence: "User explicitly approves the asset"
+    accountability: |
+      AI assists, human decides. The human evaluator is the authority
+      on all edges where human_required is true. The iterate agent
+      NEVER auto-approves on behalf of the human.
+
+  agent:
+    type: agent
+    description: "LLM-based assessment — coherence, completeness, gap analysis"
+    mechanism: |
+      Assess the current asset candidate against:
+      - Source asset coherence (does it faithfully represent the source?)
+      - Completeness (are all acceptance criteria addressed?)
+      - Consistency (does it align with Context[]?)
+      - Gap analysis (what's missing or inconsistent?)
+    convergence: "No gaps detected, all criteria met, agent confirms quality"
+    delta_report: |
+      When delta > 0, provide specific, actionable feedback:
+      - What is missing
+      - What is inconsistent
+      - What needs refinement
+      - Suggested next action
+
+  deterministic:
+    type: deterministic
+    description: "Automated checks — tests, schemas, linters, format validators"
+    mechanism: |
+      Run or invoke automated validation:
+      - Compilation/parsing
+      - Test execution (unit, integration, BDD)
+      - Schema validation
+      - Lint/style checks
+      - REQ key tag presence and format
+    convergence: "All checks pass"
+    result_format: |
+      Binary: pass/fail for each check.
+      On failure, report:
+      - Which check failed
+      - The specific error
+      - Remediation guidance
+
+---
+
+# ═══════════════════════════════════════════════════════════════════════
+# CHECKLIST FORMAT
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Edge configs define evaluator checks as structured checklist entries.
+# Each check is ONE evaluable condition. The iterate agent counts pass/fail
+# and reports "N of M required checks pass" with details on failures.
+#
+# Check entry schema:
+#
+#   - name: string               # unique identifier for this check
+#     type: enum                  # agent | deterministic | human
+#     criterion: string           # what "pass" means (readable by the LLM)
+#     source: enum                # default | project | feature
+#     required: bool              # true = blocks convergence, false = advisory
+#     command: string             # (deterministic only) shell command to run
+#     pass_criterion: string      # (deterministic only) how to interpret result
+#
+# $variable references resolve from project_constraints.yml:
+#   $tools.{name}.{field}    → project tools configuration
+#   $thresholds.{key}        → project numeric thresholds
+#   $standards.{key}         → project qualitative standards
+#   $architecture.{key}      → project architecture constraints
+#
+# Composition rules:
+#   1. Edge checklist defines default checks
+#   2. $variables resolve from project_constraints.yml
+#   3. Feature threshold_overrides apply on top
+#   4. Feature acceptance_criteria append to checklist
+#   5. Feature additional_checks append to checklist
+#   6. required=true at any layer stays true (most restrictive wins)
+#   7. Unresolved $variables → check SKIPPED with warning
+#
+# Delta = count of failing required checks
+# Convergence = delta == 0
+
+---
+
+# Convergence composition rules
+convergence_rules:
+  # All evaluators on an edge must pass for convergence
+  composition: "all_must_pass"
+
+  # Order matters: run evaluators in the order specified in edge config
+  # Typically: agent first (cheapest), then deterministic, then human (most expensive)
+  ordering: "as_specified_in_edge_config"
+
+  # If any evaluator fails, report the failure and suggest the next iteration
+  on_failure: "report_delta_and_iterate"
+
+  # Human evaluator is always last when present (reviews agent + deterministic results)
+  human_always_last: true

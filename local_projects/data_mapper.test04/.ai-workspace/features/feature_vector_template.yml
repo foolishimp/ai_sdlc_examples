@@ -1,0 +1,169 @@
+# Feature Vector Template
+# Scaffolded by /aisdlc-iterate on first iteration for a feature
+# Reference: FEATURE_VECTORS.md, AI_SDLC_ASSET_GRAPH_MODEL.md §6
+#
+# Each feature vector tracks one REQ-F-* key's trajectory through the graph.
+# The constraints section binds feature-specific acceptance criteria to
+# evaluator checks, composing ON TOP of project_constraints.yml.
+
+---
+
+feature: "REQ-F-{DOMAIN}-{SEQ}"
+title: "{feature title}"
+intent: "INT-{SEQ}"
+vector_type: feature                  # feature | discovery | spike | poc | hotfix
+profile: standard                    # projection profile: full | standard | poc | spike | hotfix | minimal
+status: pending                       # pending | in_progress | converged | blocked | time_box_expired
+convergence_type: ""                  # standard | question_answered | time_box_expired
+created: "{timestamp}"
+updated: "{timestamp}"
+
+# ═══════════════════════════════════════════════════════════════════════
+# TIME BOX (optional — for spike, poc, discovery, hotfix vectors)
+# ═══════════════════════════════════════════════════════════════════════
+# Set by /aisdlc-spawn or manually. Profile defaults apply if not set.
+
+time_box:
+  enabled: false
+  # duration: "1 week"                # calendar time
+  # started: ""                       # ISO timestamp when iteration began
+  # check_in: daily                   # intermediate evaluation cadence
+  # on_expiry: fold_back              # fold_back | escalate | accept_best_effort
+
+# ═══════════════════════════════════════════════════════════════════════
+# PARENT / CHILD RELATIONSHIPS (spawning & fold-back)
+# ═══════════════════════════════════════════════════════════════════════
+
+parent:
+  feature: ""                         # parent feature vector ID (empty if root)
+  edge: ""                            # edge where spawn was triggered
+  reason: ""                          # why this child was spawned
+
+children: []
+  # - feature: "REQ-F-SPIKE-001"
+  #   vector_type: spike
+  #   status: pending                 # pending | converged | time_box_expired
+  #   fold_back_status: pending       # pending | folded_back
+  #   fold_back_payload: ""           # path to fold-back results
+
+# ═══════════════════════════════════════════════════════════════════════
+# TRAJECTORY
+# ═══════════════════════════════════════════════════════════════════════
+# Asset states along this feature's path through the graph.
+# Updated by the iterate agent after each iteration.
+
+trajectory:
+  requirements:
+    status: pending                   # pending | iterating | converged
+    # iteration: 0
+    # started_at: ""                  # ISO timestamp — set on FIRST iteration (required for Gantt)
+    # converged_at: ""               # ISO timestamp — set on convergence (required for Gantt)
+    # context_hash: ""
+    # asset: ""                       # path to the asset file
+    # evaluator_results:
+    #   agent: pending
+    #   human: pending
+
+  design:
+    status: pending
+    # started_at: ""
+    # converged_at: ""
+
+  code:
+    status: pending
+    # started_at: ""
+    # converged_at: ""
+
+  unit_tests:
+    status: pending
+    # started_at: ""
+    # converged_at: ""
+
+  uat_tests:
+    status: pending
+    # started_at: ""
+    # converged_at: ""
+
+# ═══════════════════════════════════════════════════════════════════════
+# DEPENDENCIES
+# ═══════════════════════════════════════════════════════════════════════
+
+dependencies: []
+  # - feature: "REQ-F-DB-001"
+  #   asset: code
+  #   status: pending                 # pending | resolved | blocked
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONSTRAINTS (Feature-Specific)
+# ═══════════════════════════════════════════════════════════════════════
+# These compose ON TOP of project_constraints.yml.
+# Only specify what DIFFERS from project defaults.
+#
+# The iterate agent builds the effective checklist by:
+#   1. Loading edge checklist (from edge_params/{edge}.yml)
+#   2. Resolving $variables from project_constraints.yml
+#   3. Applying threshold_overrides from this section
+#   4. Appending acceptance_criteria from this section
+#   5. Appending additional_checks from this section
+#
+# Delta = count of failing required checks in the effective checklist.
+# Convergence = delta == 0.
+
+constraints:
+
+  # ─── Acceptance Criteria ──────────────────────────────────────────
+  # From the requirements document, bound to evaluator checks.
+  # Each criterion becomes a named check in the effective checklist.
+  #
+  # Fields:
+  #   id:          unique identifier (AC-{DOMAIN}-{SEQ})
+  #   description: human-readable description
+  #   evaluator:   agent | deterministic | human
+  #   check:       what "pass" means (readable by the LLM or runnable)
+  #   req:         the REQ key this criterion validates
+  #   required:    true (default) | false (advisory)
+
+  acceptance_criteria: []
+    # - id: "AC-AUTH-001"
+    #   description: "User can log in with valid email and password"
+    #   evaluator: deterministic
+    #   check: "test_user_login_valid_credentials passes"
+    #   req: "REQ-F-AUTH-001"
+    #   required: true
+    #
+    # - id: "AC-AUTH-002"
+    #   description: "Invalid credentials return error message"
+    #   evaluator: deterministic
+    #   check: "test_user_login_invalid_credentials passes"
+    #   req: "REQ-F-AUTH-001"
+    #   required: true
+    #
+    # - id: "AC-AUTH-003"
+    #   description: "Password is never stored in plaintext"
+    #   evaluator: agent
+    #   check: "No plaintext password storage in code or logs"
+    #   req: "REQ-NFR-SEC-001"
+    #   required: true
+    #
+    # - id: "AC-AUTH-004"
+    #   description: "Business stakeholder confirms login flow"
+    #   evaluator: human
+    #   check: "Human approves login UX flow"
+    #   req: "REQ-F-AUTH-001"
+    #   required: true
+
+  # ─── Threshold Overrides ──────────────────────────────────────────
+  # Override project_constraints.yml thresholds for this feature.
+  # Only specified keys override; unspecified inherit from project.
+
+  threshold_overrides: {}
+    # test_coverage_minimum: 0.95    # auth is security-critical, higher bar
+
+  # ─── Additional Checks ───────────────────────────────────────────
+  # Feature-specific checks beyond project defaults and acceptance criteria.
+
+  additional_checks: []
+    # - name: "no_secrets_in_code"
+    #   type: agent
+    #   criterion: "No API keys, passwords, or tokens hardcoded in source files"
+    #   required: true

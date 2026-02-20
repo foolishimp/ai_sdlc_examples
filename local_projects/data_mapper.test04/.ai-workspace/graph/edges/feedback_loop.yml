@@ -1,0 +1,143 @@
+# Edge Parameterisation: Telemetry → Intent (Feedback Loop)
+# Implements: REQ-LIFE-003, REQ-INTENT-003
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2.4
+
+---
+
+edge: "telemetry→intent"
+pattern: feedback_loop
+description: |
+  Close the lifecycle loop: runtime telemetry that deviates from
+  SLA bounds generates new intents that flow back into the graph.
+  This includes homeostasis monitoring and eco-intent generation.
+
+# Feedback sources
+sources:
+  runtime_deviation:
+    description: "Telemetry shows system behaviour outside constraint bounds"
+    trigger: "SLA violation, error rate spike, performance degradation"
+    intent_template: |
+      ## INT-{SEQ}: {Issue Summary}
+
+      **Source**: runtime_feedback
+      **Priority**: {derived from severity}
+      **Triggered By**: Telemetry alert — {alert description}
+      **Affected Requirements**: REQ-{keys from telemetry tags}
+      **Description**: {What deviated, how much, since when}
+
+  ecosystem_change:
+    description: "External ecosystem changes requiring adaptation"
+    trigger: "Dependency update, API deprecation, security advisory, regulation change"
+    intent_template: |
+      ## INT-{SEQ}: {Change Summary}
+
+      **Source**: ecosystem
+      **Priority**: {derived from impact assessment}
+      **Triggered By**: {ecosystem event}
+      **Affected Requirements**: {requirements impacted by the change}
+      **Description**: {What changed, what impact it has, what adaptation is needed}
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "telemetry_tagged_with_req_keys"
+    type: deterministic
+    criterion: "Telemetry data includes REQ-* key tags linking metrics to requirements."
+    command: "grep -r 'REQ-' telemetry/ monitoring/ || true"
+    pass_criterion: "REQ key references found in telemetry configuration"
+    source: default
+    required: true
+
+  - name: "deviation_quantified"
+    type: agent
+    criterion: |
+      The deviation from expected behaviour is quantified with:
+      - What metric deviated
+      - What the expected bound was
+      - What the actual value is
+      - Duration of the deviation
+    source: default
+    required: true
+
+  - name: "root_cause_identified"
+    type: agent
+    criterion: |
+      A root cause analysis traces the deviation back to:
+      - The specific code path or component
+      - The REQ keys governing that behaviour
+      - Whether this is a code bug, design gap, or requirement gap
+    source: default
+    required: true
+
+  - name: "affected_requirements_traced"
+    type: agent
+    criterion: "All REQ keys affected by the deviation are identified and listed."
+    source: default
+    required: true
+
+  - name: "priority_appropriate"
+    type: agent
+    criterion: |
+      The generated intent priority matches the severity:
+      - SLA violation → Critical
+      - Performance degradation → High
+      - Minor deviation → Medium
+      - Ecosystem advisory → derived from impact assessment
+    source: default
+    required: true
+
+  - name: "intent_well_formed"
+    type: agent
+    criterion: |
+      The generated intent follows the INT-{SEQ} template with:
+      source, priority, triggered_by, affected_requirements, description.
+    source: default
+    required: true
+
+  - name: "human_warrants_action"
+    type: human
+    criterion: "Human confirms the deviation warrants a new intent (not noise or transient)."
+    source: default
+    required: true
+
+  - name: "human_confirms_priority"
+    type: human
+    criterion: "Human confirms the priority assignment for the generated intent."
+    source: default
+    required: true
+
+  # ─── Traceability checks (composed from traceability.yml Layer 3) ──
+  - name: "code_req_keys_have_telemetry"
+    type: agent
+    criterion: |
+      Every REQ key in code (Implements: REQ-*) has corresponding
+      telemetry tagging (req="REQ-*"). Telemetry gaps mean features
+      running without observability — the feedback loop cannot detect
+      deviations for unmonitored features.
+    source: traceability
+    required: true
+
+  - name: "telemetry_tag_format"
+    type: deterministic
+    criterion: "All telemetry REQ tags use structured format: req=\"REQ-*\""
+    source: traceability
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When processing feedback from telemetry:
+  1. Build effective checklist (edge defaults + any project overrides)
+  2. Check which REQ keys are tagged on the telemetry data
+  3. Quantify the deviation (what bound was crossed, by how much)
+  4. Trace back to the requirements and design that produced the affected code
+  5. Draft a new intent (INT-*) capturing the issue
+  6. Present to human — they decide whether to create a new feature vector
+  7. For ecosystem changes: assess impact on existing requirements
+  8. Report checklist: "N of M required checks pass"
+  9. Note: This is Phase 2 functionality — in Phase 1, the graph topology
+     supports it but constructors/evaluators are manual

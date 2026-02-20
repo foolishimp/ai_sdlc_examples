@@ -1,0 +1,61 @@
+# Projection Profile: Minimal
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Smallest valid projection — 1 edge, 1 evaluator.
+# The "10-minute build" — intent → code with agent evaluator only.
+# Bottom element of the projection partial order.
+
+---
+
+profile: minimal
+description: "Smallest valid projection — 1 edge, 1 evaluator"
+version: "1.0.0"
+
+# Graph: any single edge (default: intent → code, collapsing intermediaries)
+graph:
+  include:
+    - "intent→requirements"     # minimal: just capture what to build
+    - "design→code"             # minimal: just build it
+  skip:
+    - "requirements→design"     # collapsed — design is inline
+    - "code↔unit_tests"         # no tests
+    - "design→test_cases"       # no test cases
+    - "design→uat_tests"        # no UAT
+    - "code→cicd"               # no deployment
+
+# Evaluators: at least 1 (agent only by default)
+evaluators:
+  default: [agent]
+  overrides: {}
+
+# Convergence: evaluator passes
+convergence:
+  rule: "all_required_checks_pass"
+  human_required_on_all_edges: false
+  threshold_strictness: minimal
+
+# Context: intent statement only
+context:
+  density: minimal
+  required_elements:
+    - project_constraints
+  optional_elements:
+    - graph_topology
+
+# Iteration budget
+iteration:
+  budget: time_boxed
+  time_box:
+    duration: "10 minutes"
+    check_in: none
+    on_expiry: accept_best_effort
+  escalation: none
+
+# Vector types permitted
+vector_types: [feature, discovery, spike, poc, hotfix]
+
+# Minimal-specific
+minimal:
+  production_quality: false      # not production-ready
+  promotable_assets: true        # CAN be promoted with additional iteration
+  guardrails: false              # no safety checks beyond basic evaluation

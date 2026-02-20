@@ -1,0 +1,137 @@
+# Feature Vector: CDME Core Engine
+# Created by iterate agent on intent→requirements edge
+
+---
+
+feature: "REQ-F-CDME-001"
+title: "Categorical Data Mapping & Computation Engine"
+intent: "INT-001"
+vector_type: feature
+profile: standard
+status: in_progress
+convergence_type: ""
+created: "2026-02-20T14:00:00Z"
+updated: "2026-02-20T15:30:00Z"
+
+time_box:
+  enabled: false
+
+parent:
+  feature: ""
+  edge: ""
+  reason: ""
+
+children: []
+
+trajectory:
+  requirements:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T14:00:00Z"
+    converged_at: "2026-02-20T14:30:00Z"
+    context_hash: "sha256:pending"
+    asset: "docs/specification/REQUIREMENTS.md"
+    evaluator_results:
+      agent: pass
+      human: pass
+
+  design:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T14:30:00Z"
+    converged_at: "2026-02-20T15:00:00Z"
+    context_hash: "sha256:pending"
+    asset: "docs/design/cdme/CDME_DESIGN.md"
+    evaluator_results:
+      agent: pass
+      human: pass
+
+  code:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-20T15:00:00Z"
+    converged_at: "2026-02-20T15:30:00Z"
+    context_hash: "sha256:pending"
+    asset: "src/main/scala/cdme/"
+    evaluator_results:
+      agent: pass
+      deterministic: skip
+
+  unit_tests:
+    status: pending
+
+  uat_tests:
+    status: pending
+
+dependencies: []
+
+constraints:
+  acceptance_criteria:
+    - id: "AC-CDME-001"
+      description: "LDM is represented as a category with identity and associativity laws"
+      evaluator: deterministic
+      check: "Category laws tests pass"
+      req: "REQ-F-LDM-001"
+      required: true
+    - id: "AC-CDME-002"
+      description: "Path validation catches missing morphisms, type mismatches, grain violations at definition time"
+      evaluator: deterministic
+      check: "Path validation rejection tests pass"
+      req: "REQ-F-LDM-003"
+      required: true
+    - id: "AC-CDME-003"
+      description: "Grain safety violations are rejected at definition time"
+      evaluator: deterministic
+      check: "Grain safety tests pass"
+      req: "REQ-F-TRV-002"
+      required: true
+    - id: "AC-CDME-004"
+      description: "Identical inputs + config produce bitwise identical outputs"
+      evaluator: deterministic
+      check: "Determinism property tests pass"
+      req: "REQ-F-TRV-006"
+      required: true
+    - id: "AC-CDME-005"
+      description: "Zero implicit type conversions; all conversions are named morphisms"
+      evaluator: agent
+      check: "No implicit conversions in codebase"
+      req: "REQ-F-TYP-003"
+      required: true
+    - id: "AC-CDME-006"
+      description: "All failures routed via Either monad; no silent record drops"
+      evaluator: deterministic
+      check: "Error routing tests pass"
+      req: "REQ-F-ERR-001"
+      required: true
+    - id: "AC-CDME-007"
+      description: "Every morphism implements Adjoint interface with containment laws"
+      evaluator: deterministic
+      check: "Adjoint law property tests pass"
+      req: "REQ-F-ADJ-001"
+      required: true
+    - id: "AC-CDME-008"
+      description: "|input| = |processed| + |filtered| + |errored| for every run"
+      evaluator: deterministic
+      check: "Accounting invariant tests pass"
+      req: "REQ-F-ACC-001"
+      required: true
+    - id: "AC-CDME-009"
+      description: "Every target value traces to source epoch, entity, and morphism path"
+      evaluator: deterministic
+      check: "Lineage tests pass"
+      req: "REQ-F-INT-005"
+      required: true
+    - id: "AC-CDME-010"
+      description: "AI-generated mappings pass identical validation as human mappings"
+      evaluator: deterministic
+      check: "AI assurance validation tests pass"
+      req: "REQ-F-AI-001"
+      required: true
+    - id: "AC-CDME-011"
+      description: "Zero silent data loss across all runs"
+      evaluator: deterministic
+      check: "No record drop tests pass"
+      req: "REQ-BR-ERR-001"
+      required: true
+  threshold_overrides: {}
+  additional_checks: []

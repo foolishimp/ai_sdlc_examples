@@ -1,0 +1,114 @@
+# Edge Parameterisation: Design → UAT Tests (BDD)
+# Implements: REQ-EDGE-002
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §4.1
+
+---
+
+edge: "design→uat_tests"
+pattern: bdd
+description: |
+  Behaviour-Driven Development scenarios generated from design specifications.
+  UAT tests use BUSINESS language only — no technical jargon.
+  These are the tests that business stakeholders validate.
+
+scenario_format: gherkin
+language_constraint: business
+description_constraint: |
+  Scenarios MUST be written in language a business stakeholder understands.
+  NO: "When the API returns 200 with JSON payload"
+  YES: "When the user successfully logs in"
+
+# Gherkin template
+template: |
+  Feature: {Feature Name}
+    # Validates: REQ-F-{DOMAIN}-{SEQ}
+
+    Background:
+      Given {common setup}
+
+    Scenario: {Scenario Name}
+      Given {precondition}
+      When {action}
+      Then {expected outcome}
+
+    Scenario Outline: {Parameterised Scenario}
+      Given {precondition with <param>}
+      When {action with <param>}
+      Then {expected outcome with <param>}
+
+      Examples:
+        | param | expected |
+        | value1 | result1 |
+        | value2 | result2 |
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "scenarios_cover_all_requirements"
+    type: agent
+    criterion: |
+      Every functional REQ key in scope has at least one Gherkin scenario.
+      Minimum 1 scenario per REQ-F-* key.
+    source: default
+    required: true
+
+  - name: "business_language_only"
+    type: agent
+    criterion: |
+      All scenarios use business language a non-technical stakeholder understands.
+      NO technical terms: API, HTTP, JSON, database, endpoint, query.
+      YES business terms: user, login, account, order, payment.
+    source: default
+    required: true
+
+  - name: "given_when_then_structure"
+    type: agent
+    criterion: |
+      Every scenario follows Given/When/Then structure.
+      Each step is clear and specific.
+      Scenario Outlines used for parameterised cases.
+    source: default
+    required: true
+
+  - name: "req_tags_present"
+    type: agent
+    criterion: "Every Feature block has a '# Validates: REQ-*' tag."
+    source: default
+    required: true
+
+  - name: "positive_and_negative_paths"
+    type: agent
+    criterion: |
+      For each REQ key, scenarios cover:
+      - At least one positive (happy) path
+      - At least one negative (error/rejection) path
+    source: default
+    required: true
+
+  - name: "human_approves_language"
+    type: human
+    criterion: "Business stakeholder confirms scenarios are in accessible language"
+    source: default
+    required: true
+
+  - name: "human_approves_coverage"
+    type: human
+    criterion: "Business stakeholder confirms all expected behaviours are covered"
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When generating BDD scenarios:
+  1. Build effective checklist (edge defaults + feature acceptance_criteria)
+  2. Read the design specifications for the feature
+  3. Identify all REQ-F-* keys in scope
+  4. For each, generate Gherkin scenarios in BUSINESS language only
+  5. Include positive, negative, and edge case paths
+  6. Present to human — they own language and coverage validation
+  7. Report checklist: "N of M required checks pass"

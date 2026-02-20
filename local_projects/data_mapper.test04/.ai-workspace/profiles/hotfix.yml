@@ -1,0 +1,68 @@
+# Projection Profile: Hotfix
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Emergency production fix — minimal process.
+# Minimal graph (incident→fix→verification), deterministic + human evaluators.
+# Always spawns a remediation feature vector.
+
+---
+
+profile: hotfix
+description: "Emergency production fix — minimal process"
+version: "1.0.0"
+
+# Graph: minimal — skip design, skip UAT, straight to code + tests
+graph:
+  include:
+    - "intent→requirements"     # incident description
+    - "design→code"             # fix implementation (design is inline)
+    - "code↔unit_tests"         # regression test for fix
+  skip:
+    - "requirements→design"     # no formal design phase
+    - "design→test_cases"       # no formal test cases
+    - "design→uat_tests"        # no formal UAT
+    - "code→cicd"               # manual deploy (or fast-track CI)
+
+# Evaluators: deterministic (tests pass) + human (production verified)
+evaluators:
+  default: [deterministic, human]
+  overrides:
+    "intent→requirements":
+      evaluators: [human]       # incident triage is human judgment
+    "code↔unit_tests":
+      evaluators: [deterministic]  # tests must pass, no human needed
+
+# Convergence: fix verified in production
+convergence:
+  rule: "all_required_checks_pass"
+  human_required_on_all_edges: false
+  threshold_strictness: standard
+  additional_condition: production_verified   # human confirms fix works in prod
+
+# Context: incident details + affected code
+context:
+  density: light
+  required_elements:
+    - project_constraints
+    - graph_topology
+  optional_elements:
+    - incident_details           # error logs, stack traces, reproduction steps
+    - affected_code              # files/functions involved
+
+# Iteration budget
+iteration:
+  budget: time_boxed
+  time_box:
+    duration: "4 hours"
+    check_in: hourly
+    on_expiry: escalate
+  escalation: human
+
+# Vector types permitted
+vector_types: [hotfix]
+
+# Hotfix-specific
+hotfix:
+  spawn_remediation: true        # ALWAYS spawns a follow-up feature vector
+  production_quality: true       # fix IS production code (unlike spike/poc)
+  rollback_plan_required: true   # must document how to roll back
