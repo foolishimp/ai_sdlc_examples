@@ -1,0 +1,30 @@
+asset_types:
+  intent:
+    description: Business intent and expected outcomes
+  requirements:
+    description: Functional and non-functional requirements (REQ keys)
+  design:
+    description: Technical design with ADRs and traceability
+  code:
+    description: Implementation source code
+  unit_tests:
+    description: Unit tests validating individual components
+  uat_tests:
+    description: Integration/acceptance tests validating full system
+
+transitions:
+  - source: intent
+    target: requirements
+    edge_type: intent_requirements
+  - source: requirements
+    target: design
+    edge_type: requirements_design
+  - source: design
+    target: code
+    edge_type: design_code
+  - source: code
+    target: unit_tests
+    edge_type: code_unit_tests
+  - source: unit_tests
+    target: uat_tests
+    edge_type: unit_tests_uat_tests

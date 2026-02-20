@@ -1,0 +1,40 @@
+project:
+  name: genesis-monitor
+  version: 0.1.0
+
+language:
+  primary: python
+  version: ">=3.11"
+
+tools:
+  test_runner:
+    command: pytest
+    args: ["tests/", "-v"]
+    pass_criterion: "exit 0"
+    required: true
+  linter:
+    command: ruff
+    args: ["check", "src/", "tests/"]
+    pass_criterion: "exit 0"
+    required: false
+
+thresholds:
+  test_coverage_minimum: "80%"
+
+standards:
+  type_hints: required
+  test_structure: AAA
+
+architecture:
+  patterns:
+    - parser-model-projection
+    - server-sent-events
+    - server-rendered-html
+  dependency_rules:
+    - parsers must not import server
+    - projections must not import server
+    - models must not import anything from genesis_monitor
+  forbidden_practices:
+    - writing to monitored workspace directories
+    - client-side state management
+    - JavaScript build tooling

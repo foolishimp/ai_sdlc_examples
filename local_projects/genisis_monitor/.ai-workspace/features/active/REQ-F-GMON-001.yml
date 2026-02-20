@@ -1,0 +1,88 @@
+feature: REQ-F-GMON-001
+title: Real-Time Methodology Dashboard
+intent: INT-GMON-001
+vector_type: feature
+profile: standard
+status: converged
+created: "2026-02-21T08:00:00Z"
+updated: "2026-02-21T10:00:00Z"
+
+trajectory:
+  requirements:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T08:10:00Z"
+    converged_at: "2026-02-21T08:20:00Z"
+    asset: docs/specification/REQUIREMENTS.md
+    evaluator_results:
+      agent_completeness: pass
+      agent_traceability: pass
+      agent_consistency: pass
+      agent_gap_detection: pass
+      agent_priority: pass
+      agent_acceptance_criteria: pass
+
+  design:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T08:20:00Z"
+    converged_at: "2026-02-21T08:35:00Z"
+    asset: docs/design/genesis_monitor/DESIGN.md
+    evaluator_results:
+      agent_architecture: pass
+      agent_component_design: pass
+      agent_api_contracts: pass
+      agent_traceability: pass
+      agent_adr_coverage: pass
+
+  code:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T08:35:00Z"
+    converged_at: "2026-02-21T09:15:00Z"
+    asset: src/genesis_monitor/
+    evaluator_results:
+      agent_completeness: pass
+      agent_traceability: pass
+      deterministic_import: pass
+      deterministic_install: pass
+
+  unit_tests:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T09:15:00Z"
+    converged_at: "2026-02-21T09:30:00Z"
+    asset: tests/
+    evaluator_results:
+      deterministic_pytest: pass
+      agent_coverage: pass
+
+  uat_tests:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T09:30:00Z"
+    converged_at: "2026-02-21T09:45:00Z"
+    asset: tests/test_server.py
+    evaluator_results:
+      deterministic_pytest: pass
+      agent_coverage: pass
+
+constraints:
+  - id: AC-GMON-001
+    description: Multi-project discovery via filesystem scanning
+    evaluator: deterministic
+    check: "pytest tests/test_scanner.py"
+    req: REQ-F-DISC-001
+    required: true
+  - id: AC-GMON-002
+    description: Real-time updates via SSE
+    evaluator: deterministic
+    check: "pytest tests/test_broadcaster.py"
+    req: REQ-F-STREAM-001
+    required: true
+  - id: AC-GMON-003
+    description: Read-only contract — never writes to monitored workspaces
+    evaluator: deterministic
+    check: "pytest tests/test_server.py::TestReadOnlyContract"
+    req: REQ-NFR-001
+    required: true
