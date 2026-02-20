@@ -1,0 +1,8 @@
+# AI SDLC Feature Vector Index
+version: "1.0.0"
+project: "data_mapper"
+
+active_features: []
+completed_features: []
+
+dependency_graph: {}

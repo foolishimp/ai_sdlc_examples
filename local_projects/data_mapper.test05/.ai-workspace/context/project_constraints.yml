@@ -1,0 +1,185 @@
+# Project Constraints — Context[] Element
+# Scaffolded by /aisdlc-init into .ai-workspace/context/project_constraints.yml
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §5 (Context as Constraint Surface)
+
+---
+
+project:
+  name: "data_mapper"
+  version: "0.1.0"
+
+# ═══════════════════════════════════════════════════════════════════════
+# LANGUAGE & RUNTIME
+# ═══════════════════════════════════════════════════════════════════════
+
+language:
+  primary: scala
+  version: "2.13.12"
+  secondary: []
+
+# ═══════════════════════════════════════════════════════════════════════
+# TOOLCHAIN
+# ═══════════════════════════════════════════════════════════════════════
+
+tools:
+  syntax_checker:
+    command: "sbt"
+    args: "compile"
+    pass_criterion: "exit code 0"
+
+  test_runner:
+    command: "sbt"
+    args: "test"
+    pass_criterion: "exit code 0"
+
+  coverage:
+    command: "sbt"
+    args: "coverageOn test coverageReport"
+    pass_criterion: "coverage percentage >= $thresholds.test_coverage_minimum"
+
+  linter:
+    command: "scalafmt"
+    args: "--check ."
+    pass_criterion: "exit code 0, zero violations"
+
+  formatter:
+    command: "scalafmt"
+    args: "."
+    pass_criterion: "exit code 0 (already formatted)"
+
+  type_checker:
+    command: "sbt"
+    args: "compile"
+    pass_criterion: "exit code 0, zero errors"
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# THRESHOLDS
+# ═══════════════════════════════════════════════════════════════════════
+
+thresholds:
+  test_coverage_minimum: 0.80
+  test_coverage_target: 1.00
+  critical_path_coverage: 1.00
+  max_function_complexity: 10
+  max_function_lines: 50
+  max_class_lines: 300
+  test_execution_timeout_seconds: 120
+
+# ═══════════════════════════════════════════════════════════════════════
+# STANDARDS
+# ═══════════════════════════════════════════════════════════════════════
+
+standards:
+  style_guide: "Scala Style Guide"
+  docstrings: required
+  type_hints: required            # Scala is statically typed — always present
+  test_structure: "AAA"
+
+  commit_message_format: |
+    {type}: {short summary}
+
+    {detailed description}
+
+    Implements: REQ-*
+
+  req_tag_format:
+    code: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    tests: "Validates: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    commits: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONSTRAINT DIMENSIONS (Spec §2.6.1, Layer 3 Project Binding)
+# ═══════════════════════════════════════════════════════════════════════
+
+constraint_dimensions:
+
+  ecosystem_compatibility:
+    language: "scala"
+    version: "2.13.12"
+    runtime: "Spark 3.5"
+    frameworks:
+      - name: "Apache Spark"
+        version: "3.5.0"
+        scope: "provided"
+      - name: "ScalaTest"
+        version: "3.2.17"
+      - name: "ScalaCheck"
+        version: "1.17.0"
+    compatibility_notes: "Spark 3.5.x only supports Scala 2.12/2.13, NOT Scala 3"
+
+  deployment_target:
+    platform: "docker-compose"
+    cloud_provider: "on-premise"
+    environment_tiers:
+      - dev
+      - test
+    notes: "Local development and testing; Spark standalone mode"
+
+  security_model:
+    authentication: "none"
+    authorisation: "rbac"
+    data_protection: "encryption-in-transit"
+    compliance:
+      - "BCBS 239"
+      - "FRTB"
+      - "GDPR"
+      - "EU AI Act"
+    notes: "RBAC for data access control; regulatory compliance is core requirement"
+
+  build_system:
+    tool: "sbt"
+    module_structure: "multi-module"
+    ci_integration: ""
+    notes: "sbt multi-module with dependency DAG across 8 sub-projects"
+
+  data_governance:
+    classification: "confidential"
+    retention_policy: "7 years"
+    lineage_required: true
+    compliance_frameworks:
+      - "BCBS 239"
+      - "GDPR"
+      - "CCPA"
+
+  performance_envelope:
+    latency_target: ""
+    throughput_target: "1M records/hour"
+    scaling_strategy: "horizontal"
+    resource_bounds: "Spark cluster sizing TBD"
+
+  observability:
+    logging: "structured-json"
+    metrics: ""
+    tracing: "opentelemetry"
+    req_key_tagging: true
+
+  error_handling:
+    strategy: "fail-fast"
+    error_types: "structured"
+    degradation: "fail-fast"
+    notes: "Errors are Objects in the Error Domain (INT-002 Axiom 10)"
+
+# ═══════════════════════════════════════════════════════════════════════
+# ARCHITECTURE CONSTRAINTS
+# ═══════════════════════════════════════════════════════════════════════
+
+architecture:
+  patterns:
+    - "Category Theory — schemas as categories, transforms as functors"
+    - "Hexagonal / ports-and-adapters for runtime bindings"
+    - "Compiler pattern — validate-then-execute"
+  dependency_rules:
+    - "cdme-model has zero external dependencies"
+    - "cdme-compiler depends on cdme-model only"
+    - "cdme-spark depends on cdme-runtime, never on cdme-compiler internals"
+  forbidden:
+    - "Global mutable state"
+    - "Circular imports between packages"
+    - "Direct Spark API usage in cdme-model or cdme-compiler"
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR OVERRIDES
+# ═══════════════════════════════════════════════════════════════════════
+
+evaluator_overrides: {}

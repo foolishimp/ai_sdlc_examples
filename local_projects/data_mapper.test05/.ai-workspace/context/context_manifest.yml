@@ -1,0 +1,9 @@
+# AI SDLC Context Manifest — Spec Reproducibility
+# Reference: REQ-INTENT-004
+version: "1.0.0"
+generated_at: "2026-02-20T12:00:00Z"
+algorithm: "sha256-canonical-v1"
+
+aggregate_hash: "pending"  # Computed on first /aisdlc-checkpoint
+
+entries: []  # Populated as context files are added

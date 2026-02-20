@@ -1,0 +1,258 @@
+# Edge Parameterisation: Intent → Requirements
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "intent→requirements"
+pattern: requirements_extraction
+description: |
+  Transform raw intent into structured, testable requirements
+  with unique immutable keys. Each requirement must trace back
+  to the originating intent.
+
+# REQ key format
+key_format:
+  pattern: "REQ-{TYPE}-{DOMAIN}-{SEQ}"
+  types:
+    F: "Functional"
+    NFR: "Non-Functional"
+    DATA: "Data Quality"
+    BR: "Business Rule"
+  domain: "2-5 uppercase letters describing the domain (e.g., AUTH, PERF, SEC)"
+  sequence: "3-digit zero-padded number (001, 002, ...)"
+  immutability: "Once assigned, a REQ key never changes. Evolution produces new versions."
+  versioned_form: "REQ-{TYPE}-{DOMAIN}-{SEQ}.MAJOR.MINOR.PATCH (tracks statement changes)"
+
+# Requirement template (per-requirement format)
+requirement_template: |
+  ### REQ-{TYPE}-{DOMAIN}-{SEQ}: {Title}
+
+  **Priority**: Critical | High | Medium
+  **Type**: {Functional | Non-Functional | Data Quality | Business Rule}
+
+  **Description**: {What the system must do or constrain}
+
+  **Acceptance Criteria**:
+  - {Testable criterion 1}
+  - {Testable criterion 2}
+
+  **Traces To**: INT-{SEQ}
+
+# Document structure template (overall document — not just individual REQs)
+document_structure:
+  required_sections:
+    - title: "Overview"
+      description: "System purpose, scope boundaries, and relationship to intent"
+    - title: "Terminology"
+      description: "Domain glossary — every domain-specific term defined precisely"
+    - title: "Functional Requirements"
+      description: "REQ-F-* keys with acceptance criteria"
+    - title: "Non-Functional Requirements"
+      description: "REQ-NFR-* keys (performance, security, reliability, etc.)"
+    - title: "Data Requirements"
+      description: "REQ-DATA-* keys (schemas, quality, validation)"
+    - title: "Business Rules"
+      description: "REQ-BR-* keys (domain constraints, policies)"
+    - title: "Success Criteria"
+      description: "How do we know the system works? Measurable outcomes tied to REQ keys"
+    - title: "Assumptions and Dependencies"
+      description: "What the system assumes about its environment. External dependencies."
+  recommended_sections:
+    - title: "Domain Model"
+      description: "Mermaid diagram(s) showing key entities and relationships"
+    - title: "Scope Exclusions"
+      description: "What is explicitly NOT in scope (prevents scope creep)"
+
+# ═══════════════════════════════════════════════════════════════════════
+# SOURCE ANALYSIS CHECKS (Backward — analyse the intent)
+# ═══════════════════════════════════════════════════════════════════════
+# These checks run BEFORE generation. They identify issues in the source
+# asset (the intent document) that could produce poor requirements.
+
+source_analysis:
+
+  - name: "intent_ambiguities_identified"
+    criterion: |
+      Read the intent document and identify every ambiguous statement —
+      terms with multiple interpretations, undefined domain concepts,
+      unstated assumptions, vague scope boundaries.
+      Record each as a SOURCE_AMBIGUITY with how you resolved it.
+    required: true
+
+  - name: "intent_gaps_identified"
+    criterion: |
+      Identify information the intent SHOULD contain but doesn't —
+      missing user types, unstated non-functional needs, implied but
+      unspecified integrations, missing success criteria.
+      Record each as a SOURCE_GAP with disposition.
+    required: true
+
+  - name: "intent_speculative_content_flagged"
+    criterion: |
+      Identify content in the intent that is research-oriented,
+      speculative, or exploratory (e.g., "investigate whether X is feasible").
+      These should spawn Discovery vectors, not become requirements.
+      Record each as SOURCE_UNDERSPEC with spawn_recommended disposition.
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST (Forward — evaluate the generated requirements)
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  # ─── Per-requirement quality ─────────────────────────────────────────
+
+  - name: "all_intent_aspects_covered"
+    type: agent
+    criterion: "Every problem/opportunity described in the intent has at least one requirement."
+    source: default
+    required: true
+
+  - name: "requirements_are_testable"
+    type: agent
+    criterion: "Each requirement can be verified by a deterministic test or human observation."
+    source: default
+    required: true
+
+  - name: "acceptance_criteria_specific"
+    type: agent
+    criterion: "Each requirement has specific, measurable acceptance criteria (not vague)."
+    source: default
+    required: true
+
+  - name: "no_ambiguous_language"
+    type: agent
+    criterion: |
+      Requirements must not use: "should", "might", "could", "appropriate", "reasonable".
+      Use "must" or "shall" for mandatory behaviour. Use "may" for explicitly optional behaviour.
+    source: default
+    required: true
+
+  - name: "correct_key_format"
+    type: agent
+    criterion: "All REQ keys follow REQ-{TYPE}-{DOMAIN}-{SEQ} format with valid types (F, NFR, DATA, BR)."
+    source: default
+    required: true
+
+  - name: "traces_to_intent"
+    type: agent
+    criterion: "Every requirement has 'Traces To: INT-*' linking to the originating intent."
+    source: default
+    required: true
+
+  - name: "no_compound_requirements"
+    type: agent
+    criterion: "No requirement uses 'and' to combine multiple behaviours — split into separate keys."
+    source: default
+    required: true
+
+  # ─── Document structure quality ──────────────────────────────────────
+
+  - name: "document_has_required_sections"
+    type: agent
+    criterion: |
+      The requirements document contains ALL required sections from document_structure:
+      Overview, Terminology, Functional Requirements, Non-Functional Requirements,
+      Data Requirements, Business Rules, Success Criteria, Assumptions and Dependencies.
+    source: default
+    required: true
+
+  - name: "terminology_defines_domain_terms"
+    type: agent
+    criterion: |
+      The Terminology section defines every domain-specific term used in the requirements.
+      No term should appear in a requirement without a precise definition in the glossary.
+    source: default
+    required: true
+
+  - name: "success_criteria_measurable"
+    type: agent
+    criterion: |
+      The Success Criteria section contains measurable, observable outcomes
+      tied to specific REQ keys. "The system works" is not a success criterion.
+      Each criterion must be falsifiable.
+    source: default
+    required: true
+
+  - name: "diagrams_present"
+    type: agent
+    criterion: |
+      The document includes at least one Mermaid diagram showing the domain model,
+      data flow, or system context. Diagrams clarify what prose alone cannot.
+    source: default
+    required: false
+
+  # ─── Feature vector binding ─────────────────────────────────────────
+
+  - name: "acceptance_criteria_bound_to_feature"
+    type: agent
+    criterion: |
+      The most critical REQ keys (all Critical priority, at least 3 High priority)
+      are bound as acceptance_criteria entries in the feature vector's
+      constraints.acceptance_criteria section. This ensures they become
+      evaluator checks on downstream edges.
+    source: default
+    required: true
+
+  # ─── Human validation ───────────────────────────────────────────────
+
+  - name: "human_validates_completeness"
+    type: human
+    criterion: "Human confirms all expected requirements are present (nothing missing, nothing out of scope)."
+    source: default
+    required: true
+
+  - name: "human_validates_priorities"
+    type: human
+    criterion: "Human confirms priority assignments (critical/high/medium) are correct."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONTEXT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+# What reference material the agent should load or request as Context[].
+
+context_guidance:
+  required:
+    - "The intent document (source asset)"
+    - "project_constraints.yml (for domain, language, architecture context)"
+  recommended:
+    - "Existing ADRs or architecture documents (if any)"
+    - "Domain reference material (standards, specifications, prior art)"
+    - "Examples of well-structured requirements documents in the same domain"
+  notes: |
+    The quality of requirements is bounded by the quality of context.
+    If the intent references a domain the agent doesn't understand well,
+    request domain reference material or recommend a Discovery spawn.
+
+# ═══════════════════════════════════════════════════════════════════════
+# AGENT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+agent_guidance: |
+  When extracting requirements from intent:
+
+  1. BUILD EFFECTIVE CHECKLIST (edge defaults + project overrides)
+  2. ANALYSE SOURCE (backward gap detection):
+     - Read the intent document thoroughly
+     - Identify ambiguities, gaps, underspecification
+     - Record all findings with classification and disposition
+     - If any findings are escalate_upstream or escalate_human, present before proceeding
+  3. GENERATE DOCUMENT following document_structure:
+     - Start with Overview and Terminology sections
+     - Generate F → NFR → DATA → BR requirements
+     - Each requirement: independently testable, no ambiguity, traces to intent
+     - Add Success Criteria section with measurable outcomes
+     - Add Assumptions and Dependencies section
+     - Include Mermaid diagram(s) for domain model
+  4. BIND ACCEPTANCE CRITERIA to feature vector
+  5. EVALUATE OUTPUT (forward gap detection) against checklist
+  6. EVALUATE PROCESS (inward gap detection) — what checks are missing?
+  7. Present to human for completeness and priority validation
+  8. Report: source findings, checklist results, process gaps
+  9. Keys are immutable once assigned

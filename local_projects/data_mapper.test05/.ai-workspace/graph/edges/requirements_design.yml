@@ -1,0 +1,313 @@
+# Edge Parameterisation: Requirements → Design
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "requirements→design"
+pattern: technical_design
+description: |
+  Transform structured requirements into technical solution architecture.
+  Includes component design, data models, API specs, and ADRs.
+  Every component must trace to the requirements it satisfies.
+
+# Design outputs
+outputs:
+  components:
+    description: "System components with responsibilities and interfaces"
+    required: true
+    template: |
+      ### Component: {Name}
+
+      **Implements**: {list of REQ-* keys}
+
+      **Responsibilities**:
+      - {What this component does}
+
+      **Interfaces**:
+      - {How other components interact with it}
+
+      **Dependencies**:
+      - {What this component needs}
+
+  data_models:
+    description: "Data structures and schemas"
+    required_if: "requirements include DATA type"
+
+  api_specs:
+    description: "API endpoints and contracts"
+    required_if: "requirements imply external interfaces"
+
+  adrs:
+    description: "Architecture Decision Records for significant choices"
+    required: true
+    edge_config: "adr.yml"
+
+# Document structure template
+document_structure:
+  required_sections:
+    - title: "Architecture Overview"
+      description: "High-level system architecture with Mermaid diagram"
+    - title: "Component Design"
+      description: "Each component with responsibilities, interfaces, dependencies, REQ traceability"
+    - title: "Data Model"
+      description: "Entity relationships, schemas, data flow with Mermaid diagram(s)"
+    - title: "Traceability Matrix"
+      description: "Table mapping every REQ key to implementing component(s)"
+    - title: "ADR Index"
+      description: "List of ADRs with links, showing what decisions were made and why"
+    - title: "Package/Module Structure"
+      description: "How code will be organized — packages, modules, layers"
+  recommended_sections:
+    - title: "Integration Points"
+      description: "External system interfaces, API contracts, protocol details"
+    - title: "Error Handling Strategy"
+      description: "How errors propagate, are categorized, and are reported"
+    - title: "Configuration Model"
+      description: "What is configurable, how configuration is loaded, defaults"
+
+# ═══════════════════════════════════════════════════════════════════════
+# SOURCE ANALYSIS CHECKS (Backward — analyse the requirements)
+# ═══════════════════════════════════════════════════════════════════════
+
+source_analysis:
+
+  - name: "requirements_ambiguities_identified"
+    criterion: |
+      Read the requirements document and identify every requirement that is
+      ambiguous from a DESIGN perspective — requirements that could be
+      satisfied by multiple incompatible architectures, unclear performance
+      targets, undefined error semantics.
+      Record each as SOURCE_AMBIGUITY.
+    required: true
+
+  - name: "requirements_gaps_for_design"
+    criterion: |
+      Identify information the requirements SHOULD contain for design but don't —
+      missing data schemas, unspecified concurrency models, implied but unstated
+      integration points, missing error handling requirements.
+      Record each as SOURCE_GAP.
+    required: true
+
+  - name: "requirements_conflicting"
+    criterion: |
+      Identify requirements that conflict with each other or with
+      project_constraints.yml (e.g., a performance requirement that
+      contradicts a chosen technology stack). Record as SOURCE_AMBIGUITY.
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST (Forward — evaluate the generated design)
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  # ─── Traceability ────────────────────────────────────────────────────
+
+  - name: "all_reqs_traced_to_components"
+    type: agent
+    criterion: "Every REQ key in scope maps to at least one component's 'Implements' list."
+    source: default
+    required: true
+
+  - name: "no_orphan_components"
+    type: agent
+    criterion: "Every component implements at least one REQ key (no unjustified components)."
+    source: default
+    required: true
+
+  # ─── Architecture quality ────────────────────────────────────────────
+
+  - name: "interfaces_consistent"
+    type: agent
+    criterion: "Component interfaces are consistent — no mismatched types, missing endpoints, or undefined contracts."
+    source: default
+    required: true
+
+  - name: "dependencies_sound"
+    type: agent
+    criterion: |
+      Dependencies are acyclic or justified.
+      Dependencies respect $architecture.dependency_rules from project_constraints.
+      No $architecture.forbidden patterns present.
+    source: default
+    required: true
+
+  - name: "data_models_present"
+    type: agent
+    criterion: "Data models defined for all DATA-type requirements in scope."
+    source: default
+    required: true
+
+  # ─── Constraint Dimensions (Spec §2.6.1) ────────────────────────────
+  #
+  # Each mandatory constraint dimension must be explicitly resolved via
+  # an ADR or design section. Values come from project_constraints.yml
+  # under constraint_dimensions:. Unresolved mandatory dimensions block
+  # convergence.
+
+  - name: "ecosystem_compatibility_resolved"
+    type: agent
+    criterion: |
+      Design explicitly addresses ecosystem compatibility:
+      - Target language and version are stated (matching project_constraints)
+      - Framework versions and compatibility matrix documented
+      - Any version incompatibilities identified and resolved via ADR
+      Check constraint_dimensions.ecosystem_compatibility in project_constraints.yml.
+    source: default
+    required: true
+
+  - name: "deployment_target_resolved"
+    type: agent
+    criterion: |
+      Design explicitly addresses deployment target:
+      - Where the system runs (cloud, on-premise, hybrid)
+      - Infrastructure assumptions documented
+      - Deployment mechanism chosen (containers, serverless, VMs)
+      Check constraint_dimensions.deployment_target in project_constraints.yml.
+    source: default
+    required: true
+
+  - name: "security_model_resolved"
+    type: agent
+    criterion: |
+      Design explicitly addresses security model:
+      - Authentication mechanism chosen
+      - Authorisation model defined (RBAC, ABAC, etc.)
+      - Data protection approach documented
+      Check constraint_dimensions.security_model in project_constraints.yml.
+    source: default
+    required: true
+
+  - name: "build_system_resolved"
+    type: agent
+    criterion: |
+      Design explicitly addresses build system:
+      - Build tool chosen and configured
+      - Module/package structure defined with dependency relationships
+      - Build output artifacts specified
+      Check constraint_dimensions.build_system in project_constraints.yml.
+    source: default
+    required: true
+
+  - name: "advisory_dimensions_considered"
+    type: agent
+    criterion: |
+      Advisory constraint dimensions have been considered (not necessarily resolved):
+      - data_governance: acknowledged or addressed
+      - performance_envelope: acknowledged or addressed
+      - observability: acknowledged or addressed
+      - error_handling: acknowledged or addressed
+      If a dimension is not relevant, document why. If relevant, at minimum
+      acknowledge it in the design document.
+    source: default
+    required: false
+
+  # ─── ADR quality ─────────────────────────────────────────────────────
+
+  - name: "adrs_for_decisions"
+    type: agent
+    criterion: |
+      ADRs exist for every significant decision:
+      - Technology choices (language, framework, library)
+      - Pattern selections (architecture style, data access, error handling)
+      - Trade-offs (performance vs simplicity, flexibility vs type safety)
+      Each ADR must have: context, decision, alternatives considered, consequences.
+    source: default
+    required: true
+
+  - name: "adr_depth_adequate"
+    type: agent
+    criterion: |
+      ADRs are not shallow. Each must contain:
+      - At least 2 alternatives considered (not just "we chose X")
+      - Concrete consequences (not just "this is better")
+      - Connection to specific REQ keys that drove the decision
+      Minimum 1 ADR per 5 components, or 3 total — whichever is larger.
+    source: default
+    required: true
+
+  # ─── Document structure ──────────────────────────────────────────────
+
+  - name: "document_has_required_sections"
+    type: agent
+    criterion: |
+      Design document contains ALL required sections from document_structure:
+      Architecture Overview, Component Design, Data Model, Traceability Matrix,
+      ADR Index, Package/Module Structure.
+    source: default
+    required: true
+
+  - name: "architecture_diagrams_present"
+    type: agent
+    criterion: |
+      Design document includes Mermaid diagrams for:
+      - System architecture (component relationships)
+      - Data model (entity relationships)
+      At minimum 2 diagrams. Diagrams must be consistent with the prose.
+    source: default
+    required: true
+
+  # ─── Human validation ───────────────────────────────────────────────
+
+  - name: "human_approves_architecture"
+    type: human
+    criterion: "Human confirms architecture is sound and trade-offs are acceptable."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONTEXT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+context_guidance:
+  required:
+    - "The requirements document (source asset)"
+    - "project_constraints.yml (language, tools, architecture constraints)"
+  recommended:
+    - "Existing ADRs from project or related projects"
+    - "Technology documentation for the chosen stack"
+    - "Existing code if this is a redesign (understand current state)"
+    - "Domain reference architectures or patterns"
+  notes: |
+    Design quality is heavily dependent on context.
+    The same requirements with {Spark} context vs {dbt} context produce
+    fundamentally different architectures. Ensure the right technology
+    context is loaded before generating design.
+
+# ═══════════════════════════════════════════════════════════════════════
+# AGENT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+agent_guidance: |
+  When designing from requirements:
+
+  1. BUILD EFFECTIVE CHECKLIST (edge defaults + project architecture constraints)
+  2. LOAD CONSTRAINT DIMENSIONS from graph_topology.yml and project_constraints.yml:
+     - Read constraint_dimensions from graph topology — these are the categories
+     - Read constraint_dimensions from project_constraints — these are the values
+     - For each mandatory dimension, ensure the design explicitly resolves it
+  3. ANALYSE SOURCE (backward gap detection):
+     - Read requirements thoroughly
+     - Identify ambiguities from a design perspective
+     - Identify missing information needed for design decisions
+     - Identify conflicting requirements
+     - Check: do requirements constrain enough for each mandatory dimension?
+     - Record all findings with classification and disposition
+  4. GENERATE DOCUMENT following document_structure:
+     - Architecture overview with Mermaid component diagram
+     - Group requirements into components with clear interfaces
+     - Data model with Mermaid entity diagram
+     - Traceability matrix: component → REQ-* keys
+     - Package/module structure (must match build_system dimension)
+     - Generate ADRs for each mandatory constraint dimension resolution
+     - Generate ADRs for additional significant decisions (with alternatives and consequences)
+     - At minimum: one ADR per mandatory constraint dimension
+  5. EVALUATE OUTPUT (forward gap detection) against checklist
+     - Verify each mandatory constraint dimension has been resolved
+     - Verify advisory dimensions have been at least acknowledged
+  6. EVALUATE PROCESS (inward gap detection) — what evaluators or context are missing?
+  7. Present to human for architecture review
+  8. Report: source findings, checklist results, process gaps, dimension resolution status

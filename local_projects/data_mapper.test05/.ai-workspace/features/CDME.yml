@@ -1,0 +1,124 @@
+# Feature Vector: CDME (Categorical Data Mapping & Computation Engine)
+# Created by intent→requirements edge iteration (v2.3)
+
+---
+
+feature: "CDME"
+title: "Categorical Data Mapping & Computation Engine"
+intent: "INT-001"
+vector_type: feature
+profile: full
+status: in_progress
+convergence_type: standard
+created: "2026-02-20T00:00:00Z"
+updated: "2026-02-20T00:00:00Z"
+
+time_box:
+  enabled: false
+
+parent:
+  feature: ""
+  edge: ""
+  reason: ""
+
+children: []
+  # SU-001: Recommend spawning a Discovery vector for Frobenius Algebra (INT-006)
+  # - feature: "DISC-FROB-001"
+  #   vector_type: discovery
+  #   status: pending
+  #   fold_back_status: pending
+  #   fold_back_payload: ""
+
+trajectory:
+  requirements:
+    status: iterating
+    iteration: 1
+    started_at: "2026-02-20T00:00:00Z"
+    context_hash: "intent_v7.2+mapper_req_v7.2+appendix_a"
+    asset: "docs/specification/REQUIREMENTS.md"
+    evaluator_results:
+      agent: pending
+      human: pending
+
+  design:
+    status: pending
+
+  code:
+    status: pending
+
+  unit_tests:
+    status: pending
+
+  uat_tests:
+    status: pending
+
+dependencies: []
+
+constraints:
+  acceptance_criteria:
+    - id: "AC-CDME-001"
+      description: "Topological compiler rejects invalid paths at compile time"
+      evaluator: deterministic
+      check: "Invalid path input produces compile-time rejection with error details"
+      req: "REQ-F-LDM-003"
+      required: true
+
+    - id: "AC-CDME-002"
+      description: "Grain safety violations detected at compile time"
+      evaluator: deterministic
+      check: "Incompatible grain combination produces compile-time rejection"
+      req: "REQ-F-TRV-002"
+      required: true
+
+    - id: "AC-CDME-003"
+      description: "Accounting invariant holds for every run"
+      evaluator: deterministic
+      check: "ledger.json equation balances: |input| = |processed| + |filtered| + |errored|"
+      req: "REQ-F-ACC-001"
+      required: true
+
+    - id: "AC-CDME-004"
+      description: "Backward traversal returns all contributing source records"
+      evaluator: deterministic
+      check: "Aggregate key backward query returns complete source key set"
+      req: "REQ-F-ACC-005"
+      required: true
+
+    - id: "AC-CDME-005"
+      description: "AI-generated hallucinated mapping is rejected"
+      evaluator: deterministic
+      check: "Mapping referencing non-existent morphism produces rejection with named morphism"
+      req: "REQ-F-AIA-001"
+      required: true
+
+    - id: "AC-CDME-006"
+      description: "Deterministic reproducibility: identical inputs produce identical outputs"
+      evaluator: deterministic
+      check: "Two runs with same inputs produce bit-identical output hashes"
+      req: "REQ-F-TRV-005"
+      required: true
+
+    - id: "AC-CDME-007"
+      description: "Error objects contain all required metadata fields"
+      evaluator: agent
+      check: "Error records include failure_type, offending_values, source_entity, source_epoch, morphism_path"
+      req: "REQ-F-ERR-004"
+      required: true
+
+    - id: "AC-CDME-008"
+      description: "Human validates requirements completeness"
+      evaluator: human
+      check: "Human confirms all expected requirements present, nothing missing or out of scope"
+      req: "REQ-F-LDM-001"
+      required: true
+
+    - id: "AC-CDME-009"
+      description: "Human validates priority assignments"
+      evaluator: human
+      check: "Human confirms Critical/High/Medium assignments are correct"
+      req: "REQ-F-LDM-001"
+      required: true
+
+  threshold_overrides: {}
+
+  additional_checks: []
