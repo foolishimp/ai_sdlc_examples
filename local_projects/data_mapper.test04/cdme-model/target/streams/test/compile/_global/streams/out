@@ -1,4 +1,0 @@
-[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-model/src/test/scala/cdme/model/adjoint/AdjointSpec.scala:11:26: Unused import
-[warn] import cdme.model.access.AccessRule
-[warn]                          ^
-[warn] one warning found

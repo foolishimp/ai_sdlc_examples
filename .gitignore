@@ -1,0 +1,30 @@
+# Build artifacts
+target/
+project/target/
+project/project/
+
+# IDE / editor
+.idea/
+.vscode/
+.metals/
+.bsp/
+.bloop/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+
+# Scala
+*.class
+*.jar
+*.log
+
+# Node
+node_modules/

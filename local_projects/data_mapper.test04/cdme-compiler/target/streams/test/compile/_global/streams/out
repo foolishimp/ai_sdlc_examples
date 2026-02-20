@@ -1,7 +1,0 @@
-[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-compiler/src/test/scala/cdme/compiler/PathCompilerSpec.scala:7:82: Unused import
-[warn] import cdme.model.category.{Category, Entity, EntityId, AttributeId, MorphismId, CardinalityType}
-[warn]                                                                                  ^
-[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-compiler/src/test/scala/cdme/compiler/PathCompilerSpec.scala:8:64: Unused import
-[warn] import cdme.model.adjoint.{IsomorphicAdjoint, PreimageAdjoint, KleisliAdjoint}
-[warn]                                                                ^
-[warn] two warnings found

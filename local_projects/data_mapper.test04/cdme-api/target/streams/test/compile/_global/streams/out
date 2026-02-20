@@ -1,4 +1,0 @@
-[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-api/src/test/scala/cdme/acceptance/AcceptanceCriteriaSpec.scala:20:17: Unused import
-[warn] import cdme.api._
-[warn]                 ^
-[warn] one warning found
