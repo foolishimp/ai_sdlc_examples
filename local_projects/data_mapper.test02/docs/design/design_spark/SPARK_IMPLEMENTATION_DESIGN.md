@@ -3,9 +3,9 @@
 **Document Type**: Implementation Design Specification
 **Project**: Categorical Data Mapping & Computation Engine (CDME)
 **Variant**: `design_spark` (Apache Spark)
-**Version**: 1.1
+**Version**: 1.2
 **Date**: 2025-12-10
-**Updated**: 2025-12-11 (Spark 4.0 migration)
+**Updated**: 2025-12-16 (Error, Lineage & Run Reproducibility Integration)
 **Status**: Draft
 **Derived From**:
 - [Generic Reference Design](../data_mapper/AISDLC_IMPLEMENTATION_DESIGN.md)
@@ -463,6 +463,7 @@ See [adrs/](adrs/) for all technology decisions.
 | [ADR-009](adrs/ADR-009-scala-project-structure.md) | Scala Project Structure and Build System | Accepted |
 | [ADR-010](adrs/ADR-010-scala-config-parsing.md) | Scala Configuration Parsing | Accepted |
 | [ADR-011](adrs/ADR-011-spark-4-0-migration.md) | **Migration to Spark 4.0.1** | **Accepted** |
+| [ADR-012](adrs/ADR-012-error-lineage-integration.md) | **Error, Lineage & Run Reproducibility Integration** | **Proposed** |
 
 ---
 
@@ -477,6 +478,390 @@ See [adrs/](adrs/) for all technology decisions.
 | SparkErrorDomain | ErrorDomain | REQ-TYP-03, REQ-ERROR-01, RIC-ERR-01 |
 | SparkLineageCollector | ResidueCollector | REQ-INT-03, RIC-LIN-01..07 |
 | DeltaImplementationFunctor | ImplementationFunctor | REQ-PDM-01..05, RIC-PHY-01 |
+
+---
+
+## Run Execution Architecture
+
+**Reference**: [ADR-012: Error, Lineage & Run Reproducibility Integration](adrs/ADR-012-error-lineage-integration.md)
+
+This section defines the complete folder structure and data flow for production runs, addressing:
+- **REQ-TYP-03**: Error routing to DLQ (no silent drops)
+- **REQ-TRV-05-A**: Immutable run hierarchy with cryptographic binding
+- **REQ-INT-03**: OpenLineage standard lineage emission
+- **REQ-ADJ-04/05/06**: Adjoint metadata capture for backward traversal
+
+### Complete Folder Structure
+
+```
+test-data/
+├── datasets/                           # Stable, reusable source data
+│   └── <datasetId>/                    # e.g., "airline-clean"
+│       ├── dataset_config.json         # Dataset generation parameters
+│       ├── reference/                  # Reference data (airports, airlines)
+│       │   └── *.parquet
+│       └── bookings/                   # Booking events (partitioned by date)
+│           └── booking_date=YYYY-MM-DD/
+│               └── *.parquet
+│
+└── runs/                               # Timestamped, immutable runs
+    └── MMDD_HHmmss_<runId>/            # e.g., "1216_143052_baseline-test"
+        │
+        ├── manifest.json               # Cryptographic binding (REQ-TRV-05-A)
+        │                               #   - Config hash
+        │                               #   - Code version (git commit)
+        │                               #   - Input data hashes
+        │                               #   - OpenLineage run UUID
+        │
+        ├── config.json                 # Run configuration
+        │                               #   - Dataset path
+        │                               #   - Processing date range
+        │                               #   - Error thresholds
+        │
+        ├── accounting/                 # Processed output (partitioned)
+        │   └── flight_date=YYYY-MM-DD/
+        │       └── daily_revenue_summary.jsonl
+        │
+        ├── errors/                     # Dead-Letter Queue (REQ-TYP-03)
+        │   ├── error_type=refinement_error/
+        │   │   └── *.jsonl             # Records with constraint violations
+        │   ├── error_type=type_cast_error/
+        │   │   └── *.jsonl             # Type conversion failures
+        │   ├── error_type=join_error/
+        │   │   └── *.jsonl             # Join key not found
+        │   └── _summary.json           # Error summary statistics
+        │
+        ├── lineage/                    # OpenLineage events (REQ-INT-03)
+        │   ├── run_event.json          # START event
+        │   ├── job_events.jsonl        # COMPLETE/FAIL events
+        │   └── dataset_facets.jsonl    # Schema, stats, quality metrics
+        │
+        ├── adjoint/                    # Adjoint metadata (REQ-ADJ-04/05/06)
+        │   ├── reverse_joins/          # Aggregation → Source mapping
+        │   │   └── <morphism_id>.parquet
+        │   │       # Schema: (group_key, source_key, morphism_id, run_id, epoch)
+        │   │
+        │   └── filtered_keys/          # Filtered-out record tracking
+        │       └── <morphism_id>.parquet
+        │           # Schema: (source_key, filter_predicate, morphism_id, run_id, epoch)
+        │
+        └── processing_report.json      # Run summary
+                                        #   - Row counts (input, output, error)
+                                        #   - Execution time
+                                        #   - Error rate
+                                        #   - OpenLineage run UUID
+```
+
+### Data Flow with Error Handling & Lineage
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         CDME EXECUTION PIPELINE                              │
+│                     (Error Routing + Lineage + Adjoint)                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 0: INITIALIZATION                                            │    │
+│  │                                                                     │    │
+│  │  Input: config.json                                                │    │
+│  │                                                                     │    │
+│  │  1. Create run folder: test-data/runs/MMDD_HHmmss_<runId>/        │    │
+│  │  2. Generate manifest.json:                                        │    │
+│  │     - Hash config.json                                             │    │
+│  │     - Capture git commit, branch, dirty status                     │    │
+│  │     - Hash input dataset                                           │    │
+│  │     - Generate OpenLineage UUID                                    │    │
+│  │  3. Initialize ErrorDomain                                         │    │
+│  │  4. Emit OpenLineage START event                                   │    │
+│  │                                                                     │    │
+│  │  Output:                                                           │    │
+│  │    manifest.json       (REQ-TRV-05-A)                              │    │
+│  │    lineage/run_event.json  (REQ-INT-03)                            │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 1: SOURCE LOADING                                            │    │
+│  │                                                                     │    │
+│  │  Input: datasets/<datasetId>/bookings/                             │    │
+│  │                                                                     │    │
+│  │  Spark DataFrame (100,000 records)                                 │    │
+│  │       │                                                            │    │
+│  │       ├──► Type Validation ──┬──► Valid (99,970)                   │    │
+│  │       │                      │                                     │    │
+│  │       │                      └──► Type Errors (30) ──► DLQ         │    │
+│  │       │                          errors/type_cast_error/*.jsonl    │    │
+│  │       │                                                            │    │
+│  │       └──► Null Checks ──────┬──► Valid (99,970)                   │    │
+│  │                              │                                     │    │
+│  │                              └──► Null Errors (0) ──► DLQ          │    │
+│  │                                                                     │    │
+│  │  ErrorDomain.checkThreshold(totalRows=100000)                      │    │
+│  │    If error_rate > 5%: HALT and flush to DLQ                       │    │
+│  │    Else: CONTINUE                                                  │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 2: FILTER (WITH ADJOINT CAPTURE)                             │    │
+│  │                                                                     │    │
+│  │  SparkAdjointWrapper.filterWithAdjoint(                            │    │
+│  │    df = bookings,                                                  │    │
+│  │    condition = ticket_price > 0,                                   │    │
+│  │    captureFiltered = true                                          │    │
+│  │  )                                                                 │    │
+│  │                                                                     │    │
+│  │  Valid (99,850) ──────────────────────────────► Next Stage         │    │
+│  │       │                                                            │    │
+│  │       └──► Filtered (120) ──┬──► DLQ                               │    │
+│  │                             │   errors/refinement_error/*.jsonl    │    │
+│  │                             │                                      │    │
+│  │                             └──► Adjoint Metadata                  │    │
+│  │                                 adjoint/filtered_keys/              │    │
+│  │                                   positive_price_filter.parquet    │    │
+│  │                                 (source_key, filter_predicate)     │    │
+│  │                                                                     │    │
+│  │  ErrorDomain.checkThreshold(totalRows=99970)                       │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 3: JOIN (REFERENCE DATA ENRICHMENT)                          │    │
+│  │                                                                     │    │
+│  │  bookings.join(reference, "flight_id")                             │    │
+│  │                                                                     │    │
+│  │  Matched (99,850) ─────────────────────────► Next Stage            │    │
+│  │       │                                                            │    │
+│  │       └──► Unmatched (0) ──────────────────► DLQ                   │    │
+│  │                                               errors/join_error/    │    │
+│  │                                                                     │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 4: AGGREGATE (WITH ADJOINT CAPTURE)                          │    │
+│  │                                                                     │    │
+│  │  SparkAdjointWrapper.groupByWithAdjoint(                           │    │
+│  │    df = enrichedBookings,                                          │    │
+│  │    groupCols = Seq("flight_date"),                                 │    │
+│  │    aggExprs = Seq(                                                 │    │
+│  │      sum("revenue").as("total_revenue"),                           │    │
+│  │      count("*").as("flight_count")                                 │    │
+│  │    ),                                                              │    │
+│  │    captureReverseJoin = true                                       │    │
+│  │  )                                                                 │    │
+│  │                                                                     │    │
+│  │  Aggregated (31 rows) ────────────────────► accounting/            │    │
+│  │       │                                                            │    │
+│  │       └──► Adjoint Metadata                                        │    │
+│  │           adjoint/reverse_joins/                                   │    │
+│  │             daily_revenue_aggregation.parquet                      │    │
+│  │           (group_key, source_key, morphism_id)                     │    │
+│  │                                                                     │    │
+│  │  Forward:  99,850 input → 31 output (aggregation)                  │    │
+│  │  Backward: 31 group_keys → 99,850 source_keys (reverse-join)      │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌────────────────────────────────────────────────────────────────────┐    │
+│  │ STAGE 5: OUTPUT & FINALIZATION                                     │    │
+│  │                                                                     │    │
+│  │  1. Write output:                                                  │    │
+│  │     accounting/flight_date=*/daily_revenue_summary.jsonl           │    │
+│  │                                                                     │    │
+│  │  2. Flush errors to DLQ:                                           │    │
+│  │     errorDomain.flushToDLQ()                                       │    │
+│  │     → errors/error_type=*/*.jsonl                                  │    │
+│  │                                                                     │    │
+│  │  3. Collect statistics:                                            │    │
+│  │     - Input rows: 100,000                                          │    │
+│  │     - Output rows: 31                                              │    │
+│  │     - Error rows: 150                                              │    │
+│  │     - Error rate: 0.15%                                            │    │
+│  │                                                                     │    │
+│  │  4. Emit OpenLineage COMPLETE event:                               │    │
+│  │     lineage/job_events.jsonl                                       │    │
+│  │     - Input dataset facets (schema, stats)                         │    │
+│  │     - Output dataset facets (schema, stats, errors)                │    │
+│  │     - Custom CDME facets (error_count, dlq_location)               │    │
+│  │                                                                     │    │
+│  │  5. Write processing report:                                       │    │
+│  │     processing_report.json                                         │    │
+│  │     - Run summary                                                  │    │
+│  │     - Performance metrics                                          │    │
+│  │     - OpenLineage run UUID                                         │    │
+│  └────────────────────────────────────────────────────────────────────┘    │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Manifest Structure (Cryptographic Binding)
+
+The `manifest.json` provides cryptographic proof of run immutability:
+
+```json
+{
+  "manifest_version": "1.0",
+  "run_id": "baseline-test",
+  "timestamp": "2025-12-16T14:30:52Z",
+  "folder_name": "1216_143052_baseline-test",
+
+  "cryptographic_binding": {
+    "config_hash": "sha256:a1b2c3d4e5f6...",
+    "code_version": {
+      "git_commit": "35eefcf",
+      "git_branch": "main",
+      "git_dirty": false,
+      "source_hash": "sha256:e5f6g7h8i9j0..."
+    },
+    "input_hashes": {
+      "dataset_path": "test-data/datasets/airline-clean",
+      "dataset_manifest_hash": "sha256:i9j0k1l2m3n4...",
+      "reference_data_hash": "sha256:m3n4o5p6q7r8...",
+      "bookings_data_hash": "sha256:q7r8s9t0u1v2..."
+    }
+  },
+
+  "openlineage_run_id": "01234567-89ab-cdef-0123-456789abcdef"
+}
+```
+
+**Verification**:
+
+```scala
+// Re-run with same inputs → same hashes → reproducible
+verifyRunReproducibility(manifest) match {
+  case Right(_) =>
+    println("✓ Run is reproducible")
+  case Left(error) =>
+    println(s"✗ Reproducibility violation: $error")
+}
+```
+
+### Error Routing (REQ-TYP-03)
+
+All errors are captured with full context and routed to DLQ:
+
+**DLQ Record Example** (`errors/error_type=refinement_error/*.jsonl`):
+
+```json
+{
+  "source_key": "BKG_001",
+  "error_type": "refinement_error",
+  "morphism_path": "Flight.ticket_price",
+  "expected": "> 0",
+  "actual": "-50.00",
+  "context": {
+    "entity": "Flight",
+    "field": "ticket_price",
+    "flight_id": "FL123",
+    "epoch": "2024-01-15"
+  },
+  "run_id": "1216_143052_baseline-test",
+  "openlineage_run_id": "01234567-89ab-cdef-0123-456789abcdef",
+  "timestamp": "2025-12-16T14:35:22Z",
+  "error_code": "NEGATIVE_PRICE"
+}
+```
+
+**REQ-ERROR-01 Compliance**:
+- ✓ Type of constraint that failed (`error_type`, `error_code`)
+- ✓ Offending value(s) (`actual`)
+- ✓ Source Entity and Epoch (`context["entity"]`, `context["epoch"]`)
+- ✓ Morphism path at failure (`morphism_path`)
+
+### OpenLineage Integration (REQ-INT-03)
+
+Standard lineage events enable tool integration:
+
+**START Event** (`lineage/run_event.json`):
+```json
+{
+  "eventType": "START",
+  "eventTime": "2025-12-16T14:30:52.000Z",
+  "run": {
+    "runId": "01234567-89ab-cdef-0123-456789abcdef",
+    "facets": {
+      "cdme_run": {
+        "run_id": "baseline-test",
+        "config_hash": "sha256:a1b2c3d4...",
+        "code_version": "35eefcf"
+      }
+    }
+  },
+  "job": {
+    "namespace": "cdme",
+    "name": "AccountingRunner"
+  }
+}
+```
+
+**COMPLETE Event** (`lineage/job_events.jsonl`):
+```json
+{
+  "eventType": "COMPLETE",
+  "eventTime": "2025-12-16T14:35:55.000Z",
+  "run": {"runId": "01234567-89ab-cdef-0123-456789abcdef"},
+  "job": {"namespace": "cdme", "name": "AccountingRunner"},
+  "inputs": [{
+    "namespace": "file",
+    "name": "test-data/datasets/airline-clean/bookings",
+    "facets": {
+      "schema": {...},
+      "dataQualityMetrics": {
+        "rowCount": 100000,
+        "columnMetrics": {"ticket_price": {"min": -50.0, "max": 5000.0}}
+      }
+    }
+  }],
+  "outputs": [{
+    "namespace": "file",
+    "name": "test-data/runs/1216_143052_baseline-test/accounting",
+    "facets": {
+      "schema": {...},
+      "dataQualityMetrics": {"rowCount": 31},
+      "cdme_errors": {
+        "error_count": 150,
+        "error_rate": 0.0015,
+        "errors_by_type": {"refinement_error": 120, "type_cast_error": 30},
+        "dlq_location": "test-data/runs/1216_143052_baseline-test/errors"
+      }
+    }
+  }]
+}
+```
+
+### Adjoint Metadata (REQ-ADJ-04/05/06)
+
+Enables backward traversal from aggregates to source records:
+
+**Reverse-Join Table** (`adjoint/reverse_joins/daily_revenue_aggregation.parquet`):
+
+| group_key | source_key | morphism_id | run_id | epoch |
+|-----------|------------|-------------|--------|-------|
+| {flight_date: "2024-01-15"} | BKG_001 | daily_revenue_aggregation | baseline-test | 2024-01-15 |
+| {flight_date: "2024-01-15"} | BKG_002 | daily_revenue_aggregation | baseline-test | 2024-01-15 |
+| ... | ... | ... | ... | ... |
+
+**Backward Query**:
+
+```scala
+// Find all bookings that contributed to 2024-01-15 revenue
+val reverseJoin = spark.read.parquet(
+  "test-data/runs/1216_143052_baseline-test/adjoint/reverse_joins/daily_revenue_aggregation.parquet"
+)
+
+val sourceKeys = reverseJoin
+  .filter($"group_key.flight_date" === "2024-01-15")
+  .select("source_key")
+  .collect()
+  .map(_.getString(0))
+
+// Load original bookings
+val sourceRecords = spark.read.parquet(
+  "test-data/datasets/airline-clean/bookings"
+).filter($"booking_id".isin(sourceKeys: _*))
+```
 
 ---
 
@@ -526,5 +911,5 @@ See [ADR-011](adrs/ADR-011-spark-4-0-migration.md) for complete migration detail
 ---
 
 **Document Status**: Draft
-**Last Updated**: 2025-12-11
-**Version**: 1.1
+**Last Updated**: 2025-12-16
+**Version**: 1.2

@@ -1,0 +1,167 @@
+[debug] Running TaskDef(cdme.model.category.CategorySpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.grain.GrainSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.types.TypeSystemSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.access.AccessControlSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.context.ContextSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.adjoint.AdjointSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.model.error.ErrorSpec, org.scalatest.tools.Framework$$anon$1@440f595c, false, [SuiteSelector])
+[info] ContextSpec:
+[info] - Epoch: created with valid time range
+[info] - Epoch: rejects end time before start time
+[info] - Epoch: allows equal start and end time (point epoch)
+[info] - Epoch: contains checks instant within boundaries
+[info] - Epoch: contains includes boundaries
+[info] - EpochId: opaque type preserves value
+[info] - TemporalSemantic: all three semantics exist
+[info] - REQ-F-TRV-003: same epoch and partition are join-compatible
+[info] - REQ-F-TRV-003: different epochs are NOT join-compatible
+[info] - REQ-F-TRV-003: different partitions are NOT join-compatible
+[info] - REQ-F-TRV-003: universal partition is compatible with any scope
+[info] - REQ-F-TRV-004: detects epoch boundary crossing
+[info] - REQ-F-TRV-004: detects partition boundary crossing
+[info] - REQ-F-TRV-004: no boundary crossing for same context
+[info] - REQ-F-TRV-004: universal partition does not trigger boundary crossing
+[info] - UniversalPartition constant is '*'
+[info] AccessControlSpec:
+[info] - AccessRule: permits principal with matching role
+[info] - AccessRule: denies principal without matching role
+[info] - AccessRule: allowAll creates wildcard rule
+[info] - Principal: hasRole checks for specific role
+[info] - Principal: isUniversal checks for wildcard role
+[info] - REQ-F-ACC-005: universal principal sees all morphisms
+[info] - REQ-F-ACC-005: admin sees restricted morphisms
+[info] - REQ-F-ACC-005: regular user cannot see restricted morphisms
+[info] - REQ-F-ACC-005: denied morphisms are invisible in filtered category
+[info] - REQ-F-ACC-005: entities are retained even if all morphisms are filtered
+[info] - REQ-F-ACC-005: morphisms without access rules are accessible to all
+[info] - TopologyView.unfiltered creates view with universal access
+[info] GrainSpec:
+[info] - REQ-F-LDM-004: grain levels are created from string identifiers
+[info] - REQ-F-LDM-004: built-in grain levels exist
+[info] - GrainOrder: standard temporal ordering has 5 levels
+[info] - GrainOrder: Atomic is finer than all other levels
+[info] - GrainOrder: Yearly is coarser than all other levels
+[info] - GrainOrder: isFinerThan is irreflexive - no grain is finer than itself
+[info] - GrainOrder: isCoarserOrEqual is reflexive
+[info] - GrainOrder: areSameLevel is reflexive
+[info] - GrainOrder: areSameLevel rejects different levels
+[info] - GrainOrder: unknown grains are not comparable
+[info] - GrainOrder: transitivity - if a < b and b < c then a < c
+[info] - REQ-F-LDM-007: validateAggregation allows finer-to-coarser
+[info] - REQ-F-LDM-007: validateAggregation allows same-level
+[info] - REQ-F-LDM-007: validateAggregation rejects coarser-to-finer
+[info] - REQ-F-LDM-007: validateAggregation rejects incomparable grains
+[info] - REQ-F-LDM-006: SumMonoid[Int] - associativity
+[info] - REQ-F-LDM-006: SumMonoid[Int] - left identity
+[info] - REQ-F-LDM-006: SumMonoid[Int] - right identity
+[info] - REQ-F-LDM-006: SumMonoid[Long] - associativity
+[info] - REQ-F-LDM-006: SumMonoid[BigDecimal] - identity and associativity
+[info] - REQ-F-LDM-006: ConcatMonoid - associativity
+[info] - REQ-F-LDM-006: ConcatMonoid - identity
+[info] - REQ-F-LDM-006: aggregation over empty set yields identity element
+[info] - REQ-F-LDM-006: custom monoid creation
+[info] - REQ-F-LDM-006: combineAll aggregates a collection
+[info] CategorySpec:
+[info] - REQ-F-LDM-001: empty category has no entities or morphisms
+[info] - REQ-F-LDM-001: entities are modelled as typed objects
+[info] - REQ-F-LDM-001: identity morphism law - id . f = f for all morphisms f
+[info] - REQ-F-LDM-001: identity morphism law - f . id = f for all morphisms f
+[info] - REQ-F-LDM-001: associativity - h . (g . f) = (h . g) . f
+[info] - REQ-F-LDM-001: category supports multiple morphisms between same entity pair (multigraph)
+[info] - REQ-F-LDM-002: morphisms declare cardinality type
+[info] - REQ-F-LDM-002: all cardinality types are expressible
+[info] - addEntity succeeds for a new entity
+[info] - addEntity fails for duplicate entity ID
+[info] - addMorphism fails when domain entity does not exist
+[info] - addMorphism fails when codomain entity does not exist
+[info] - addMorphism fails for duplicate morphism ID
+[info] - validate detects morphism referencing unknown domain entity
+[info] - validate passes for a well-formed category
+[info] - morphismsFrom returns morphisms originating from given entity
+[info] - morphismsTo returns morphisms targeting given entity
+[info] - findMorphism locates a specific morphism between entities
+[info] - REQ-F-LDM-008: CategoryVersion produces content-addressed hash
+[info] - REQ-F-LDM-008: identical categories produce identical content hashes
+[info] - REQ-F-LDM-008: different categories produce different content hashes
+[info] ErrorSpec:
+[info] - REQ-F-ERR-002: ErrorObject contains all required metadata fields
+[info] - REQ-F-ERR-002: ErrorObject supports all constraint types
+[info] - REQ-F-ERR-002: ErrorObject details field is optional
+[info] - REQ-F-ERR-003: identical inputs produce identical error objects
+[info] - ValidationError: MorphismNotFound has name and message
+[info] - ValidationError: MorphismNotFound default message uses morphism name
+[info] - ValidationError: TypeMismatch carries message
+[info] - ValidationError: GrainViolation carries message
+[info] - ValidationError: AccessDenied carries principal and morphism info
+[info] - ValidationError: ContextViolation carries message
+[info] - ValidationError: BoundaryViolation carries message
+[info] - ValidationError: BudgetExceeded carries estimate and budget
+[info] - ValidationError: General carries arbitrary message
+[info] - ValidationError: all subtypes are sealed
+[info] - EntityId opaque type preserves value
+[info] - EpochId opaque type preserves value
+[info] - MorphismId opaque type preserves value
+[info] TypeSystemSpec:
+[info] - REQ-F-TYP-001: all seven primitive types exist
+[info] - REQ-F-TYP-001: sum types represent tagged unions
+[info] - REQ-F-TYP-001: product types represent named records
+[info] - REQ-F-TYP-001: unnamed product types display field structure
+[info] - REQ-F-TYP-001: nested type composition
+[info] - REQ-F-TYP-002: refinement type has base type and predicate description
+[info] - REQ-F-TYP-002: refinement predicate evaluates correctly at runtime
+[info] - REQ-F-TYP-002: refinement types compose with other type constructors
+[info] - REQ-F-TYP-003: type unification rejects incompatible types
+[info] - REQ-F-TYP-003: type unification rejects Int-to-Long without explicit morphism
+[info] - REQ-BR-TYP-001: type unification error message mentions explicit ConversionMorphism
+[info] - REQ-F-TYP-004: exact type match allows composition
+[info] - REQ-F-TYP-004: subtype relationship allows composition
+[info] - REQ-F-TYP-004: OptionType unification recurses into inner types
+[info] - REQ-F-TYP-004: ListType unification recurses into element types
+[info] - REQ-F-TYP-004: ProductType unification checks all fields
+[info] - REQ-F-TYP-004: ProductType unification rejects missing fields
+[info] - REQ-F-TYP-005: semantic types wrap base types with domain tag
+[info] - REQ-F-TYP-005: same semantic tag unifies successfully
+[info] - REQ-F-TYP-005: different semantic tags reject unification
+[info] - SubtypeRegistry: empty registry has no relationships
+[info] - SubtypeRegistry: reflexive - every type is a subtype of itself
+[info] - SubtypeRegistry: declare establishes subtype relationship
+[info] - SubtypeRegistry: transitive subtype chain
+[info] - SubtypeRegistry: cycle detection rejects circular subtype declarations
+[info] - SubtypeRegistry: supertypesOf returns all declared supertypes
+[info] - isCompatible returns true for compatible types
+[info] - isCompatible returns false for incompatible types
+[info] AdjointSpec:
+[info] - REQ-F-ADJ-001: every adjoint morphism has forward and backward functions
+[info] - REQ-F-ADJ-001: morphisms declare containment type
+[info] - REQ-F-ADJ-002: isomorphic adjoint - backward(forward(x)) = x (exact round-trip)
+[info] - REQ-F-ADJ-002: isomorphic adjoint has OneToOne cardinality
+[info] - REQ-F-ADJ-003: preimage adjoint returns preimage set
+[info] - REQ-F-ADJ-003: preimage containment - backward(forward(x)) >= {x}
+[info] - REQ-F-ADJ-004: kleisli adjoint expands one-to-many
+[info] - REQ-F-ADJ-004: kleisli backward collects parent record
+[info] - REQ-F-ADJ-005: aggregation adjoint stores reverse-join metadata
+[info] - REQ-F-ADJ-005: ReverseJoinTable tracks contributing keys
+[info] - REQ-F-ADJ-006: filter adjoint passes records meeting predicate
+[info] - REQ-F-ADJ-006: filter backward includes filter metadata
+[info] - REQ-F-ADJ-006: FilteredKeyStore tracks filtered-out keys
+[info] - REQ-F-ADJ-007: composition of adjoints - forward is covariant g(f(x))
+[info] - REQ-F-ADJ-007: composition of adjoints - backward is contravariant f-(g-(z))
+[info] - REQ-F-ADJ-007: identity adjoint composition - id- = id
+[info] - REQ-F-ADJ-007: composition rejects mismatched domain/codomain
+[info] - REQ-F-ADJ-007: composed morphism has correct domain and codomain
+[info] - REQ-F-ADJ-008: composed backward merges metadata
+[info] - REQ-F-ADJ-002: property - isomorphic round-trip is exact for all integers
+[info] - cardinality composition: OneToOne + X = X
+[info] Run completed in 285 milliseconds.
+[info] Total number of tests run: 140
+[info] Suites: completed 7, aborted 0
+[info] Tests: succeeded 140, failed 0, canceled 0, ignored 0, pending 0
+[info] All tests passed.
+[debug] Passed tests:
+[debug] 	cdme.model.adjoint.AdjointSpec
+[debug] 	cdme.model.access.AccessControlSpec
+[debug] 	cdme.model.context.ContextSpec
+[debug] 	cdme.model.types.TypeSystemSpec
+[debug] 	cdme.model.grain.GrainSpec
+[debug] 	cdme.model.error.ErrorSpec
+[debug] 	cdme.model.category.CategorySpec

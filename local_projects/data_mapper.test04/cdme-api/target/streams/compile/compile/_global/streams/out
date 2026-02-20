@@ -1,0 +1,7 @@
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-api/src/main/scala/cdme/assurance/DryRunEngine.scala:5:25: Unused import
+[warn] import cdme.model.error.ValidationError
+[warn]                         ^
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-api/src/main/scala/cdme/assurance/TopologicalValidator.scala:5:25: Unused import
+[warn] import cdme.model.error.ValidationError
+[warn]                         ^
+[warn] two warnings found

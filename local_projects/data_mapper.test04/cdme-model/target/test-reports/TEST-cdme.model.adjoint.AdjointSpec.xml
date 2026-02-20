@@ -1,0 +1,52 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<testsuite hostname="MythagoForest.local" name="cdme.model.adjoint.AdjointSpec" tests="21" errors="0" failures="0" skipped="0" time="0.114" timestamp="2026-02-20T20:07:30">
+          <properties>
+      <property name="java.specification.version" value="21"/><property name="sun.jnu.encoding" value="UTF-8"/><property name="sun.arch.data.model" value="64"/><property name="java.vendor.url" value="https://github.com/Homebrew/homebrew-core/issues"/><property name="sun.boot.library.path" value="/opt/homebrew/Cellar/openjdk@21/21.0.10/libexec/openjdk.jdk/Contents/Home/lib"/><property name="sun.java.command" value="/opt/homebrew/Cellar/sbt/1.11.7/libexec/bin/sbt-launch.jar test"/><property name="jdk.debug" value="release"/><property name="java.specification.vendor" value="Oracle Corporation"/><property name="java.version.date" value="2026-01-20"/><property name="java.home" value="/opt/homebrew/Cellar/openjdk@21/21.0.10/libexec/openjdk.jdk/Contents/Home"/><property name="file.separator" value="/"/><property name="java.vm.compressedOopsMode" value="Zero based"/><property name="line.separator" value="
+"/><property name="java.vm.specification.vendor" value="Oracle Corporation"/><property name="java.specification.name" value="Java Platform API Specification"/><property name="sun.management.compiler" value="HotSpot 64-Bit Tiered Compilers"/><property name="java.runtime.version" value="21.0.10"/><property name="user.name" value="jim"/><property name="log4j.ignoreTCL" value="true"/><property name="file.encoding" value="UTF-8"/><property name="java.vendor.version" value="Homebrew"/><property name="java.io.tmpdir" value="/var/folders/rz/r6wxvr0n15d906k2s0jw8j2h0000gn/T/"/><property name="java.version" value="21.0.10"/><property name="java.vm.specification.name" value="Java Virtual Machine Specification"/><property name="native.encoding" value="UTF-8"/><property name="java.library.path" value="/Users/jim/Library/Java/Extensions:/Library/Java/Extensions:/Network/Library/Java/Extensions:/System/Library/Java/Extensions:/usr/lib/java:."/><property name="stderr.encoding" value="UTF-8"/><property name="java.vendor" value="Homebrew"/><property name="scala.ext.dirs" value="/Users/jim/.sbt/1.0/java9-rt-ext-homebrew_21_0_10"/><property name="sun.io.unicode.encoding" value="UnicodeBig"/><property name="socksNonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/><property name="java.class.path" value="/opt/homebrew/Cellar/sbt/1.11.7/libexec/bin/sbt-launch.jar"/><property name="java.vm.vendor" value="Homebrew"/><property name="jline.shutdownhook" value="false"/><property name="user.timezone" value="Australia/Sydney"/><property name="java.vm.specification.version" value="21"/><property name="os.name" value="Mac OS X"/><property name="sun.java.launcher" value="SUN_STANDARD"/><property name="user.country" value="AU"/><property name="http.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/><property name="sun.cpu.endian" value="little"/><property name="user.home" value="/Users/jim"/><property name="user.language" value="en"/><property name="sbt.script" value="/opt/homebrew/Cellar/sbt/1.11.7/libexec/bin/sbt"/><property name="sbt.ipcsocket.tmpdir" value="/var/folders/rz/r6wxvr0n15d906k2s0jw8j2h0000gn/T/.sbt53c6c0ae/ipcsocket"/><property name="swoval.tmpdir" value="/var/folders/rz/r6wxvr0n15d906k2s0jw8j2h0000gn/T/.sbt53c6c0ae/swoval"/><property name="apple.awt.application.name" value="Boot"/><property name="jline.esc.timeout" value="0"/><property name="ftp.nonProxyHosts" value="local|*.local|169.254/16|*.169.254/16"/><property name="stdout.encoding" value="UTF-8"/><property name="path.separator" value=":"/><property name="os.version" value="26.2"/><property name="jna.nosys" value="true"/><property name="java.runtime.name" value="OpenJDK Runtime Environment"/><property name="java.vm.name" value="OpenJDK 64-Bit Server VM"/><property name="java.vendor.url.bug" value="https://github.com/Homebrew/homebrew-core/issues"/><property name="user.dir" value="/Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04"/><property name="os.arch" value="aarch64"/><property name="java.vm.info" value="mixed mode, sharing"/><property name="java.vm.version" value="21.0.10"/><property name="java.class.version" value="65.0"/>
+    </properties>
+          <testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-001: every adjoint morphism has forward and backward functions" time="0.019">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-001: morphisms declare containment type" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-002: isomorphic adjoint - backward(forward(x)) = x (exact round-trip)" time="0.077">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-002: isomorphic adjoint has OneToOne cardinality" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-003: preimage adjoint returns preimage set" time="0.003">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-003: preimage containment - backward(forward(x)) &gt;= {x}" time="0.002">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-004: kleisli adjoint expands one-to-many" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-004: kleisli backward collects parent record" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-005: aggregation adjoint stores reverse-join metadata" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-005: ReverseJoinTable tracks contributing keys" time="0.002">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-006: filter adjoint passes records meeting predicate" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-006: filter backward includes filter metadata" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-006: FilteredKeyStore tracks filtered-out keys" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-007: composition of adjoints - forward is covariant g(f(x))" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-007: composition of adjoints - backward is contravariant f-(g-(z))" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-007: identity adjoint composition - id- = id" time="0.002">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-007: composition rejects mismatched domain/codomain" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-007: composed morphism has correct domain and codomain" time="0.0">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-008: composed backward merges metadata" time="0.002">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="REQ-F-ADJ-002: property - isomorphic round-trip is exact for all integers" time="0.001">
+                      
+                    </testcase><testcase classname="cdme.model.adjoint.AdjointSpec" name="cardinality composition: OneToOne + X = X" time="0.001">
+                      
+                    </testcase>
+          <system-out><![CDATA[]]></system-out>
+          <system-err><![CDATA[]]></system-err>
+        </testsuite>

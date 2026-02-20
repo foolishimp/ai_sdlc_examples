@@ -1,0 +1,37 @@
+[debug] Running TaskDef(cdme.model.grain.GrainSpec, org.scalatest.tools.Framework$$anon$1@71048aa1, false, [SuiteSelector])
+[info] GrainSpec:
+[info] - REQ-F-LDM-004: grain levels are created from string identifiers
+[info] - REQ-F-LDM-004: built-in grain levels exist
+[info] - GrainOrder: standard temporal ordering has 5 levels
+[info] - GrainOrder: Atomic is finer than all other levels
+[info] - GrainOrder: Yearly is coarser than all other levels
+[info] - GrainOrder: isFinerThan is irreflexive - no grain is finer than itself
+[info] - GrainOrder: isCoarserOrEqual is reflexive
+[info] - GrainOrder: areSameLevel is reflexive
+[info] - GrainOrder: areSameLevel rejects different levels
+[info] - GrainOrder: unknown grains are not comparable
+[info] - GrainOrder: transitivity - if a < b and b < c then a < c
+[info] - REQ-F-LDM-007: validateAggregation allows finer-to-coarser
+[info] - REQ-F-LDM-007: validateAggregation allows same-level
+[info] - REQ-F-LDM-007: validateAggregation rejects coarser-to-finer
+[info] - REQ-F-LDM-007: validateAggregation rejects incomparable grains
+[info] - REQ-F-LDM-006: SumMonoid[Int] - associativity
+[info] - REQ-F-LDM-006: SumMonoid[Int] - left identity
+[info] - REQ-F-LDM-006: SumMonoid[Int] - right identity
+[info] - REQ-F-LDM-006: SumMonoid[Long] - associativity *** FAILED ***
+[info]   Gave up after 5 successful property evaluations. 51 evaluations were discarded.
+[info]   Init Seed: 7556198525704412472
+[info] - REQ-F-LDM-006: SumMonoid[BigDecimal] - identity and associativity
+[info] - REQ-F-LDM-006: ConcatMonoid - associativity
+[info] - REQ-F-LDM-006: ConcatMonoid - identity
+[info] - REQ-F-LDM-006: aggregation over empty set yields identity element
+[info] - REQ-F-LDM-006: custom monoid creation
+[info] - REQ-F-LDM-006: combineAll aggregates a collection
+[info] Run completed in 216 milliseconds.
+[info] Total number of tests run: 25
+[info] Suites: completed 1, aborted 0
+[info] Tests: succeeded 24, failed 1, canceled 0, ignored 0, pending 0
+[info] *** 1 TEST FAILED ***
+[error] Failed tests:
+[error] 	cdme.model.grain.GrainSpec
+[error] (cdmeModel / Test / testOnly) sbt.TestsFailedException: Tests unsuccessful

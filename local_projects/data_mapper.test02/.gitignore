@@ -19,3 +19,8 @@ project/project/target/
 
 # OS artifacts
 .DS_Store
+
+# Test data - large generated datasets
+# Keep small reference datasets, ignore large batch runs
+src/data_mapper.spark.scala/test-data/
+test-data/

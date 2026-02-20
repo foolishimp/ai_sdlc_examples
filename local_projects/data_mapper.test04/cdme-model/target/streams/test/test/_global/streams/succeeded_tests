@@ -1,0 +1,9 @@
+#Successful Tests
+#Fri Feb 20 20:07:30 AEDT 2026
+cdme.model.access.AccessControlSpec=1771578450506
+cdme.model.adjoint.AdjointSpec=1771578450586
+cdme.model.category.CategorySpec=1771578450582
+cdme.model.context.ContextSpec=1771578450507
+cdme.model.error.ErrorSpec=1771578450506
+cdme.model.grain.GrainSpec=1771578450565
+cdme.model.types.TypeSystemSpec=1771578450507

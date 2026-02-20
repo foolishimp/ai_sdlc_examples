@@ -1,0 +1,4 @@
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-spark/src/main/scala/cdme/integration/spark/SparkSchemaValidator.scala:5:25: Unused import
+[warn] import cdme.model.error.ValidationError
+[warn]                         ^
+[warn] one warning found

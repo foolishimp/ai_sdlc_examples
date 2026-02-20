@@ -1,0 +1,2 @@
+[debug] Subclass fingerprints: List((org.scalacheck.Properties,false,org.scalacheck.ScalaCheckFramework$$anon$5@7be99bac), (org.scalacheck.Prop,false,org.scalacheck.ScalaCheckFramework$$anon$5@265245fe), (org.scalacheck.Properties,true,org.scalacheck.ScalaCheckFramework$$anon$5@4f016094), (org.scalacheck.Prop,true,org.scalacheck.ScalaCheckFramework$$anon$5@5a19e8fc), (org.scalatest.Suite,false,org.scalatest.tools.Framework$$anon$1@6d1a2ce8))
+[debug] Annotation fingerprints: List((org.scalatest.WrapWith,false,org.scalatest.tools.Framework$$anon$2@5953e900))

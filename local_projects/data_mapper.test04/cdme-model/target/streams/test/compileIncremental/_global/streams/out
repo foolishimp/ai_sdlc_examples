@@ -1,0 +1,6 @@
+[debug] [zinc] IncrementalCompile -----------
+[debug] IncrementalCompile.incrementalCompile
+[debug] previous = Stamps for: 7 products, 7 sources, 9 libraries
+[debug] current source = Set(${BASE}/cdme-model/src/test/scala/cdme/model/category/CategorySpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/access/AccessControlSpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/context/ContextSpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/adjoint/AdjointSpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/error/ErrorSpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/grain/GrainSpec.scala, ${BASE}/cdme-model/src/test/scala/cdme/model/types/TypeSystemSpec.scala)
+[debug] > initialChanges = InitialChanges(Changes(added = Set(), removed = Set(), changed = Set(), unmodified = ...),Set(),Set(),API Changes: Set())
+[debug] No changes

@@ -1,0 +1,4 @@
+[warn] /Users/jim/src/apps/ai_sdlc_examples/local_projects/data_mapper.test04/cdme-regulatory/src/main/scala/cdme/integration/regulatory/RegulatoryPackageBuilder.scala:5:38: Unused import
+[warn] import cdme.runtime.{VerifiedLedger, ExecutionResult}
+[warn]                                      ^
+[warn] one warning found

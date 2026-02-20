@@ -1,0 +1,52 @@
+[debug] Running TaskDef(cdme.runtime.RecordAccountingSpec, org.scalatest.tools.Framework$$anon$1@3b96ca1c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.runtime.CircuitBreakerSpec, org.scalatest.tools.Framework$$anon$1@3b96ca1c, false, [SuiteSelector])
+[debug] Running TaskDef(cdme.runtime.ErrorRouterSpec, org.scalatest.tools.Framework$$anon$1@3b96ca1c, false, [SuiteSelector])
+[info] ErrorRouterSpec:
+[info] - REQ-F-ERR-001: Right values pass through the router
+[info] - REQ-F-ERR-001: Left values are routed as errors
+[info] - REQ-F-ERR-001: no record is silently dropped - all processed or errored
+[info] - REQ-F-ERR-004: finalize flushes remaining errors to sink
+[info] - REQ-F-ERR-004: SinkError is produced when sink fails
+[info] - REQ-DATA-QUAL-001: threshold not exceeded for few errors
+[info] - REQ-DATA-QUAL-001: absolute error threshold triggers exceeded
+[info] - REQ-DATA-QUAL-001: percentage threshold triggers exceeded
+[info] - REQ-DATA-QUAL-001: percentage threshold not exceeded at boundary
+[info] - currentErrorCount and currentTotalCount track correctly
+[info] - flushBuffer writes accumulated errors to sink
+[info] - flushBuffer on empty buffer is a no-op
+[info] CircuitBreakerSpec:
+[info] - REQ-DATA-QUAL-002: low error rate passes circuit breaker
+[info] - REQ-DATA-QUAL-002: high error rate trips circuit breaker
+[info] - REQ-DATA-QUAL-002: error rate exactly at threshold passes
+[info] - REQ-DATA-QUAL-002: error rate just above threshold trips
+[info] - REQ-DATA-QUAL-002: zero errors passes circuit breaker
+[info] - REQ-DATA-QUAL-002: empty sample passes circuit breaker
+[info] - REQ-DATA-QUAL-002: circuit breaker message includes sample error details
+[info] - SampleResults: errorRate calculation
+[info] - StructuralError contains error rate and threshold
+[info] - custom threshold can be more lenient
+[info] - custom threshold can be more strict
+[info] - CircuitBreakerResult.Passed carries sample metadata
+[info] - CircuitBreakerResult.Tripped carries threshold info
+[info] RecordAccountingSpec:
+[info] - REQ-F-ACC-001: balanced ledger holds invariant
+[info] - REQ-F-ACC-001: unbalanced ledger violates invariant
+[info] - REQ-F-ACC-001: property - invariant holds iff discrepancy is zero
+[info] - REQ-F-ACC-001: zero input count with zero outputs holds invariant
+[info] - REQ-F-ACC-002: ledger contains required fields
+[info] - REQ-F-ACC-002: factory method creates zeroed ledger
+[info] - REQ-F-ACC-003: completion gate verifies balanced ledger
+[info] - REQ-F-ACC-003: completion gate rejects unbalanced ledger
+[info] - REQ-F-ACC-003: completion gate failure includes discrepancy count
+[info] - VerificationStatus enum covers all states
+[info] - REQ-F-ACC-002: ledger can include circuit breaker result
+[info] - REQ-BR-ERR-001: property - every record must appear in exactly one partition
+[info] Run completed in 278 milliseconds.
+[info] Total number of tests run: 37
+[info] Suites: completed 3, aborted 0
+[info] Tests: succeeded 37, failed 0, canceled 0, ignored 0, pending 0
+[info] All tests passed.
+[debug] Passed tests:
+[debug] 	cdme.runtime.RecordAccountingSpec
+[debug] 	cdme.runtime.ErrorRouterSpec
+[debug] 	cdme.runtime.CircuitBreakerSpec

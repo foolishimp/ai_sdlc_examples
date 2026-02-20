@@ -445,6 +445,91 @@ graph TD
 
 -----
 
+### 6.7. Record Accounting & Zero-Loss Guarantee
+
+These requirements ensure that every input record is accounted for in the output, with no silent data loss. They implement a strict accounting invariant based on category-theoretic adjoint metadata.
+
+* **REQ-ACC-01 (Accounting Invariant):**
+  **Priority:** Critical
+  Every input record MUST be accounted for in exactly one output partition (processed, filtered, errored, or aggregated).
+
+  **Acceptance Criteria:**
+  1. The following equation MUST hold for every run:
+     `|input_keys| = |reverse_join_keys| + |filtered_keys| + |error_keys|`
+  2. No record may appear in multiple partitions (mutual exclusivity).
+  3. No record may be unaccounted (completeness).
+  4. The verification MUST be performed before marking a run as COMPLETE.
+
+* **REQ-ACC-02 (Accounting Ledger):**
+  **Priority:** Critical
+  Each run MUST produce a `ledger.json` file proving the accounting invariant holds.
+
+  **Acceptance Criteria:**
+  1. Ledger contains input record count and source key field name.
+  2. Ledger contains partition breakdown with adjoint metadata locations:
+     - Processed records: Location of ReverseJoinMetadata
+     - Filtered records: Location of FilteredKeysMetadata
+     - Error records: Location of error dataset with source_key field
+  3. Ledger contains verification status (balanced/unbalanced).
+  4. If unbalanced, ledger contains discrepancy details (missing keys, extra keys).
+  5. Ledger is written atomically at run completion.
+  6. Ledger format is machine-readable (JSON) and human-auditable.
+
+* **REQ-ACC-03 (Adjoint Key Capture):**
+  **Priority:** Critical
+  All morphisms MUST capture source keys in appropriate adjoint metadata to enable backward traversal.
+
+  **Acceptance Criteria:**
+  1. **Aggregations:** All contributing source keys captured in ReverseJoinMetadata associated with the aggregate key.
+  2. **Filters:** All excluded keys captured in FilteredKeysMetadata with filter condition identifier.
+  3. **Errors:** All error records capture `source_key` field from input.
+  4. **Explodes (1:N):** Parent-child mapping captured in metadata (parent_key → [child_keys]).
+  5. Adjoint metadata is written to persistent storage (not ephemeral).
+  6. Adjoint metadata locations are registered in the accounting ledger.
+
+* **REQ-ACC-04 (Run Completion Gate):**
+  **Priority:** Critical
+  A run CANNOT be marked COMPLETE unless the accounting invariant verification passes.
+
+  **Acceptance Criteria:**
+  1. Verification runs automatically before setting run status to COMPLETE.
+  2. If verification passes: Emit OpenLineage COMPLETE event with ledger reference.
+  3. If verification fails:
+     - Run status set to FAILED (not COMPLETE).
+     - Emit OpenLineage FAIL event with discrepancy details.
+     - Discrepancy details logged (missing keys, extra keys, counts).
+  4. Partial outputs MAY be committed (controlled by Job Configuration), but run MUST be marked FAILED.
+  5. The accounting ledger is persisted regardless of pass/fail status.
+
+* **REQ-ACC-05 (Backward Traversal Proof):**
+  **Priority:** High
+  Any output record MUST be traceable back to its source records via adjoint metadata.
+
+  **Acceptance Criteria:**
+  1. **Given an aggregate key:** Can retrieve all contributing source keys from ReverseJoinMetadata.
+  2. **Given a filtered key:** Can confirm it was intentionally excluded via FilteredKeysMetadata and identify which filter condition applied.
+  3. **Given an error key:** Can retrieve original record from error dataset and failure reason.
+  4. **Given an output record:** Can traverse backward through all morphisms to the original source records.
+  5. Backward traversal does not require recomputation (metadata is sufficient).
+  6. Backward traversal is deterministic (same query returns same lineage).
+
+**Category-Theoretic Foundation:**
+
+These requirements implement the concept of **adjoint functors** from category theory:
+
+* The forward transformation (input → output) is the **left adjoint**.
+* The lineage metadata (output → input) is the **right adjoint**.
+* The accounting invariant ensures the adjunction is well-formed (no data is lost in the round-trip).
+
+**Integration with Existing Requirements:**
+
+* Extends **REQ-INT-03** (Traceability) with verifiable accounting proofs.
+* Complements **REQ-TYP-03** (Error Domain) by ensuring errors are accounted, not just routed.
+* Works with **Appendix A.1** (Lineage Constraints) for efficient storage of adjoint metadata.
+* Supports **REQ-AI-02** (Triangulation of Assurance) by providing proof of data completeness.
+
+---
+
 ## 7. Regulatory Compliance Drivers
 
 This architecture is specifically designed to meet the following regulatory standards:

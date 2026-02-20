@@ -1,0 +1,6 @@
+[debug] [zinc] IncrementalCompile -----------
+[debug] IncrementalCompile.incrementalCompile
+[debug] previous = Stamps for: 50 products, 9 sources, 1 libraries
+[debug] current source = Set(${BASE}/cdme-runtime/src/main/scala/cdme/runtime/AdjointCapture.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/ErrorRouter.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/RecordAccounting.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/integration/monitoring/MetricsExporter.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/ExecutionEngine.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/TelemetryWriter.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/CircuitBreaker.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/BackwardProof.scala, ${BASE}/cdme-runtime/src/main/scala/cdme/runtime/CompletionGate.scala)
+[debug] > initialChanges = InitialChanges(Changes(added = Set(), removed = Set(), changed = Set(), unmodified = ...),Set(),Set(),API Changes: Set())
+[debug] No changes
