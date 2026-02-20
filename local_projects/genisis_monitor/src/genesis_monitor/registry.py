@@ -38,7 +38,9 @@ class ProjectRegistry:
         workspace = path / ".ai-workspace"
 
         status = parse_status(workspace)
-        name = (status.project_name if status and status.project_name else path.name)
+        # Use directory name as display name — it's always unique and descriptive.
+        # STATUS.md heading is often generic ("Project Status").
+        name = path.name
 
         project = Project(
             project_id=project_id,

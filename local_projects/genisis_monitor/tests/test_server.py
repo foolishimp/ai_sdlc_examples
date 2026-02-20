@@ -54,7 +54,7 @@ class TestIndexPage:
 
     def test_contains_project_name(self, test_client: TestClient):
         resp = test_client.get("/")
-        assert "test-project" in resp.text or "Test CDME Project" in resp.text
+        assert "test_project" in resp.text or "test-project" in resp.text
 
     def test_contains_htmx_attributes(self, test_client: TestClient):
         resp = test_client.get("/")

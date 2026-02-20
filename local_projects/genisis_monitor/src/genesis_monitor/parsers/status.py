@@ -23,12 +23,12 @@ def parse_status(workspace: Path) -> StatusReport | None:
 
     report = StatusReport()
 
-    # Extract project name — try **Project**: line first, then first heading
-    proj_match = re.search(r"\*\*Project\*\*\s*:\s*(.+)", text)
+    # Extract project name — try **Project**/**Feature** lines, then full first heading
+    proj_match = re.search(r"\*\*(?:Project|Feature)\*\*\s*:\s*(.+)", text)
     if proj_match:
         report.project_name = proj_match.group(1).strip()
     else:
-        m = re.search(r"^#\s+(.+?)(?:\s*[-—]|\s*$)", text, re.MULTILINE)
+        m = re.search(r"^#\s+(.+)$", text, re.MULTILINE)
         if m:
             report.project_name = m.group(1).strip()
 

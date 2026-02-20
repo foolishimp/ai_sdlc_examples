@@ -24,7 +24,7 @@ class TestProjectRegistry:
         reg.add_project(tmp_workspace)
         project = reg.get_project("test-project")
         assert project is not None
-        assert project.name == "Test CDME Project"
+        assert project.name == "test_project"
 
     def test_get_nonexistent_project(self):
         reg = ProjectRegistry()
