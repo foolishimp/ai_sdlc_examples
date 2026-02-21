@@ -1,0 +1,22 @@
+{% if compliance %}
+<table>
+    <thead>
+        <tr><th>Check</th><th>Status</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+        {% for c in compliance %}
+        <tr>
+            <td>{{ c.check }}</td>
+            <td>
+                <span class="badge badge-{{ 'converged' if c.status == 'pass' else ('in-progress' if c.status == 'warn' else 'not-started') }}">
+                    {{ c.status }}
+                </span>
+            </td>
+            <td><small>{{ c.detail }}</small></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No compliance data available.</em></p>
+{% endif %}

@@ -1,11 +1,12 @@
-# Implements: REQ-F-PARSE-003
+# Implements: REQ-F-PARSE-003, REQ-F-CDIM-001, REQ-F-PROF-001
 """Parse .ai-workspace/graph/graph_topology.yml into a GraphTopology model."""
 
 from pathlib import Path
 
 import yaml
 
-from genesis_monitor.models import AssetType, GraphTopology, Transition
+from genesis_monitor.models.core import AssetType, GraphTopology, Transition
+from genesis_monitor.models.features import ConstraintDimension, ProjectionProfile
 
 
 def parse_graph_topology(workspace: Path) -> GraphTopology | None:
@@ -40,4 +41,37 @@ def parse_graph_topology(workspace: Path) -> GraphTopology | None:
                 edge_type=str(t.get("edge_type", f"{t.get('source', '')}_{t.get('target', '')}")),
             ))
 
-    return GraphTopology(asset_types=asset_types, transitions=transitions)
+    # v2.5: parse constraint_dimensions
+    constraint_dimensions: list[ConstraintDimension] = []
+    raw_dims = data.get("constraint_dimensions", {})
+    if isinstance(raw_dims, dict):
+        for name, dim_data in raw_dims.items():
+            if isinstance(dim_data, dict):
+                constraint_dimensions.append(ConstraintDimension(
+                    name=str(name),
+                    mandatory=bool(dim_data.get("mandatory", False)),
+                    resolves_via=str(dim_data.get("resolves_via", "")),
+                ))
+
+    # v2.5: parse profiles
+    profiles: list[ProjectionProfile] = []
+    raw_profiles = data.get("profiles", {})
+    if isinstance(raw_profiles, dict):
+        for prof_name, prof_data in raw_profiles.items():
+            if isinstance(prof_data, dict):
+                profiles.append(ProjectionProfile(
+                    name=str(prof_name),
+                    graph_edges=list(prof_data.get("graph_edges", [])),
+                    evaluator_types=list(prof_data.get("evaluator_types", [])),
+                    convergence=str(prof_data.get("convergence", "")),
+                    context_density=str(prof_data.get("context_density", "")),
+                    iteration_budget=prof_data.get("iteration_budget"),
+                    vector_types=list(prof_data.get("vector_types", [])),
+                ))
+
+    return GraphTopology(
+        asset_types=asset_types,
+        transitions=transitions,
+        constraint_dimensions=constraint_dimensions,
+        profiles=profiles,
+    )

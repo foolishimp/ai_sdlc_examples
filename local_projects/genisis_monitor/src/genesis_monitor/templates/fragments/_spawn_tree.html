@@ -1,0 +1,30 @@
+{% if spawn_tree %}
+{% macro render_node(node, depth=0) %}
+<div style="margin-left: {{ depth * 1.5 }}rem; border-left: 2px solid var(--pico-muted-border-color); padding-left: 0.75rem; margin-bottom: 0.5rem;">
+    <strong>{{ node.feature_id }}</strong> — {{ node.title }}
+    <span class="badge badge-{{ 'converged' if node.status == 'converged' else ('in-progress' if node.status == 'in_progress' else 'not-started') }}">
+        {{ node.status }}
+    </span>
+    {% if node.vector_type != 'feature' %}
+    <code>{{ node.vector_type }}</code>
+    {% endif %}
+    {% if node.profile %}
+    <small>[{{ node.profile }}]</small>
+    {% endif %}
+    {% if node.fold_back_status %}
+    <small class="status-folded">fold: {{ node.fold_back_status }}</small>
+    {% endif %}
+    {% if node.time_box %}
+    <small>time-box: {{ node.time_box.duration }}</small>
+    {% endif %}
+    {% for child in node.children %}
+        {{ render_node(child, depth + 1) }}
+    {% endfor %}
+</div>
+{% endmacro %}
+{% for root in spawn_tree %}
+    {{ render_node(root) }}
+{% endfor %}
+{% else %}
+<p><em>No vector relationships found.</em></p>
+{% endif %}

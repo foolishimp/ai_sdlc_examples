@@ -1,0 +1,103 @@
+feature: REQ-F-GMON-002
+title: v2.5 Alignment — Structured Event Schemas and Typed Models
+intent: INT-GMON-004
+vector_type: feature
+profile: standard
+status: converged
+created: "2026-02-21T12:00:00Z"
+updated: "2026-02-21T13:00:00Z"
+parent_id: REQ-F-GMON-001
+spawned_by: REQ-F-GMON-001
+
+description: |
+  Foundational vector: extend models and parsers to support v2.5 data structures.
+  All other v2.5 feature vectors depend on these models existing.
+
+requirements:
+  - REQ-F-EVSCHEMA-001  # Typed event parsing (9 event types)
+  - REQ-F-EVSCHEMA-002  # Cross-event linkage
+  - REQ-F-REGIME-001    # Evaluator regime classification
+  - REQ-F-VREL-001      # Spawn relationship tracking (FeatureVector model)
+  - REQ-F-TBOX-001      # Time-box parsing (FeatureVector model)
+  - REQ-F-PROF-001      # Profile parsing (GraphTopology model)
+  - REQ-F-CDIM-001      # Constraint dimension parsing (GraphTopology model)
+
+trajectory:
+  requirements:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T12:00:00Z"
+    converged_at: "2026-02-21T12:00:00Z"
+    asset: docs/specification/REQUIREMENTS.md
+
+  design:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T12:00:00Z"
+    converged_at: "2026-02-21T12:00:00Z"
+    asset: docs/design/genesis_monitor/DESIGN.md
+
+  code:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T12:30:00Z"
+    converged_at: "2026-02-21T13:00:00Z"
+
+  unit_tests:
+    status: converged
+    iteration: 1
+    started_at: "2026-02-21T12:30:00Z"
+    converged_at: "2026-02-21T13:00:00Z"
+    evaluator_results:
+      pytest: pass  # 134/134 tests passing (44 new)
+
+work_breakdown:
+  - id: WU-001
+    title: "Split models into core.py, features.py, events.py"
+    req: [REQ-F-EVSCHEMA-001, REQ-F-VREL-001, REQ-F-TBOX-001]
+    status: completed
+
+  - id: WU-002
+    title: "Add typed event hierarchy (9 event dataclasses)"
+    req: [REQ-F-EVSCHEMA-001]
+    status: completed
+
+  - id: WU-003
+    title: "Extend FeatureVector model (parent_id, profile, time_box, children, fold_back_status)"
+    req: [REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-PROF-001]
+    status: completed
+
+  - id: WU-004
+    title: "Add EvaluatorResult model with regime field"
+    req: [REQ-F-REGIME-001]
+    status: completed
+
+  - id: WU-005
+    title: "Extend GraphTopology model (constraint_dimensions, profiles)"
+    req: [REQ-F-CDIM-001, REQ-F-PROF-001]
+    status: completed
+
+  - id: WU-006
+    title: "Rewrite event parser with type dispatch"
+    req: [REQ-F-EVSCHEMA-001]
+    status: completed
+
+  - id: WU-007
+    title: "Extend feature vector parser (parent_id, profile, time_box)"
+    req: [REQ-F-VREL-001, REQ-F-TBOX-001]
+    status: completed
+
+  - id: WU-008
+    title: "Extend topology parser (constraint_dimensions, profiles)"
+    req: [REQ-F-CDIM-001, REQ-F-PROF-001]
+    status: completed
+
+  - id: WU-009
+    title: "Add cross-event index (by feature_id, intent_id)"
+    req: [REQ-F-EVSCHEMA-002]
+    status: deferred
+
+  - id: WU-010
+    title: "Tests for all new models, parsers, and cross-references"
+    req: [REQ-F-EVSCHEMA-001, REQ-F-EVSCHEMA-002, REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-CDIM-001, REQ-F-PROF-001, REQ-F-REGIME-001]
+    status: completed

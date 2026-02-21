@@ -1,9 +1,20 @@
 # Implements: REQ-F-PARSE-001, REQ-F-PARSE-002, REQ-F-PARSE-003, REQ-F-PARSE-004, REQ-F-PARSE-005, REQ-F-PARSE-006
+# Implements: REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-PROF-001, REQ-F-CDIM-001
 """Core data models for Genesis Monitor."""
+
+from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from genesis_monitor.models.features import (
+        ConstraintDimension,
+        ProjectionProfile,
+        TimeBox,
+    )
 
 
 @dataclass
@@ -57,6 +68,13 @@ class FeatureVector:
     status: str = "pending"
     vector_type: str = "feature"
     trajectory: dict[str, EdgeTrajectory] = field(default_factory=dict)
+    # v2.5 additions
+    profile: str | None = None
+    parent_id: str | None = None
+    spawned_by: str | None = None
+    children: list[str] = field(default_factory=list)
+    fold_back_status: str | None = None
+    time_box: TimeBox | None = None
 
 
 @dataclass
@@ -82,16 +100,9 @@ class GraphTopology:
 
     asset_types: list[AssetType] = field(default_factory=list)
     transitions: list[Transition] = field(default_factory=list)
-
-
-@dataclass
-class Event:
-    """A timestamped methodology event."""
-
-    timestamp: datetime = field(default_factory=datetime.now)
-    event_type: str = ""
-    project: str = ""
-    data: dict = field(default_factory=dict)
+    # v2.5 additions
+    constraint_dimensions: list[ConstraintDimension] = field(default_factory=list)
+    profiles: list[ProjectionProfile] = field(default_factory=list)
 
 
 @dataclass

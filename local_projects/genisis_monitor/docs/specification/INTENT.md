@@ -1,6 +1,6 @@
 # Genesis Monitor — Intent
 
-**Version**: 1.0.0
+**Version**: 2.0.0
 **Status**: Draft
 **Date**: 2026-02-21
 **Asset Type**: Intent
@@ -80,6 +80,42 @@ The dashboard must be real-time, lightweight, and avoid heavy JavaScript framewo
 
 ---
 
+## INT-GMON-004: Align with Genesis v2.5 Asset Graph Model
+
+### Problem
+
+The genesis monitor was built against v2.1 of the Asset Graph Model specification. The spec has since evolved to v2.5, introducing structural concepts that the monitor cannot observe:
+
+- **Two processing regimes** (§4.3) — conscious (deliberative) vs reflex (autonomic). The monitor cannot distinguish or verify that reflexes fire unconditionally.
+- **Consciousness loop** (§7.7) — intent causal chains (`prior_intents`), spec modification events (`spec_modified`), three-phase self-observation. The monitor has no awareness of these event types.
+- **Constraint dimensions** (§2.6.1) — mandatory disambiguation categories at the design edge (ecosystem, security, performance, etc.). The monitor doesn't parse or validate dimension coverage.
+- **Projection profiles** (§7, PROJECTIONS_AND_INVARIANTS.md) — named profiles (full, standard, poc, spike, hotfix, minimal) that parameterise graph, evaluators, convergence, and context density. The monitor has no concept of profiles.
+- **Vector spawning and fold-back** (§5, PROJECTIONS_AND_INVARIANTS.md) — parent/child vector relationships, spawn triggers, fold-back of results from child to parent. The monitor tracks vectors in isolation with no relationships.
+- **Time-boxing** (§6, PROJECTIONS_AND_INVARIANTS.md) — discovery/spike/PoC vectors have deadlines and check-in cadences. The monitor cannot distinguish "converged because done" from "converged because timed out".
+- **Structured event schemas** (§7.5.1) — 9 typed event schemas with specific fields. The monitor uses a generic `Event(data: dict)` with no schema validation.
+- **Protocol enforcement hooks** (§7.8) — mandatory side effects (event emission, feature vector update, STATUS regeneration). The monitor cannot verify hook compliance.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-017 | Reflex/conscious regime display | Dashboard shows which evaluators are reflex vs conscious per edge; verifies reflex completeness |
+| OUT-018 | Consciousness loop tracking | Parse `intent_raised` events with `prior_intents` causal chains; parse `spec_modified` events; display intent lineage |
+| OUT-019 | Constraint dimension coverage | Parse constraint dimensions from topology; validate design resolves all mandatory dimensions; display coverage matrix |
+| OUT-020 | Projection profile awareness | Parse active profile per vector; validate vector constraints match profile; display profile in feature view |
+| OUT-021 | Vector relationship graph | Track parent/child spawn relationships; display spawn tree; show fold-back state |
+| OUT-022 | Time-box tracking | Display deadline, check-in cadence, time remaining for time-boxed vectors |
+| OUT-023 | Structured event parsing | Schema-validate events against 9 typed schemas; extract structured fields for cross-event analysis |
+| OUT-024 | Protocol compliance view | Verify that reflex side-effects (events, feature vector, STATUS) were emitted at each iteration |
+
+### Rationale
+
+The monitor's value is proportional to its fidelity to the spec it observes. A v2.1 monitor observing v2.5 projects is structurally blind to the new concepts — it sees data it cannot interpret. This creates a false sense of observability: the dashboard appears complete but misses the processing regimes, consciousness loop, and vector relationships that define v2.5.
+
+This is itself a telemetry signal (TELEM-004): the methodology evolved but its observer did not, creating a drift between spec and runtime.
+
+---
+
 ## Constraints
 
 - **Read-only**: The monitor MUST NOT write to any target project's `.ai-workspace/`. It is a pure observer.
@@ -96,4 +132,5 @@ This document is the root asset. All subsequent requirements MUST trace back to 
 INT-GMON-001 → REQ-GMON-* (dashboard requirements)
 INT-GMON-002 → REQ-GMON-* (dogfood requirements)
 INT-GMON-003 → REQ-GMON-* (technology requirements)
+INT-GMON-004 → REQ-GMON-* (v2.5 alignment requirements)
 ```

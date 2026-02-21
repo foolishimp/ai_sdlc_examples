@@ -6,7 +6,22 @@
         <span class="badge badge-{{ 'converged' if f.status == 'converged' else ('in-progress' if f.status == 'in_progress' else 'not-started') }}">
             {{ f.status }}
         </span>
+        {% if f.vector_type != 'feature' %}
+        <code>{{ f.vector_type }}</code>
+        {% endif %}
+        {% if f.profile %}
+        <small>[{{ f.profile }}]</small>
+        {% endif %}
     </summary>
+    {% if f.parent_id %}
+    <p><small>Parent: <code>{{ f.parent_id }}</code>{% if f.spawned_by %} | Spawned by: <code>{{ f.spawned_by }}</code>{% endif %}</small></p>
+    {% endif %}
+    {% if f.fold_back_status %}
+    <p><small>Fold-back: <strong>{{ f.fold_back_status }}</strong></small></p>
+    {% endif %}
+    {% if f.time_box %}
+    <p><small>Time-box: <strong>{{ f.time_box.duration }}</strong> | On expiry: {{ f.time_box.on_expiry }}{% if f.time_box.check_in %} | Check-in: {{ f.time_box.check_in }}{% endif %}</small></p>
+    {% endif %}
     {% if f.trajectory %}
     <table>
         <thead>

@@ -1,0 +1,30 @@
+{% if consciousness %}
+<table>
+    <thead>
+        <tr><th>Time</th><th>Type</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+        {% for c in consciousness %}
+        <tr>
+            <td><small>{{ c.timestamp.strftime('%H:%M:%S') }}</small></td>
+            <td><code>{{ c.event_type }}</code></td>
+            <td>
+                {% if c.event_type == 'intent_raised' %}
+                trigger: {{ c.trigger }}{% if c.signal_source %}, source: {{ c.signal_source }}{% endif %}
+                {% elif c.event_type == 'spec_modified' %}
+                {{ c.delta | truncate(60) }}{% if c.trigger_intent %} ({{ c.trigger_intent }}){% endif %}
+                {% elif c.event_type == 'finding_raised' %}
+                {{ c.finding_type }}: {{ c.description | truncate(60) }}
+                {% elif c.event_type == 'feature_spawned' %}
+                {{ c.parent_vector }} → {{ c.child_vector }}{% if c.reason %} ({{ c.reason }}){% endif %}
+                {% else %}
+                {{ c | string | truncate(60) }}
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No consciousness events recorded.</em></p>
+{% endif %}

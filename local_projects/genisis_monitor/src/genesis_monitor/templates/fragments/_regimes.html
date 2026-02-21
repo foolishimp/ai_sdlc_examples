@@ -1,0 +1,42 @@
+{% if regimes %}
+<div class="grid-2">
+    <div>
+        <h4>Conscious (Deliberative)</h4>
+        <p><strong>{{ regimes.conscious_count }}</strong> events</p>
+        <small>Intents, spec modifications, findings, spawns</small>
+    </div>
+    <div>
+        <h4>Reflex (Autonomic)</h4>
+        <p><strong>{{ regimes.reflex_count }}</strong> events</p>
+        <small>Evaluators, iterations, convergence, telemetry</small>
+    </div>
+</div>
+{% if regimes.total > 0 %}
+<table>
+    <thead>
+        <tr><th>Regime</th><th>Count</th><th>Ratio</th></tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Conscious</td>
+            <td>{{ regimes.conscious_count }}</td>
+            <td>{{ "%.0f" | format(regimes.conscious_count / regimes.total * 100) }}%</td>
+        </tr>
+        <tr>
+            <td>Reflex</td>
+            <td>{{ regimes.reflex_count }}</td>
+            <td>{{ "%.0f" | format(regimes.reflex_count / regimes.total * 100) }}%</td>
+        </tr>
+        {% if regimes.unclassified_count > 0 %}
+        <tr>
+            <td>Unclassified</td>
+            <td>{{ regimes.unclassified_count }}</td>
+            <td>{{ "%.0f" | format(regimes.unclassified_count / regimes.total * 100) }}%</td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>
+{% endif %}
+{% else %}
+<p><em>No regime data available.</em></p>
+{% endif %}

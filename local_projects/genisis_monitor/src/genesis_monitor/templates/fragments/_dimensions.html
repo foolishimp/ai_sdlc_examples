@@ -1,0 +1,30 @@
+{% if dimensions %}
+<table>
+    <thead>
+        <tr>
+            <th>Dimension</th>
+            <th>Mandatory</th>
+            <th>Resolves Via</th>
+            <th>Features</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for d in dimensions %}
+        <tr>
+            <td><strong>{{ d.dimension }}</strong></td>
+            <td>
+                {% if d.mandatory %}
+                <span class="badge badge-converged">required</span>
+                {% else %}
+                <span class="badge badge-not-started">optional</span>
+                {% endif %}
+            </td>
+            <td><code>{{ d.resolves_via }}</code></td>
+            <td>{{ d.feature_count }} feature{{ 's' if d.feature_count != 1 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><em>No constraint dimensions defined.</em></p>
+{% endif %}

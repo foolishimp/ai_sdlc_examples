@@ -28,3 +28,37 @@ transitions:
   - source: unit_tests
     target: uat_tests
     edge_type: unit_tests_uat_tests
+
+# v2.5: Constraint Dimensions
+constraint_dimensions:
+  testability:
+    mandatory: true
+    resolves_via: design
+  backward_compatibility:
+    mandatory: true
+    resolves_via: design
+  observability:
+    mandatory: false
+    resolves_via: code
+
+# v2.5: Projection Profiles
+profiles:
+  standard:
+    graph_edges: [intent_requirements, requirements_design, design_code, code_unit_tests, unit_tests_uat_tests]
+    evaluator_types: [agent, deterministic]
+    convergence: all_pass
+    context_density: full
+    vector_types: [feature]
+  hotfix:
+    graph_edges: [design_code, code_unit_tests]
+    evaluator_types: [deterministic]
+    convergence: all_pass
+    context_density: minimal
+    vector_types: [hotfix]
+  spike:
+    graph_edges: [requirements_design, design_code]
+    evaluator_types: [agent]
+    convergence: advisory
+    context_density: minimal
+    iteration_budget: 2
+    vector_types: [spike, poc]

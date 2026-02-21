@@ -1,4 +1,5 @@
 # Implements: REQ-F-DASH-001, REQ-F-DASH-002, REQ-F-DASH-003, REQ-F-DASH-004, REQ-F-DASH-005, REQ-F-STREAM-002
+# Implements: REQ-F-VREL-003, REQ-F-CDIM-002, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-PROTO-001
 """FastAPI route definitions — page routes, fragment routes, SSE endpoint."""
 
 from __future__ import annotations
@@ -11,9 +12,14 @@ from fastapi.responses import HTMLResponse
 from sse_starlette.sse import EventSourceResponse
 
 from genesis_monitor.projections import (
+    build_compliance_report,
+    build_consciousness_timeline,
     build_convergence_table,
+    build_dimension_coverage,
     build_gantt_mermaid,
     build_graph_mermaid,
+    build_regime_summary,
+    build_spawn_tree,
     collect_telem_signals,
 )
 
@@ -52,6 +58,13 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         signals = project.status.telem_signals if project.status else []
         events = project.events[-50:]
 
+        # v2.5 projections
+        spawn_tree = build_spawn_tree(project.features)
+        dimensions = build_dimension_coverage(project.topology, project.features)
+        regimes = build_regime_summary(project.events)
+        consciousness = build_consciousness_timeline(project.events)
+        compliance = build_compliance_report(project)
+
         return request.app.state.templates.TemplateResponse(
             "project.html",
             {
@@ -63,6 +76,11 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                 "features": project.features,
                 "signals": signals,
                 "events": events,
+                "spawn_tree": spawn_tree,
+                "dimensions": dimensions,
+                "regimes": regimes,
+                "consciousness": consciousness,
+                "compliance": compliance,
             },
         )
 
@@ -149,6 +167,63 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         return request.app.state.templates.TemplateResponse(
             "fragments/_telem.html",
             {"request": request, "signals": signals},
+        )
+
+    # ── v2.5 Fragment routes ────────────────────────────────────
+
+    @router.get("/fragments/project/{project_id}/spawn-tree", response_class=HTMLResponse)
+    async def fragment_spawn_tree(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        spawn_tree = build_spawn_tree(project.features)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_spawn_tree.html",
+            {"request": request, "spawn_tree": spawn_tree},
+        )
+
+    @router.get("/fragments/project/{project_id}/dimensions", response_class=HTMLResponse)
+    async def fragment_dimensions(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        dimensions = build_dimension_coverage(project.topology, project.features)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_dimensions.html",
+            {"request": request, "dimensions": dimensions},
+        )
+
+    @router.get("/fragments/project/{project_id}/regimes", response_class=HTMLResponse)
+    async def fragment_regimes(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        regimes = build_regime_summary(project.events)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_regimes.html",
+            {"request": request, "regimes": regimes},
+        )
+
+    @router.get("/fragments/project/{project_id}/consciousness", response_class=HTMLResponse)
+    async def fragment_consciousness(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        consciousness = build_consciousness_timeline(project.events)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_consciousness.html",
+            {"request": request, "consciousness": consciousness},
+        )
+
+    @router.get("/fragments/project/{project_id}/compliance", response_class=HTMLResponse)
+    async def fragment_compliance(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        compliance = build_compliance_report(project)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_compliance.html",
+            {"request": request, "compliance": compliance},
         )
 
     # ── SSE endpoint ─────────────────────────────────────────────
