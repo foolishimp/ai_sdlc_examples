@@ -20,6 +20,8 @@ __pycache__/
 *.pyo
 .eggs/
 *.egg-info/
+.venv/
+genisis/
 
 # Scala
 *.class
