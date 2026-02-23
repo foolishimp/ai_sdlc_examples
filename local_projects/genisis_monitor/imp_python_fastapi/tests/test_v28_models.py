@@ -16,12 +16,17 @@ from genesis_monitor.models.events import (
     CheckpointCreatedEvent,
     ClaimExpiredEvent,
     ClaimRejectedEvent,
+    CommandErrorEvent,
     ConvergenceEscalatedEvent,
     EdgeReleasedEvent,
     EdgeStartedEvent,
+    EncodingEscalatedEvent,
+    EvaluatorDetailEvent,
     ExteroceptiveSignalEvent,
     GapsValidatedEvent,
+    HealthCheckedEvent,
     InteroceptiveSignalEvent,
+    IterationAbandonedEvent,
     IterationCompletedEvent,
     ProjectInitializedEvent,
     ReleaseCreatedEvent,
@@ -34,8 +39,8 @@ from genesis_monitor.models.features import ConstraintDimension
 
 
 class TestEventTypeMapV28:
-    def test_has_22_entries(self):
-        assert len(EVENT_TYPE_MAP) == 22
+    def test_has_27_entries(self):
+        assert len(EVENT_TYPE_MAP) == 27
 
     def test_v28_lifecycle_types_present(self):
         v28_lifecycle = {
@@ -49,6 +54,13 @@ class TestEventTypeMapV28:
             "interoceptive_signal", "exteroceptive_signal", "affect_triage",
         }
         assert v28_sensory.issubset(set(EVENT_TYPE_MAP.keys()))
+
+    def test_v28_failure_observability_types_present(self):
+        v28_failure = {
+            "evaluator_detail", "command_error", "health_checked",
+            "iteration_abandoned", "encoding_escalated",
+        }
+        assert v28_failure.issubset(set(EVENT_TYPE_MAP.keys()))
 
     def test_v28_multi_agent_types_present(self):
         v28_agent = {
@@ -250,6 +262,7 @@ class TestEnrichedIterationCompleted:
         assert e.process_gaps == []
         assert e.convergence_type == ""
         assert e.intent_engine_output == ""
+        assert e.delta is None
 
     def test_v28_fields_populated(self):
         e = IterationCompletedEvent(
@@ -260,10 +273,12 @@ class TestEnrichedIterationCompleted:
             process_gaps=["missing test for edge case"],
             convergence_type="delta_zero",
             intent_engine_output="reflex.log",
+            delta=8,
         )
         assert e.encoding["mode"] == "constructive"
         assert len(e.source_findings) == 1
         assert e.convergence_type == "delta_zero"
+        assert e.delta == 8
 
 
 # ── EdgeTrajectory v2.8 Fields ───────────────────────────────────
@@ -302,6 +317,7 @@ class TestEdgeConvergenceV28:
         assert ec.converged_at is None
         assert ec.duration == ""
         assert ec.convergence_type == ""
+        assert ec.delta_curve == []
 
     def test_v28_fields_populated(self):
         ec = EdgeConvergence(
@@ -310,9 +326,11 @@ class TestEdgeConvergenceV28:
             converged_at=datetime(2026, 2, 21),
             duration="1d",
             convergence_type="delta_zero",
+            delta_curve=[8, 0],
         )
         assert ec.duration == "1d"
         assert ec.convergence_type == "delta_zero"
+        assert ec.delta_curve == [8, 0]
 
 
 # ── FeatureVector v2.8 Fields ────────────────────────────────────

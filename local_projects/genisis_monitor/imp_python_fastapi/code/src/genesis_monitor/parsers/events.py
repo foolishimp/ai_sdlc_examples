@@ -61,13 +61,16 @@ def _parse_one(data: dict) -> Event:
     if cls is None:
         return Event(**base_kwargs)
 
-    # Extract typed fields from data
+    # Extract typed fields from data (top-level or nested in data["data"])
+    nested = data.get("data") if isinstance(data.get("data"), dict) else {}
     typed_kwargs = dict(base_kwargs)
     for f in dataclasses.fields(cls):
         if f.name in base_kwargs:
             continue
         if f.name in data:
             typed_kwargs[f.name] = data[f.name]
+        elif f.name in nested:
+            typed_kwargs[f.name] = nested[f.name]
 
     try:
         return cls(**typed_kwargs)
@@ -93,6 +96,7 @@ _REFLEX_LOG_TYPES = frozenset({
     "iteration_completed", "edge_converged", "evaluator_ran",
     "telemetry_signal_emitted", "edge_started", "checkpoint_created",
     "edge_released", "interoceptive_signal",
+    "evaluator_detail", "command_error", "health_checked",
 })
 
 # Spec-level events: modify the spec or feature graph
@@ -100,12 +104,14 @@ _SPEC_EVENT_LOG_TYPES = frozenset({
     "spec_modified", "feature_spawned", "feature_folded_back",
     "finding_raised", "project_initialized", "gaps_validated",
     "release_created", "exteroceptive_signal", "affect_triage",
+    "encoding_escalated",
 })
 
 # Escalation events: require human attention
 _ESCALATE_TYPES = frozenset({
     "intent_raised", "convergence_escalated", "review_completed",
     "claim_rejected", "claim_expired",
+    "iteration_abandoned",
 })
 
 

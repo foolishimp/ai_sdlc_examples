@@ -147,6 +147,7 @@ class EdgeConvergence:
     converged_at: datetime | None = None
     duration: str = ""
     convergence_type: str = ""
+    delta_curve: list[int] = field(default_factory=list)
 
 
 @dataclass

@@ -26,6 +26,7 @@ def build_convergence_table_from_events(events: list[Event]) -> list[EdgeConverg
         "converged_at": None,
         "features": set(),
         "convergence_type": "",
+        "delta_curve": [],
     })
 
     for e in events:
@@ -49,6 +50,11 @@ def build_convergence_table_from_events(events: list[Event]) -> list[EdgeConverg
             state["status"] = "in_progress"
             if feature:
                 state["features"].add(feature)
+            delta = getattr(e, "delta", None)
+            if delta is None:
+                delta = e.data.get("delta")
+            if delta is not None:
+                state["delta_curve"].append(int(delta))
 
         elif e.event_type == "edge_converged":
             state = edge_state[edge]
@@ -83,6 +89,7 @@ def build_convergence_table_from_events(events: list[Event]) -> list[EdgeConverg
             converged_at=state["converged_at"],
             duration=duration,
             convergence_type=state["convergence_type"],
+            delta_curve=state["delta_curve"],
         ))
 
     return rows

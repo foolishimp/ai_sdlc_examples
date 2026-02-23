@@ -42,7 +42,7 @@ class TestTypedEvents:
         assert v25_types.issubset(set(EVENT_TYPE_MAP.keys()))
 
     def test_event_type_map_has_all_types(self):
-        assert len(EVENT_TYPE_MAP) == 22
+        assert len(EVENT_TYPE_MAP) == 27
 
     def test_iteration_completed_event(self):
         e = IterationCompletedEvent(

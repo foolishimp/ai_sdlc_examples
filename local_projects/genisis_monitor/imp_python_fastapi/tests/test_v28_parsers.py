@@ -14,19 +14,25 @@ from genesis_monitor.models.events import (
     CheckpointCreatedEvent,
     ClaimExpiredEvent,
     ClaimRejectedEvent,
+    CommandErrorEvent,
     ConvergenceEscalatedEvent,
     EdgeReleasedEvent,
     EdgeStartedEvent,
+    EncodingEscalatedEvent,
+    EvaluatorDetailEvent,
     Event,
     ExteroceptiveSignalEvent,
     GapsValidatedEvent,
+    HealthCheckedEvent,
     InteroceptiveSignalEvent,
+    IterationAbandonedEvent,
     IterationCompletedEvent,
     ProjectInitializedEvent,
     ReleaseCreatedEvent,
     ReviewCompletedEvent,
 )
 from genesis_monitor.parsers.events import classify_intent_engine_output, parse_events
+from genesis_monitor.projections.convergence import build_convergence_table_from_events
 from genesis_monitor.parsers.features import parse_feature_vectors
 from genesis_monitor.parsers.topology import parse_graph_topology
 
@@ -147,7 +153,7 @@ def v28_events_workspace(tmp_path: Path) -> Path:
             "reason": "no progress",
             "escalated_to": "human",
         },
-        # Enriched iteration_completed
+        # Enriched iteration_completed (with delta)
         {
             "timestamp": "2026-02-23T11:00:00",
             "event_type": "iteration_completed",
@@ -162,6 +168,53 @@ def v28_events_workspace(tmp_path: Path) -> Path:
             "process_gaps": ["missing test"],
             "convergence_type": "delta_zero",
             "intent_engine_output": "reflex.log",
+            "delta": 8,
+        },
+        # Failure observability events
+        {
+            "timestamp": "2026-02-23T11:05:00",
+            "event_type": "evaluator_detail",
+            "project": "test",
+            "edge": "code↔tests",
+            "feature": "REQ-F-001",
+            "iteration": 1,
+            "check_name": "tests_pass",
+            "check_type": "deterministic",
+            "result": "fail",
+        },
+        {
+            "timestamp": "2026-02-23T11:10:00",
+            "event_type": "command_error",
+            "project": "test",
+            "command": "pytest",
+            "error": "exit code 1",
+            "edge": "code↔tests",
+        },
+        {
+            "timestamp": "2026-02-23T11:15:00",
+            "event_type": "health_checked",
+            "project": "test",
+            "workspace": "/tmp/ws",
+            "status": "healthy",
+        },
+        {
+            "timestamp": "2026-02-23T11:20:00",
+            "event_type": "iteration_abandoned",
+            "project": "test",
+            "edge": "code↔tests",
+            "feature": "REQ-F-001",
+            "iteration": 3,
+            "reason": "max_retries",
+        },
+        {
+            "timestamp": "2026-02-23T11:25:00",
+            "event_type": "encoding_escalated",
+            "project": "test",
+            "edge": "code↔tests",
+            "feature": "REQ-F-001",
+            "previous_valence": "medium",
+            "new_valence": "high",
+            "trigger": "evaluator_failures",
         },
     ]
     (events_dir / "events.jsonl").write_text(
@@ -260,19 +313,108 @@ class TestV28EventParsing:
         assert ic[0].process_gaps == ["missing test"]
         assert ic[0].convergence_type == "delta_zero"
         assert ic[0].intent_engine_output == "reflex.log"
+        assert ic[0].delta == 8
+
+    def test_parses_evaluator_detail(self, v28_events_workspace: Path):
+        events = parse_events(v28_events_workspace)
+        ed = [e for e in events if isinstance(e, EvaluatorDetailEvent)]
+        assert len(ed) == 1
+        assert ed[0].edge == "code↔tests"
+        assert ed[0].check_name == "tests_pass"
+        assert ed[0].check_type == "deterministic"
+        assert ed[0].result == "fail"
+
+    def test_parses_command_error(self, v28_events_workspace: Path):
+        events = parse_events(v28_events_workspace)
+        ce = [e for e in events if isinstance(e, CommandErrorEvent)]
+        assert len(ce) == 1
+        assert ce[0].command == "pytest"
+        assert ce[0].error == "exit code 1"
+
+    def test_parses_health_checked(self, v28_events_workspace: Path):
+        events = parse_events(v28_events_workspace)
+        hc = [e for e in events if isinstance(e, HealthCheckedEvent)]
+        assert len(hc) == 1
+        assert hc[0].workspace == "/tmp/ws"
+        assert hc[0].status == "healthy"
+
+    def test_parses_iteration_abandoned(self, v28_events_workspace: Path):
+        events = parse_events(v28_events_workspace)
+        ia = [e for e in events if isinstance(e, IterationAbandonedEvent)]
+        assert len(ia) == 1
+        assert ia[0].edge == "code↔tests"
+        assert ia[0].reason == "max_retries"
+        assert ia[0].iteration == 3
+
+    def test_parses_encoding_escalated(self, v28_events_workspace: Path):
+        events = parse_events(v28_events_workspace)
+        ee = [e for e in events if isinstance(e, EncodingEscalatedEvent)]
+        assert len(ee) == 1
+        assert ee[0].previous_valence == "medium"
+        assert ee[0].new_valence == "high"
+        assert ee[0].trigger == "evaluator_failures"
 
     def test_total_event_count(self, v28_events_workspace: Path):
         events = parse_events(v28_events_workspace)
-        assert len(events) == 14
+        assert len(events) == 19
 
     def test_no_generic_event_fallbacks(self, v28_events_workspace: Path):
-        """All 14 events should be typed, no generic Event fallback."""
+        """All 19 events should be typed, no generic Event fallback."""
         events = parse_events(v28_events_workspace)
         generics = [e for e in events if type(e) is Event]
         assert len(generics) == 0
 
 
 # ── v2.5 events still parse as typed (backward compat) ──────────
+
+
+class TestNestedDataFieldParsing:
+    """E2E runs emit some events with typed fields nested inside 'data'."""
+
+    def test_evaluator_detail_nested_in_data(self, tmp_path: Path):
+        ws = tmp_path / ".ai-workspace"
+        events_dir = ws / "events"
+        events_dir.mkdir(parents=True)
+        event = {
+            "event_type": "evaluator_detail",
+            "timestamp": "2026-02-23T08:00:01",
+            "project": "test",
+            "data": {
+                "feature": "REQ-F-CONV-001",
+                "edge": "code↔unit_tests",
+                "iteration": 1,
+                "check_name": "tests_pass",
+                "check_type": "deterministic",
+                "result": "fail",
+            },
+        }
+        (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
+        result = parse_events(ws)
+        assert len(result) == 1
+        assert isinstance(result[0], EvaluatorDetailEvent)
+        assert result[0].edge == "code↔unit_tests"
+        assert result[0].check_name == "tests_pass"
+        assert result[0].result == "fail"
+        assert result[0].iteration == 1
+
+    def test_top_level_fields_take_precedence_over_nested(self, tmp_path: Path):
+        ws = tmp_path / ".ai-workspace"
+        events_dir = ws / "events"
+        events_dir.mkdir(parents=True)
+        event = {
+            "event_type": "evaluator_detail",
+            "timestamp": "2026-02-23T08:00:01",
+            "project": "test",
+            "edge": "top-level-edge",
+            "data": {"edge": "nested-edge", "check_name": "tests_pass"},
+        }
+        (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
+        result = parse_events(ws)
+        assert isinstance(result[0], EvaluatorDetailEvent)
+        # Top-level should win
+        assert result[0].edge == "top-level-edge"
+        # Nested-only field should still be extracted
+        assert result[0].check_name == "tests_pass"
 
 
 class TestV25EventsStillWork:
@@ -298,22 +440,35 @@ class TestClassifyIntentEngineOutput:
     def test_reflex_log_types(self):
         for t in ["iteration_completed", "edge_converged", "evaluator_ran",
                    "edge_started", "checkpoint_created", "edge_released",
-                   "interoceptive_signal", "telemetry_signal_emitted"]:
+                   "interoceptive_signal", "telemetry_signal_emitted",
+                   "evaluator_detail", "command_error", "health_checked"]:
             assert classify_intent_engine_output(t) == "reflex.log", f"{t} should be reflex.log"
 
     def test_spec_event_log_types(self):
         for t in ["spec_modified", "feature_spawned", "feature_folded_back",
                    "finding_raised", "project_initialized", "gaps_validated",
-                   "release_created", "exteroceptive_signal", "affect_triage"]:
+                   "release_created", "exteroceptive_signal", "affect_triage",
+                   "encoding_escalated"]:
             assert classify_intent_engine_output(t) == "specEventLog", f"{t} should be specEventLog"
 
     def test_escalate_types(self):
         for t in ["intent_raised", "convergence_escalated", "review_completed",
-                   "claim_rejected", "claim_expired"]:
+                   "claim_rejected", "claim_expired",
+                   "iteration_abandoned"]:
             assert classify_intent_engine_output(t) == "escalate", f"{t} should be escalate"
 
     def test_unknown_type(self):
         assert classify_intent_engine_output("something_unknown") == "unclassified"
+
+    def test_reflex_includes_failure_observability(self):
+        for t in ["evaluator_detail", "command_error", "health_checked"]:
+            assert classify_intent_engine_output(t) == "reflex.log"
+
+    def test_escalate_includes_iteration_abandoned(self):
+        assert classify_intent_engine_output("iteration_abandoned") == "escalate"
+
+    def test_spec_includes_encoding_escalated(self):
+        assert classify_intent_engine_output("encoding_escalated") == "specEventLog"
 
 
 # ── Feature Vector v2.8 Parsing ──────────────────────────────────
@@ -461,3 +616,48 @@ class TestTopologyV28Parsing:
         legacy = next(d for d in topo.constraint_dimensions if d.name == "legacy_dim")
         assert legacy.tolerance == ""
         assert legacy.breach_status == ""
+
+
+# ── Convergence Delta Curve Projection ────────────────────────────
+
+
+class TestConvergenceDeltaCurve:
+    def test_delta_curve_from_iteration_events(self):
+        """build_convergence_table_from_events extracts delta_curve."""
+        events = parse_events  # we build events manually below
+        from genesis_monitor.models.events import IterationCompletedEvent, EdgeStartedEvent
+
+        evts = [
+            EdgeStartedEvent(
+                event_type="edge_started", project="test",
+                edge="code↔tests", feature="REQ-F-001",
+            ),
+            IterationCompletedEvent(
+                event_type="iteration_completed", project="test",
+                edge="code↔tests", feature="REQ-F-001",
+                iteration=1, delta=8,
+            ),
+            IterationCompletedEvent(
+                event_type="iteration_completed", project="test",
+                edge="code↔tests", feature="REQ-F-001",
+                iteration=2, delta=0,
+            ),
+        ]
+        rows = build_convergence_table_from_events(evts)
+        assert len(rows) == 1
+        assert rows[0].delta_curve == [8, 0]
+
+    def test_delta_curve_empty_when_no_delta(self):
+        """delta_curve stays empty when iterations have no delta."""
+        from genesis_monitor.models.events import IterationCompletedEvent
+
+        evts = [
+            IterationCompletedEvent(
+                event_type="iteration_completed", project="test",
+                edge="design→code", feature="REQ-F-001",
+                iteration=1,
+            ),
+        ]
+        rows = build_convergence_table_from_events(evts)
+        assert len(rows) == 1
+        assert rows[0].delta_curve == []

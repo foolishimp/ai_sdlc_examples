@@ -1,10 +1,12 @@
 {% if convergence %}
+{% set has_delta = convergence | selectattr('delta_curve') | list | length > 0 %}
 <table>
     <thead>
         <tr>
             <th>Edge</th>
             <th>Status</th>
             <th>Iterations</th>
+            {% if has_delta %}<th>Delta</th>{% endif %}
             <th>Features</th>
             {% if convergence[0].duration %}<th>Duration</th>{% endif %}
         </tr>
@@ -19,6 +21,7 @@
                 </span>
             </td>
             <td>{{ c.iterations }}</td>
+            {% if has_delta %}<td>{{ c.delta_curve or '—' }}</td>{% endif %}
             <td>{{ c.evaluator_summary }}</td>
             {% if convergence[0].duration %}<td>{{ c.duration or '—' }}</td>{% endif %}
         </tr>

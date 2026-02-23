@@ -32,6 +32,7 @@ class IterationCompletedEvent(Event):
     process_gaps: list = field(default_factory=list)
     convergence_type: str = ""
     intent_engine_output: str = ""
+    delta: int | None = None
 
 
 @dataclass
@@ -233,6 +234,59 @@ class ConvergenceEscalatedEvent(Event):
     escalated_to: str = ""
 
 
+# ── v2.8 Failure Observability Events ──────────────────────────────
+
+
+@dataclass
+class EvaluatorDetailEvent(Event):
+    """Emitted for each failed evaluator check (REQ-SUPV-003)."""
+
+    edge: str = ""
+    feature: str = ""
+    iteration: int = 0
+    check_name: str = ""
+    check_type: str = ""  # deterministic | agent
+    result: str = ""      # fail | error
+
+
+@dataclass
+class CommandErrorEvent(Event):
+    """Emitted when a command execution fails."""
+
+    command: str = ""
+    error: str = ""
+    edge: str = ""
+
+
+@dataclass
+class HealthCheckedEvent(Event):
+    """Emitted on health-check probe of workspace."""
+
+    workspace: str = ""
+    status: str = ""  # healthy | degraded | unreachable
+
+
+@dataclass
+class IterationAbandonedEvent(Event):
+    """Emitted when an iteration is abandoned (max retries, timeout)."""
+
+    edge: str = ""
+    feature: str = ""
+    iteration: int = 0
+    reason: str = ""
+
+
+@dataclass
+class EncodingEscalatedEvent(Event):
+    """Emitted when encoding valence escalates (e.g. medium→high)."""
+
+    edge: str = ""
+    feature: str = ""
+    previous_valence: str = ""
+    new_valence: str = ""
+    trigger: str = ""
+
+
 EVENT_TYPE_MAP: dict[str, type[Event]] = {
     # v2.5 events
     "iteration_completed": IterationCompletedEvent,
@@ -260,4 +314,10 @@ EVENT_TYPE_MAP: dict[str, type[Event]] = {
     "edge_released": EdgeReleasedEvent,
     "claim_expired": ClaimExpiredEvent,
     "convergence_escalated": ConvergenceEscalatedEvent,
+    # v2.8 failure observability
+    "evaluator_detail": EvaluatorDetailEvent,
+    "command_error": CommandErrorEvent,
+    "health_checked": HealthCheckedEvent,
+    "iteration_abandoned": IterationAbandonedEvent,
+    "encoding_escalated": EncodingEscalatedEvent,
 }
