@@ -171,7 +171,21 @@ def build_compliance_report(project: Project) -> list[dict]:
             "detail": "No sensory events — v2.8 defines interoceptive/exteroceptive signals",
         })
 
-    # 10. v2.8: Edge timestamps present
+    # 10. Genesis Bootloader installed
+    if project.has_bootloader:
+        checks.append({
+            "check": "Genesis Bootloader installed",
+            "status": "pass",
+            "detail": "CLAUDE.md contains Genesis Bootloader constraint context",
+        })
+    else:
+        checks.append({
+            "check": "Genesis Bootloader installed",
+            "status": "warn",
+            "detail": "No bootloader in CLAUDE.md — run gen-setup.py to install",
+        })
+
+    # 11. v2.8: Edge timestamps present
     has_timestamps = False
     for f in project.features:
         for traj in f.trajectory.values():

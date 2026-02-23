@@ -1,0 +1,65 @@
+{# Implements: REQ-F-DASH-006 — Hierarchical project tree navigator #}
+
+{# Render project badge inline: link + status badges #}
+{% macro project_badge(proj) %}
+    <a href="/project/{{ proj.project_id }}">{{ proj.name }}</a>
+    {% if proj.has_bootloader %}
+        <span class="badge" style="background: #e3f2fd; color: #1565c0;" title="Genesis Bootloader installed">BL</span>
+    {% endif %}
+    {% if proj.status and proj.status.phase_summary %}
+        {% set active_phases = proj.status.phase_summary | selectattr("status", "equalto", "in_progress") | list %}
+        {% if active_phases %}
+            <span class="badge badge-in-progress">{{ active_phases[0].edge }}</span>
+        {% else %}
+            {% set done = proj.status.phase_summary | selectattr("status", "equalto", "converged") | list %}
+            {% if done %}
+                <span class="badge badge-converged">{{ done[-1].edge }}</span>
+            {% else %}
+                <span class="badge badge-not-started">not started</span>
+            {% endif %}
+        {% endif %}
+        {% set total = proj.status.phase_summary | length %}
+        {% set done_count = proj.status.phase_summary | selectattr("status", "equalto", "converged") | list | length %}
+        <small style="color: var(--pico-muted-color);">{{ done_count }}/{{ total }} edges</small>
+    {% else %}
+        <span class="badge badge-not-started">no status</span>
+    {% endif %}
+{% endmacro %}
+
+{% macro render_node(node, depth=0) %}
+{% if node.is_project and not node.children %}
+    {# Pure project leaf — no children #}
+    <li style="list-style: none; padding: 2px 0;">
+        {{ project_badge(node.project) }}
+    </li>
+{% elif node.children %}
+    {# Folder node (may also be a project) — collapsible #}
+    <li style="list-style: none; padding: 2px 0;">
+        <details {% if depth < 2 %}open{% endif %}>
+            <summary style="cursor: pointer; font-weight: {% if depth == 0 %}bold{% else %}normal{% endif %};">
+                {{ node.name }}
+            </summary>
+            {% if node.is_project and node.project %}
+                <div style="padding: 2px 0 4px 1.2rem;">
+                    {{ project_badge(node.project) }}
+                </div>
+            {% endif %}
+            <ul style="padding-left: 1.2rem; margin: 0;">
+                {% for child in node.children | sort(attribute='name') %}
+                    {{ render_node(child, depth + 1) }}
+                {% endfor %}
+            </ul>
+        </details>
+    </li>
+{% endif %}
+{% endmacro %}
+
+{% if tree and tree.children %}
+<ul style="padding-left: 0; margin: 0;">
+    {% for child in tree.children | sort(attribute='name') %}
+        {{ render_node(child, 0) }}
+    {% endfor %}
+</ul>
+{% else %}
+<p>No projects found. Check your <code>--watch-dir</code> configuration.</p>
+{% endif %}

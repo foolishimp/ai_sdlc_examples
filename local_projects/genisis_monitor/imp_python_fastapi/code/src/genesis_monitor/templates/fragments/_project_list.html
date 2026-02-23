@@ -11,7 +11,12 @@
     <tbody>
         {% for p in projects %}
         <tr>
-            <td><a href="/project/{{ p.project_id }}">{{ p.name }}</a></td>
+            <td>
+                <a href="/project/{{ p.project_id }}">{{ p.name }}</a>
+                {% if p.has_bootloader %}
+                    <span class="badge" style="background: #e3f2fd; color: #1565c0;" title="Genesis Bootloader installed">BL</span>
+                {% endif %}
+            </td>
             <td>
                 {% if p.status and p.status.phase_summary %}
                     {% set active_phases = p.status.phase_summary | selectattr("status", "equalto", "in_progress") | list %}

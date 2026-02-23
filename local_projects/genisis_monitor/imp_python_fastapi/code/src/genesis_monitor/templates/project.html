@@ -1,9 +1,26 @@
 {% extends "base.html" %}
 {% block title %}{{ project.name }} — Genesis Monitor{% endblock %}
 
+{% block head_extra %}
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+{% endblock %}
+
+{% block scripts %}
+    <script>
+        document.body.addEventListener('htmx:afterSwap', function() {
+            if (typeof mermaid !== 'undefined') { mermaid.run(); }
+        });
+    </script>
+{% endblock %}
+
 {% block content %}
 <hgroup>
-    <h1>{{ project.name }}</h1>
+    <h1>{{ project.name }}
+        {% if project.has_bootloader %}
+            <span class="badge" style="background: #e3f2fd; color: #1565c0; font-size: 0.5em; vertical-align: middle;" title="Genesis Bootloader installed in CLAUDE.md">Bootloader</span>
+        {% endif %}
+    </h1>
     <p>{{ project.path }}</p>
 </hgroup>
 

@@ -12,9 +12,7 @@
     <script src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12/dist/ext/sse.js"></script>
 
-    <!-- Mermaid -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+    {% block head_extra %}{% endblock %}
 
     <style>
         :root {
@@ -54,13 +52,6 @@
         <small>Genesis Monitor — AI SDLC v2.8 Methodology Dashboard</small>
     </footer>
 
-    <script>
-        // Re-render Mermaid after HTMX swaps
-        document.body.addEventListener('htmx:afterSwap', function() {
-            if (typeof mermaid !== 'undefined') {
-                mermaid.run();
-            }
-        });
-    </script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

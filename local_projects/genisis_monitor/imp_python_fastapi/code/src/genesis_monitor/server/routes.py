@@ -1,4 +1,4 @@
-# Implements: REQ-F-DASH-001, REQ-F-DASH-002, REQ-F-DASH-003, REQ-F-DASH-004, REQ-F-DASH-005, REQ-F-STREAM-002
+# Implements: REQ-F-DASH-001, REQ-F-DASH-002, REQ-F-DASH-003, REQ-F-DASH-004, REQ-F-DASH-005, REQ-F-DASH-006, REQ-F-STREAM-002
 # Implements: REQ-F-VREL-003, REQ-F-CDIM-002, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-PROTO-001
 """FastAPI route definitions — page routes, fragment routes, SSE endpoint."""
 
@@ -18,6 +18,7 @@ from genesis_monitor.projections import (
     build_dimension_coverage,
     build_gantt_mermaid,
     build_graph_mermaid,
+    build_project_tree,
     build_regime_summary,
     build_spawn_tree,
     collect_telem_signals,
@@ -39,9 +40,10 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
     async def index(request: Request):
         """Project index page."""
         projects = registry.list_projects()
+        tree = build_project_tree(projects)
         return request.app.state.templates.TemplateResponse(
             "index.html",
-            {"request": request, "projects": projects},
+            {"request": request, "projects": projects, "tree": tree},
         )
 
     @router.get("/project/{project_id}", response_class=HTMLResponse)
@@ -53,7 +55,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
 
         graph_mermaid = build_graph_mermaid(project.topology, project.status)
         convergence = build_convergence_table(project.status, project.events)
-        gantt = build_gantt_mermaid(project.status)
+        gantt = build_gantt_mermaid(project.status, project.features)
 
         signals = project.status.telem_signals if project.status else []
         events = project.events[-50:]
@@ -92,6 +94,16 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         return request.app.state.templates.TemplateResponse(
             "fragments/_project_list.html",
             {"request": request, "projects": projects},
+        )
+
+    @router.get("/fragments/tree", response_class=HTMLResponse)
+    async def fragment_tree(request: Request):
+        """Tree navigator fragment (REQ-F-DASH-006)."""
+        projects = registry.list_projects()
+        tree = build_project_tree(projects)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_tree.html",
+            {"request": request, "tree": tree},
         )
 
     @router.get("/fragments/project/{project_id}/graph", response_class=HTMLResponse)
@@ -152,7 +164,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        gantt = build_gantt_mermaid(project.status)
+        gantt = build_gantt_mermaid(project.status, project.features)
         return request.app.state.templates.TemplateResponse(
             "fragments/_gantt.html",
             {"request": request, "gantt": gantt},

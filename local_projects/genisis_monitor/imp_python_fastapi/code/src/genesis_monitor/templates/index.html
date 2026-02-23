@@ -4,10 +4,10 @@
 {% block content %}
 <h1>Monitored Projects</h1>
 
-<div id="project-list"
-     hx-get="/fragments/project-list"
+<div id="project-tree"
+     hx-get="/fragments/tree"
      hx-trigger="sse:project_updated, sse:project_added, sse:project_removed"
      hx-swap="innerHTML">
-    {% include "fragments/_project_list.html" %}
+    {% include "fragments/_tree.html" %}
 </div>
 {% endblock %}

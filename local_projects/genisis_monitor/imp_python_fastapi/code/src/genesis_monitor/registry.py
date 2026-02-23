@@ -8,6 +8,7 @@ from pathlib import Path
 
 from genesis_monitor.models import Project
 from genesis_monitor.parsers import (
+    detect_bootloader,
     parse_constraints,
     parse_events,
     parse_feature_vectors,
@@ -52,6 +53,7 @@ class ProjectRegistry:
             events=parse_events(workspace),
             tasks=parse_tasks(workspace),
             constraints=parse_constraints(workspace),
+            has_bootloader=detect_bootloader(path),
             last_updated=datetime.now(),
         )
 

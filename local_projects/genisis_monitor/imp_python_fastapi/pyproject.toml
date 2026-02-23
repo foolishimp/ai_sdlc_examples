@@ -28,7 +28,7 @@ dev = [
 genesis-monitor = "genesis_monitor.__main__:main"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["code/src"]
 
 [tool.ruff]
 target-version = "py312"

@@ -162,6 +162,7 @@ class Project:
     events: list[Event] = field(default_factory=list)
     tasks: list[Task] = field(default_factory=list)
     constraints: ProjectConstraints | None = None
+    has_bootloader: bool = False
     last_updated: datetime = field(default_factory=datetime.now)
 
 

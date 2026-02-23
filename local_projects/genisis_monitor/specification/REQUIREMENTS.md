@@ -264,6 +264,20 @@ The system MUST render TELEM signals extracted from STATUS.md with signal ID, ca
 - AC-1: TELEM signals displayed in a table/card layout
 - AC-2: Signals grouped by category if available
 
+### REQ-F-DASH-006: Project Tree Navigator
+
+**Priority**: High
+**Traces To**: INT-GMON-001 / OUT-001
+
+The system MUST provide a hierarchical tree view on the project index page that groups discovered projects by their filesystem directory structure, replacing or augmenting the flat project list.
+
+**Acceptance Criteria**:
+- AC-1: Projects are grouped by common parent directories into a collapsible tree
+- AC-2: Each tree node shows directory name; project nodes show status (phase badge, convergence count)
+- AC-3: Non-project directories that are ancestors of projects appear as expandable folder nodes
+- AC-4: Tree auto-updates via SSE when projects change
+- AC-5: Clicking a project node navigates to its detail dashboard
+
 ---
 
 ## 6. Real-Time Event Streaming
@@ -882,7 +896,7 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 |----------|-------|----------|------|--------|
 | Discovery (DISC) | 3 | 2 | 1 | 0 |
 | Parsing (PARSE) | 6 | 2 | 2 | 2 |
-| Dashboard (DASH) | 5 | 2 | 2 | 1 |
+| Dashboard (DASH) | 6 | 2 | 3 | 1 |
 | Streaming (STREAM) | 2 | 2 | 0 | 0 |
 | Watching (WATCH) | 2 | 1 | 1 | 0 |
 | Telemetry (TELEM) | 1 | 0 | 0 | 1 |
@@ -902,4 +916,4 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | IntentEngine Classification (IENG) | 2 | 0 | 1 | 1 |
 | Edge Timestamps (ETIM) | 3 | 0 | 3 | 0 |
 | Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
-| **Total** | **60** | **13** | **32** | **15** |
+| **Total** | **61** | **13** | **33** | **15** |

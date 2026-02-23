@@ -28,9 +28,19 @@ def parse_graph_topology(workspace: Path) -> GraphTopology | None:
         return None
 
     asset_types: list[AssetType] = []
-    for name, info in (data.get("asset_types", {}) or {}).items():
-        desc = info.get("description", "") if isinstance(info, dict) else str(info)
-        asset_types.append(AssetType(name=str(name), description=str(desc)))
+    raw_assets = data.get("asset_types") or {}
+    if isinstance(raw_assets, dict):
+        for name, info in raw_assets.items():
+            desc = info.get("description", "") if isinstance(info, dict) else str(info)
+            asset_types.append(AssetType(name=str(name), description=str(desc)))
+    elif isinstance(raw_assets, list):
+        for item in raw_assets:
+            if isinstance(item, dict):
+                name = str(item.get("id") or item.get("name", ""))
+                desc = str(item.get("description", ""))
+                asset_types.append(AssetType(name=name, description=desc))
+            elif isinstance(item, str):
+                asset_types.append(AssetType(name=item, description=""))
 
     transitions: list[Transition] = []
     for t in data.get("transitions", []) or []:
