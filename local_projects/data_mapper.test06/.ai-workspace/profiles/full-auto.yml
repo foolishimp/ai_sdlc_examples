@@ -1,0 +1,67 @@
+# Projection Profile: Full-Auto
+# Derived from: full profile
+# Purpose: Full edge traversal with agent-only evaluators (no human gates)
+# Use case: Uninterrupted single-shot build for test/demo runs
+
+---
+
+profile: full-auto
+description: "Full edge traversal, agent-only evaluators (no human gates)"
+version: "1.0.0"
+
+# Graph: all edges from the default topology (same as full)
+graph:
+  include: all
+
+# Evaluators: agent + deterministic only — NO human gates
+evaluators:
+  default: [agent, deterministic]
+  overrides: {}
+  # All edges use agent + deterministic; human evaluators removed
+
+# Convergence: same rigour as full, minus human requirement
+convergence:
+  rule: "all_required_checks_pass"
+  human_required_on_all_edges: false
+  threshold_strictness: maximum
+
+# Context: full constraint surface (same as full)
+context:
+  density: full
+  required_elements:
+    - project_constraints
+    - adrs
+    - data_models
+    - templates
+    - policy
+    - prior_implementations
+    - graph_topology
+
+# Encoding: functor encoding (same as full, but autopilot mode)
+encoding:
+  strategy: maximum_explicit
+  mode: autopilot
+  valence: medium
+  functional_units:
+    evaluate:    F_D
+    construct:   F_P
+    classify:    F_D
+    route:       F_P          # agent routes, not human
+    propose:     F_P
+    sense:       F_D
+    emit:        F_D
+    decide:      F_P          # agent decides, not human
+  edge_overrides: {}
+
+# Iteration budget
+iteration:
+  budget: unlimited
+  timeout: none
+  escalation: agent           # if stuck, agent escalates (not human)
+
+# Vector types permitted in this profile
+vector_types: [feature, discovery, spike]
+
+# Post-convergence actions (no human sign-off)
+post_actions:
+  - audit_trail_complete

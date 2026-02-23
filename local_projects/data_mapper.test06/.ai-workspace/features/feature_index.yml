@@ -1,0 +1,12 @@
+# Feature Index
+# Lists all feature vectors for this project
+
+---
+
+features:
+  - id: "CDME"
+    title: "Categorical Data Mapping & Computation Engine"
+    vector_type: feature
+    profile: full-auto
+    status: converged
+    path: "active/CDME.yml"

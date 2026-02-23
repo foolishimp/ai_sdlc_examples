@@ -1,0 +1,147 @@
+# Feature Vector: CDME (Categorical Data Mapping & Computation Engine)
+# Pre-created for data_mapper.test06 single-shot build (v2.8)
+
+---
+
+feature: "CDME"
+title: "Categorical Data Mapping & Computation Engine"
+intent: "INT-001"
+vector_type: feature
+profile: full-auto
+status: converged
+convergence_type: standard
+created: "2026-02-23T00:00:00Z"
+updated: "2026-02-23T13:01:00Z"
+
+# ═══════════════════════════════════════════════════════════════════════
+# FUNCTOR ENCODING (§2.9)
+# ═══════════════════════════════════════════════════════════════════════
+
+functor:
+  encoding_source: profile
+  mode: autopilot
+  valence: medium
+  overrides: {}
+
+# ═══════════════════════════════════════════════════════════════════════
+# TIME BOX
+# ═══════════════════════════════════════════════════════════════════════
+
+time_box:
+  enabled: false
+
+# ═══════════════════════════════════════════════════════════════════════
+# PARENT / CHILD RELATIONSHIPS
+# ═══════════════════════════════════════════════════════════════════════
+
+parent:
+  feature: ""
+  edge: ""
+  reason: ""
+
+children: []
+
+# ═══════════════════════════════════════════════════════════════════════
+# TRAJECTORY
+# ═══════════════════════════════════════════════════════════════════════
+
+trajectory:
+  requirements:
+    status: converged
+    escalations: []
+
+  design:
+    status: converged
+    escalations: []
+
+  code:
+    status: converged
+    escalations: []
+
+  unit_tests:
+    status: converged
+    escalations: []
+
+  uat_tests:
+    status: converged
+    escalations: []
+
+# ═══════════════════════════════════════════════════════════════════════
+# DEPENDENCIES
+# ═══════════════════════════════════════════════════════════════════════
+
+dependencies: []
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONSTRAINTS (Feature-Specific)
+# ═══════════════════════════════════════════════════════════════════════
+
+constraints:
+
+  acceptance_criteria:
+    - id: "AC-CDME-001"
+      description: "Topological compiler rejects invalid paths at compile time"
+      evaluator: deterministic
+      check: "Invalid path input produces compile-time rejection with error details"
+      req: "REQ-F-LDM-003"
+      required: true
+
+    - id: "AC-CDME-002"
+      description: "Grain safety violations detected at compile time"
+      evaluator: deterministic
+      check: "Incompatible grain combination produces compile-time rejection"
+      req: "REQ-F-TRV-002"
+      required: true
+
+    - id: "AC-CDME-003"
+      description: "Accounting invariant holds for every run"
+      evaluator: deterministic
+      check: "ledger.json equation balances: |input| = |processed| + |filtered| + |errored|"
+      req: "REQ-F-ACC-001"
+      required: true
+
+    - id: "AC-CDME-004"
+      description: "Backward traversal returns all contributing source records"
+      evaluator: deterministic
+      check: "Aggregate key backward query returns complete source key set"
+      req: "REQ-F-ACC-005"
+      required: true
+
+    - id: "AC-CDME-005"
+      description: "AI-generated hallucinated mapping is rejected"
+      evaluator: deterministic
+      check: "Mapping referencing non-existent morphism produces rejection with named morphism"
+      req: "REQ-F-AIA-001"
+      required: true
+
+    - id: "AC-CDME-006"
+      description: "Deterministic reproducibility: identical inputs produce identical outputs"
+      evaluator: deterministic
+      check: "Two runs with same inputs produce bit-identical output hashes"
+      req: "REQ-F-TRV-005"
+      required: true
+
+    - id: "AC-CDME-007"
+      description: "Error objects contain all required metadata fields"
+      evaluator: agent
+      check: "Error records include failure_type, offending_values, source_entity, source_epoch, morphism_path"
+      req: "REQ-F-ERR-004"
+      required: true
+
+    - id: "AC-CDME-008"
+      description: "Agent validates requirements completeness"
+      evaluator: agent
+      check: "Agent confirms all expected requirements present, nothing missing or out of scope"
+      req: "REQ-F-LDM-001"
+      required: true
+
+    - id: "AC-CDME-009"
+      description: "Agent validates priority assignments"
+      evaluator: agent
+      check: "Agent confirms Critical/High/Medium assignments are correct"
+      req: "REQ-F-LDM-001"
+      required: true
+
+  threshold_overrides: {}
+
+  additional_checks: []
