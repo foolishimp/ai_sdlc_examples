@@ -243,7 +243,10 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
     @router.get("/events/stream")
     async def sse_stream(request: Request):
         """SSE endpoint for real-time updates."""
-        return EventSourceResponse(broadcaster.subscribe())
+        return EventSourceResponse(
+            broadcaster.subscribe(),
+            ping=5,  # Ping every 5s — detects dead connections fast on navigation
+        )
 
     # ── Aggregated TELEM page ────────────────────────────────────
 
