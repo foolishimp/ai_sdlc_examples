@@ -1,11 +1,11 @@
 # Genesis Monitor — Technical Design Document
 
-**Version**: 2.0.0
-**Date**: 2026-02-21
+**Version**: 3.0.0
+**Date**: 2026-02-23
 **Status**: Draft — iterate(requirements→design) for INT-GMON-004
 **Feature**: REQ-F-GMON-001, REQ-F-GMON-002
-**Source Asset**: docs/specification/REQUIREMENTS.md v2.0.0 (43 REQ keys)
-**Methodology**: AI SDLC Asset Graph Model v2.5
+**Source Asset**: specification/REQUIREMENTS.md v3.0.0 (61 REQ keys incl. REQ-F-DASH-006)
+**Methodology**: AI SDLC Asset Graph Model v2.8
 
 ---
 
@@ -117,11 +117,13 @@ Each parser is a standalone function: takes a `Path`, returns a typed model or `
 | `parse_events` | `events/events.jsonl` | `list[Event]` (typed subclasses) | REQ-F-PARSE-004, REQ-F-EVSCHEMA-001 |
 | `parse_tasks` | `tasks/active/ACTIVE_TASKS.md` | `list[Task]` | REQ-F-PARSE-005 |
 | `parse_constraints` | `context/project_constraints.yml` | `ProjectConstraints` | REQ-F-PARSE-006 |
+| `detect_bootloader` | `CLAUDE.md` (project root) | `bool` | REQ-F-DASH-006 |
 
 **Design**:
 - All parsers return `None` (or empty list) on missing/corrupt files — never raise
 - YAML parsing via `pyyaml`; markdown parsing via regex (STATUS.md has known structure)
 - STATUS.md parser extracts sections by heading: phase completion table, TELEM signals, Gantt mermaid block
+- **Bootloader parser**: Checks project-root `CLAUDE.md` for `<!-- GENESIS_BOOTLOADER_START -->` marker. Returns `bool` stored on `Project.has_bootloader`
 
 #### v2.5 Parser Extensions
 
@@ -134,6 +136,7 @@ Each parser is a standalone function: takes a `Path`, returns a typed model or `
 - Extracts `constraint_dimensions` section: list of `{name, mandatory, resolves_via}`
 - Extracts `profiles` section: list of named projection profiles with graph/evaluator/convergence/context config
 - Missing sections return empty lists (backward compatible with v2.1 topologies)
+- **Dual-format asset_types**: Handles both dict-format (`name: {description: ...}`) and list-format (`[{id: ..., description: ...}]`). The list format is emitted by some v2.8 topology generators (e.g., e2e test runs). List items use `id` field (falling back to `name`) for the asset type identifier.
 
 **Event parser** (rewritten for REQ-F-EVSCHEMA-001):
 - Dispatch on `event_type` field to construct type-specific Event subclass
@@ -161,11 +164,11 @@ def parse_event(line: dict) -> Event:
     return cls(**extract_fields(line, cls))
 ```
 
-### 2.4 Watcher (`watcher.py`)
+### 2.4 Watcher (`watcher/observer.py`)
 
 **Implements**: REQ-F-WATCH-001, REQ-F-WATCH-002
 
-Wraps `watchdog.observers.Observer` to monitor filesystem changes.
+Two-tier filesystem monitoring: targeted watchdog observers per project + periodic discovery rescan.
 
 ```python
 class WorkspaceWatcher:
@@ -176,10 +179,10 @@ class WorkspaceWatcher:
 ```
 
 **Design**:
-- `watchdog.events.FileSystemEventHandler` subclass filters to `.ai-workspace/` paths
-- Debouncing: `threading.Timer` per project_id; resets on each event within window
-- On debounce fire: calls `registry.refresh_project(project_id)` then `broadcaster.send(event)`
-- Observer runs in its own thread (watchdog default); debounce timers also use threading
+- **Targeted watching**: One `FileSystemEventHandler` per known `.ai-workspace/` directory (not the entire root tree). This avoids processing thousands of irrelevant filesystem events from IDE caches, git operations, and unrelated file saves that caused periodic UI stalls.
+- **Per-project debouncing**: Each handler has its own `threading.Timer`; resets on each event within the debounce window. On fire: `registry.refresh_project(project_id)` → `broadcaster.send("project_updated", ...)`
+- **Periodic rescan**: A daemon timer re-runs `scan_roots()` every 30 seconds to discover new projects (e.g., e2e test runs creating fresh `.ai-workspace/` directories). New projects are registered, watched, and announced via `project_added` SSE event.
+- Observer runs in its own thread (watchdog default); debounce and rescan timers also use threading
 
 ### 2.5 SSE Broadcaster (`broadcaster.py`)
 
@@ -243,7 +246,8 @@ Transform parsed models into view-specific data structures.
 |-----------|-------|--------|-----|
 | `build_graph_mermaid` | `GraphTopology`, `StatusReport` | Mermaid string | REQ-F-DASH-002 |
 | `build_convergence_table` | `StatusReport` | `list[EdgeConvergence]` | REQ-F-DASH-003 |
-| `build_gantt_mermaid` | `StatusReport` | Mermaid string or None | REQ-F-DASH-004 |
+| `build_gantt_mermaid` | `StatusReport`, `list[FeatureVector]` | Mermaid string or None | REQ-F-DASH-004 |
+| `build_project_tree` | `list[Project]` | Nested tree dict | REQ-F-DASH-006 |
 | `collect_telem_signals` | `list[Project]` | `list[TelemSignal]` | REQ-F-TELEM-001 |
 | `build_spawn_tree` | `list[FeatureVector]` | Mermaid string or nested dict | REQ-F-VREL-003 |
 | `build_dimension_matrix` | `GraphTopology`, design artifacts | `list[DimensionCoverage]` | REQ-F-CDIM-002 |
@@ -253,7 +257,8 @@ Transform parsed models into view-specific data structures.
 
 **Design**:
 - `build_graph_mermaid`: Generates a Mermaid `graph LR` with node colors based on edge status (green=converged, yellow=in-progress, grey=not-started)
-- `build_gantt_mermaid`: Extracts raw Mermaid gantt block from STATUS.md if present
+- `build_gantt_mermaid`: Generates Mermaid gantt from feature vector edge trajectories using real `started_at`/`converged_at` timestamps when available. Falls back to status-only sequential rendering (done/active/pending) when timestamps are missing. Last resort: embedded gantt block from STATUS.md
+- `build_project_tree`: Builds a hierarchical filesystem tree from the flat project list. Finds the longest common ancestor path, builds a trie from relative paths, then prunes single-child non-project directory chains. Returns nested dict with `{name, path, is_project, project, children}` nodes
 - `build_spawn_tree`: Traverses parent/child links to build a Mermaid tree diagram showing vector relationships, spawn triggers, and fold-back state
 - `build_dimension_matrix`: Cross-references topology constraint_dimensions against design artifacts (ADR filenames, design section headings) to determine resolution status
 - `build_regime_summary`: Groups evaluator results per edge into conscious vs reflex buckets, counts completeness
@@ -311,6 +316,7 @@ class Project:
     events: list[Event]
     tasks: list[Task]
     constraints: ProjectConstraints | None
+    has_bootloader: bool         # [v3.0] Genesis Bootloader detected in CLAUDE.md
     last_updated: datetime
 
 @dataclass
@@ -517,6 +523,7 @@ class EdgeConvergence:
 
 | Method | Path | Template Partial | Trigger |
 |--------|------|-----------------|---------|
+| GET | `/fragments/tree` | `_tree.html` | SSE `project_updated` |
 | GET | `/fragments/project-list` | `_project_list.html` | SSE `project_updated` |
 | GET | `/fragments/project/{id}/graph` | `_graph.html` | SSE `project_updated` |
 | GET | `/fragments/project/{id}/edges` | `_edges.html` | SSE `project_updated` |
@@ -553,11 +560,12 @@ Event payload: `{"project_id": "...", "changed_files": [...]}`
 
 ```
 src/genesis_monitor/templates/
-├── base.html                  # HTML skeleton, CDN includes, SSE setup
-├── index.html                 # Project index page
-├── project.html               # Project detail page (v2.5: tabbed sections)
+├── base.html                  # HTML skeleton, CDN includes (no Mermaid), SSE setup
+├── index.html                 # Project index page (tree navigator)
+├── project.html               # Project detail page (loads Mermaid via block)
 └── fragments/
-    ├── _project_list.html     # Project list table rows
+    ├── _tree.html             # [v3.0] Hierarchical project tree (REQ-F-DASH-006)
+    ├── _project_list.html     # Project list table rows (legacy flat view)
     ├── _graph.html            # Mermaid asset graph
     ├── _edges.html            # Edge status table
     ├── _features.html         # Feature vector cards (v2.5: profile, parent, time-box)
@@ -574,10 +582,10 @@ src/genesis_monitor/templates/
 
 ### 5.2 Base Template (`base.html`)
 
-- CDN includes: HTMX (1.9.x), Mermaid.js (10.x), minimal CSS (Pico CSS or custom)
-- SSE connection setup: `<div hx-ext="sse" sse-connect="/events/stream">`
+- CDN includes: HTMX (1.9.x), Pico CSS (2.x). Provides `{% block head_extra %}` and `{% block scripts %}` for page-specific assets
+- **Mermaid lazy-loading**: Mermaid.js (10.x) is loaded only in `project.html` via `{% block head_extra %}`, not in `base.html`. This avoids ~800KB JS payload on the index page where no diagrams exist
+- SSE connection setup: `<body hx-ext="sse" sse-connect="/events/stream">`
 - Navigation header with project name / breadcrumb
-- Flash message area for errors
 
 ### 5.3 HTMX Integration Pattern
 
@@ -619,15 +627,17 @@ src/genesis_monitor/
 │   ├── __init__.py
 │   ├── status.py            # STATUS.md parser
 │   ├── features.py          # Feature vector YAML parser (v2.5: parent, profile, time-box)
-│   ├── topology.py          # Graph topology YAML parser (v2.5: dimensions, profiles)
+│   ├── topology.py          # Graph topology YAML parser (v2.5: dimensions, profiles; v3.0: dual-format asset_types)
 │   ├── events.py            # events.jsonl parser (v2.5: typed dispatch)
 │   ├── tasks.py             # ACTIVE_TASKS.md parser
-│   └── constraints.py       # project_constraints.yml parser
+│   ├── constraints.py       # project_constraints.yml parser
+│   └── bootloader.py        # [v3.0] Genesis Bootloader detection in CLAUDE.md
 ├── projections/
 │   ├── __init__.py
 │   ├── graph.py             # Mermaid graph generation
 │   ├── convergence.py       # Convergence table (v2.5: regime column)
-│   ├── gantt.py             # Gantt extraction
+│   ├── gantt.py             # Gantt generation from feature vector timestamps (v3.0: replaces extraction-only)
+│   ├── tree.py              # [v3.0] Filesystem hierarchy tree from flat project list
 │   ├── telem.py             # TELEM aggregation
 │   ├── spawn_tree.py        # [v2.5] Vector relationship tree
 │   ├── dimensions.py        # [v2.5] Constraint dimension coverage
@@ -714,10 +724,12 @@ def load_config(config_path: Path | None = None, cli_watch_dirs: list[Path] | No
 | `models/events.py` | REQ-F-EVSCHEMA-001 |
 | `watcher/observer.py` | REQ-F-WATCH-001, REQ-F-WATCH-002 |
 | `server/broadcaster.py` | REQ-F-STREAM-001 |
-| `server/routes.py` | REQ-F-DASH-001..005, REQ-F-STREAM-002 (+ 5 new v2.5 fragments) |
+| `parsers/bootloader.py` | REQ-F-DASH-006 |
+| `server/routes.py` | REQ-F-DASH-001..006, REQ-F-STREAM-002 (+ 5 v2.5 + 1 v3.0 fragments) |
 | `projections/graph.py` | REQ-F-DASH-002 |
 | `projections/convergence.py` | REQ-F-DASH-003, REQ-F-REGIME-002 |
 | `projections/gantt.py` | REQ-F-DASH-004 |
+| `projections/tree.py` | REQ-F-DASH-006 |
 | `projections/telem.py` | REQ-F-DASH-005, REQ-F-TELEM-001 |
 | `projections/spawn_tree.py` | REQ-F-VREL-002, REQ-F-VREL-003 |
 | `projections/dimensions.py` | REQ-F-CDIM-002 |
@@ -754,3 +766,8 @@ def load_config(config_path: Path | None = None, cli_watch_dirs: list[Path] | No
 | 8 | GAP | REQ-F-EVSCHEMA-002 cross-event linkage — how to index efficiently | Resolved: in-memory index by feature_id and intent_id built during parse pass |
 | 9 | DECISION | Consciousness phase detection — heuristic vs explicit event | Resolved: heuristic from event presence (Phase 1: has intent_raised; Phase 2: has spec_modified; Phase 3: has intent_raised with prior_intents referencing spec_modified triggers) |
 | 10 | GAP | Protocol compliance time window — how close must reflex events be to iteration_completed? | Resolved: within same iteration count for same feature/edge (not time-based) |
+| 11 | PERF | Recursive watchdog on large root trees causes UI stalls from processing thousands of irrelevant filesystem events | Resolved: targeted watching of `.ai-workspace/` dirs only + 30s periodic rescan for new projects |
+| 12 | PERF | Mermaid.js (~800KB) loaded on index page where no diagrams exist | Resolved: Mermaid moved to `{% block head_extra %}` in project.html only |
+| 13 | GAP | `build_gantt_mermaid` only extracted pre-written gantt from STATUS.md; most projects had no gantt | Resolved: generate Mermaid gantt from feature vector `started_at`/`converged_at` timestamps; fall back to STATUS.md embedded gantt |
+| 14 | COMPAT | Topology `asset_types` can be dict or list depending on generator version | Resolved: parser accepts both formats, list items use `id` then `name` field |
+| 15 | BUG | Tree template used exclusive if/elif for project vs folder nodes; projects with children lost their subtrees | Resolved: three-case rendering — pure leaf, folder, project+folder (project link in separate div below summary toggle) |
