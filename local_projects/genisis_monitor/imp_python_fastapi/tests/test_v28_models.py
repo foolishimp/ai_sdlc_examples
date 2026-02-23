@@ -13,6 +13,7 @@ from genesis_monitor.models.core import (
 from genesis_monitor.models.events import (
     EVENT_TYPE_MAP,
     AffectTriageEvent,
+    ArtifactModifiedEvent,
     CheckpointCreatedEvent,
     ClaimExpiredEvent,
     ClaimRejectedEvent,
@@ -39,8 +40,8 @@ from genesis_monitor.models.features import ConstraintDimension
 
 
 class TestEventTypeMapV28:
-    def test_has_27_entries(self):
-        assert len(EVENT_TYPE_MAP) == 27
+    def test_has_28_entries(self):
+        assert len(EVENT_TYPE_MAP) == 28
 
     def test_v28_lifecycle_types_present(self):
         v28_lifecycle = {
@@ -391,3 +392,32 @@ class TestConstraintDimensionV28:
             breach_status="breached",
         )
         assert cd.breach_status == "breached"
+
+
+# ── Artifact Write Observation (REQ-SENSE-006) ───────────────────
+
+
+class TestArtifactModifiedEvent:
+    def test_artifact_modified_in_map(self):
+        assert "artifact_modified" in EVENT_TYPE_MAP
+        assert EVENT_TYPE_MAP["artifact_modified"] is ArtifactModifiedEvent
+
+    def test_artifact_modified_event(self):
+        e = ArtifactModifiedEvent(
+            timestamp=datetime(2026, 2, 23),
+            event_type="artifact_modified",
+            project="test",
+            data={},
+            file_path="imp_scala/code/src/main.scala",
+            asset_type="code",
+            tool="Write",
+        )
+        assert e.file_path == "imp_scala/code/src/main.scala"
+        assert e.asset_type == "code"
+        assert e.tool == "Write"
+
+    def test_artifact_modified_defaults(self):
+        e = ArtifactModifiedEvent(event_type="artifact_modified")
+        assert e.file_path == ""
+        assert e.asset_type == ""
+        assert e.tool == ""

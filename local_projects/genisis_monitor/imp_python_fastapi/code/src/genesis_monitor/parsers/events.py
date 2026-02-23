@@ -97,6 +97,7 @@ _REFLEX_LOG_TYPES = frozenset({
     "telemetry_signal_emitted", "edge_started", "checkpoint_created",
     "edge_released", "interoceptive_signal",
     "evaluator_detail", "command_error", "health_checked",
+    "artifact_modified",
 })
 
 # Spec-level events: modify the spec or feature graph

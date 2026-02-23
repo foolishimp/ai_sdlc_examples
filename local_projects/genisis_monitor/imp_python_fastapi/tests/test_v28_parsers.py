@@ -441,7 +441,8 @@ class TestClassifyIntentEngineOutput:
         for t in ["iteration_completed", "edge_converged", "evaluator_ran",
                    "edge_started", "checkpoint_created", "edge_released",
                    "interoceptive_signal", "telemetry_signal_emitted",
-                   "evaluator_detail", "command_error", "health_checked"]:
+                   "evaluator_detail", "command_error", "health_checked",
+                   "artifact_modified"]:
             assert classify_intent_engine_output(t) == "reflex.log", f"{t} should be reflex.log"
 
     def test_spec_event_log_types(self):

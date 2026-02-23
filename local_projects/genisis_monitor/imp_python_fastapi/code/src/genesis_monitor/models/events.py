@@ -287,6 +287,18 @@ class EncodingEscalatedEvent(Event):
     trigger: str = ""
 
 
+# ── Artifact Write Observation (REQ-SENSE-006) ────────────────────
+
+
+@dataclass
+class ArtifactModifiedEvent(Event):
+    """Emitted when a file is written to a methodology-managed directory."""
+
+    file_path: str = ""
+    asset_type: str = ""  # requirements | design | code | unit_tests | uat_tests
+    tool: str = ""        # Write | Edit
+
+
 EVENT_TYPE_MAP: dict[str, type[Event]] = {
     # v2.5 events
     "iteration_completed": IterationCompletedEvent,
@@ -320,4 +332,6 @@ EVENT_TYPE_MAP: dict[str, type[Event]] = {
     "health_checked": HealthCheckedEvent,
     "iteration_abandoned": IterationAbandonedEvent,
     "encoding_escalated": EncodingEscalatedEvent,
+    # artifact write observation
+    "artifact_modified": ArtifactModifiedEvent,
 }
