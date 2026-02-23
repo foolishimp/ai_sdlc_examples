@@ -1,5 +1,6 @@
 # Implements: REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-PROF-001, REQ-F-CDIM-001, REQ-F-REGIME-001
-"""v2.5 model extensions: TimeBox, EvaluatorResult, ConstraintDimension, ProjectionProfile."""
+# Implements: REQ-F-CTOL-001, REQ-F-CTOL-002
+"""v2.5/v2.8 model extensions: TimeBox, EvaluatorResult, ConstraintDimension, ProjectionProfile."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -28,12 +29,15 @@ class EvaluatorResult:
 
 @dataclass
 class ConstraintDimension:
-    """A constraint dimension from graph topology (v2.5 §2.6.1)."""
+    """A constraint dimension from graph topology (v2.5 §2.6.1, v2.8 §4.6.9)."""
 
     name: str = ""
     mandatory: bool = False
     resolves_via: str = ""  # adr | design_section | adr_or_design_section
     resolved: bool | None = None
+    # v2.8 additions
+    tolerance: str = ""
+    breach_status: str = ""
 
 
 @dataclass

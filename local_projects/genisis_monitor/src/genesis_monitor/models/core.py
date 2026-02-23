@@ -57,6 +57,11 @@ class EdgeTrajectory:
     status: str = "not_started"
     iteration: int = 0
     evaluator_results: dict[str, str] = field(default_factory=dict)
+    # v2.8 additions
+    started_at: datetime | None = None
+    converged_at: datetime | None = None
+    convergence_type: str = ""
+    escalations: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -75,6 +80,8 @@ class FeatureVector:
     children: list[str] = field(default_factory=list)
     fold_back_status: str | None = None
     time_box: TimeBox | None = None
+    # v2.8 additions
+    encoding: dict | None = None
 
 
 @dataclass
@@ -135,6 +142,11 @@ class EdgeConvergence:
     source_findings: int = 0
     process_gaps: int = 0
     status: str = "not_started"
+    # v2.8 additions
+    started_at: datetime | None = None
+    converged_at: datetime | None = None
+    duration: str = ""
+    convergence_type: str = ""
 
 
 @dataclass

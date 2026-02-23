@@ -1,11 +1,11 @@
 # Genesis Monitor — Requirements Specification
 
-**Version**: 2.0.0
-**Date**: 2026-02-21
-**Status**: Draft — iterate(intent→requirements) for INT-GMON-004
+**Version**: 3.0.0
+**Date**: 2026-02-23
+**Status**: Draft — iterate(intent→requirements) for INT-GMON-005
 **Feature**: REQ-F-GMON-001, REQ-F-GMON-002
-**Source Asset**: docs/specification/INTENT.md v2.0.0 (4 intent items, 24 outcomes)
-**Methodology**: AI SDLC Asset Graph Model v2.5
+**Source Asset**: docs/specification/INTENT.md v3.0.0 (5 intent items, 32 outcomes)
+**Methodology**: AI SDLC Asset Graph Model v2.8
 
 ---
 
@@ -41,6 +41,12 @@ Genesis Monitor is a real-time web dashboard that observes AI SDLC methodology e
 | REQ-F-TBOX-* | INT-GMON-004 (Time-boxing) |
 | REQ-F-EVSCHEMA-* | INT-GMON-004 (Structured events) |
 | REQ-F-PROTO-* | INT-GMON-004 (Protocol compliance) |
+| REQ-F-FUNC-* | INT-GMON-005 (Functor encoding) |
+| REQ-F-SENSE-* | INT-GMON-005 (Sensory system) |
+| REQ-F-MAGT-* | INT-GMON-005 (Multi-agent coordination) |
+| REQ-F-IENG-* | INT-GMON-005 (IntentEngine classification) |
+| REQ-F-ETIM-* | INT-GMON-005 (Edge timestamps) |
+| REQ-F-CTOL-* | INT-GMON-005 (Constraint tolerances) |
 
 ### 1.4 Target Implementation
 
@@ -642,7 +648,218 @@ The system MUST display per-iteration compliance with the iterate protocol: whet
 
 ---
 
-## 19. Source Findings (v2.5 Iteration)
+## 19. Functor Encoding (v2.8)
+
+### REQ-F-FUNC-001: Functor Encoding Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-025
+
+The system MUST parse the `encoding` block from feature vector YAML, extracting `mode`, `valence`, and `active_units` fields that represent the functor state of a feature vector.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts encoding dict with mode/valence/active_units from feature YAML
+- AC-2: Missing encoding block defaults to None (backward compatible)
+
+### REQ-F-FUNC-002: Functor Encoding Display
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-025
+
+The system MUST display the functor encoding state (mode, valence, active units) in the feature vector detail view.
+
+**Acceptance Criteria**:
+- AC-1: Feature detail view shows encoding block when present
+- AC-2: Encoding fields are human-readable labels
+
+---
+
+## 20. Sensory System (v2.8)
+
+### REQ-F-SENSE-001: Interoceptive Signal Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-026
+
+The system MUST parse `interoceptive_signal` events representing self-monitoring signals (e.g., convergence rate, iteration budget usage).
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts signal_type, measurement, threshold fields
+- AC-2: Events dispatched to InteroceptiveSignalEvent dataclass
+
+### REQ-F-SENSE-002: Exteroceptive Signal Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-026
+
+The system MUST parse `exteroceptive_signal` events representing environment-monitoring signals (e.g., dependency changes, ecosystem updates).
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts source, signal_type, payload fields
+- AC-2: Events dispatched to ExteroceptiveSignalEvent dataclass
+
+### REQ-F-SENSE-003: Affect Triage Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-026
+
+The system MUST parse `affect_triage` events representing the triage outcome of sensory signals (route to reflex, escalate, or ignore).
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts signal_ref, triage_result, rationale fields
+- AC-2: Events dispatched to AffectTriageEvent dataclass
+
+### REQ-F-SENSE-004: Sensory Dashboard View
+
+**Priority**: Medium
+**Traces To**: INT-GMON-005 / OUT-026
+
+The system MUST provide a sensory dashboard projection grouping interoceptive and exteroceptive signals with their triage outcomes.
+
+**Acceptance Criteria**:
+- AC-1: Dashboard shows signal counts by type (interoceptive/exteroceptive)
+- AC-2: Affect triage results shown alongside originating signals
+
+### REQ-F-SENSE-005: Sensory Event Backward Compatibility
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-032
+
+The system MUST handle workspaces without sensory events gracefully, returning empty sensory dashboard data.
+
+**Acceptance Criteria**:
+- AC-1: Empty sensory dashboard returned when no sensory events exist
+- AC-2: No errors raised for v2.5 workspaces lacking sensory events
+
+---
+
+## 21. Multi-Agent Coordination (v2.8)
+
+### REQ-F-MAGT-001: Claim/Release Event Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-028
+
+The system MUST parse `claim_rejected` and `edge_released` events from the multi-agent coordination protocol (ADR-013).
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts agent_id, edge, reason fields from claim_rejected
+- AC-2: Parser extracts agent_id, edge fields from edge_released
+
+### REQ-F-MAGT-002: Claim Expiry Event Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-028
+
+The system MUST parse `claim_expired` events indicating agent claim timeouts.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts agent_id, edge, expiry_reason fields
+- AC-2: Events dispatched to ClaimExpiredEvent dataclass
+
+### REQ-F-MAGT-003: Convergence Escalation Event Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-028
+
+The system MUST parse `convergence_escalated` events indicating edge convergence required human escalation.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts edge, reason, escalated_to fields
+- AC-2: Events dispatched to ConvergenceEscalatedEvent dataclass
+
+---
+
+## 22. IntentEngine Classification (v2.8)
+
+### REQ-F-IENG-001: IntentEngine Output Type Classification
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-027
+
+The system MUST classify events by their IntentEngine output type: `reflex.log` (autonomic logging), `specEventLog` (spec-level event), or `escalate` (requires human attention).
+
+**Acceptance Criteria**:
+- AC-1: Classification function maps event types to IntentEngine output categories
+- AC-2: Projection view shows breakdown by output type
+
+### REQ-F-IENG-002: IntentEngine View Projection
+
+**Priority**: Medium
+**Traces To**: INT-GMON-005 / OUT-027
+
+The system MUST provide an IntentEngine view projection showing event distribution across output types.
+
+**Acceptance Criteria**:
+- AC-1: Projection returns counts and event lists per output type
+- AC-2: Empty events produce zero-count results
+
+---
+
+## 23. Edge Timestamps (v2.8)
+
+### REQ-F-ETIM-001: Edge Start/Converge Timestamp Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-030
+
+The system MUST parse `started_at` and `converged_at` timestamps from edge trajectory data in feature vector YAML files.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts ISO datetime strings and converts to datetime objects
+- AC-2: Missing timestamps default to None (backward compatible)
+
+### REQ-F-ETIM-002: Edge Duration Display
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-030
+
+The system MUST compute and display edge duration from started_at/converged_at timestamps in the convergence view.
+
+**Acceptance Criteria**:
+- AC-1: Duration computed as converged_at - started_at when both present
+- AC-2: Duration shown as human-readable string (e.g., "2h 15m")
+
+### REQ-F-ETIM-003: Convergence Type Tracking
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-031
+
+The system MUST parse and display `convergence_type` (delta_zero, timeout, escalated) from edge trajectory data.
+
+**Acceptance Criteria**:
+- AC-1: Convergence type extracted from feature vector YAML
+- AC-2: Convergence type displayed in convergence table and feature detail views
+
+---
+
+## 24. Constraint Tolerances (v2.8)
+
+### REQ-F-CTOL-001: Tolerance Threshold Parsing
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-029
+
+The system MUST parse `tolerance` thresholds from constraint dimension definitions in graph topology YAML.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts tolerance string (e.g., "≤ 5% degradation") per dimension
+- AC-2: Missing tolerance defaults to empty string (backward compatible)
+
+### REQ-F-CTOL-002: Breach Status Display
+
+**Priority**: High
+**Traces To**: INT-GMON-005 / OUT-029
+
+The system MUST parse and display `breach_status` for constraint dimensions, indicating whether tolerance thresholds are currently exceeded.
+
+**Acceptance Criteria**:
+- AC-1: Breach status extracted from topology YAML per dimension
+- AC-2: Breached dimensions highlighted as warnings in the dimension coverage view
+
+---
+
+## 25. Source Findings (v2.5/v2.8 Iteration)
 
 | # | Type | Finding | Resolution |
 |---|------|---------|------------|
@@ -659,7 +876,7 @@ The system MUST display per-iteration compliance with the iterate protocol: whet
 
 ---
 
-## 20. Requirements Summary
+## 26. Requirements Summary
 
 | Category | Count | Critical | High | Medium |
 |----------|-------|----------|------|--------|
@@ -679,4 +896,10 @@ The system MUST display per-iteration compliance with the iterate protocol: whet
 | Time-Boxing (TBOX) | 2 | 0 | 2 | 0 |
 | Structured Events (EVSCHEMA) | 2 | 0 | 1 | 1 |
 | Protocol Compliance (PROTO) | 1 | 0 | 0 | 1 |
-| **Total** | **43** | **13** | **19** | **11** |
+| Functor Encoding (FUNC) | 2 | 0 | 2 | 0 |
+| Sensory System (SENSE) | 5 | 0 | 4 | 1 |
+| Multi-Agent Coordination (MAGT) | 3 | 0 | 3 | 0 |
+| IntentEngine Classification (IENG) | 2 | 0 | 1 | 1 |
+| Edge Timestamps (ETIM) | 3 | 0 | 3 | 0 |
+| Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
+| **Total** | **60** | **13** | **32** | **15** |

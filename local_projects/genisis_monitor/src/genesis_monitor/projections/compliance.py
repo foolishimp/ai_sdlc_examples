@@ -1,4 +1,4 @@
-# Implements: REQ-F-PROTO-001
+# Implements: REQ-F-PROTO-001, REQ-F-CTOL-001, REQ-F-CTOL-002, REQ-F-ETIM-001, REQ-F-SENSE-005
 """Build protocol compliance report for a project."""
 
 from __future__ import annotations
@@ -128,6 +128,69 @@ def build_compliance_report(project: Project) -> list[dict]:
             "check": "Status report present",
             "status": "warn",
             "detail": "No STATUS.md found",
+        })
+
+    # 8. v2.8: Constraint tolerances defined
+    if has_dims:
+        with_tolerance = sum(
+            1 for d in project.topology.constraint_dimensions if d.tolerance
+        )
+        if with_tolerance == len(project.topology.constraint_dimensions):
+            checks.append({
+                "check": "Constraint tolerances defined",
+                "status": "pass",
+                "detail": f"All {with_tolerance} dimensions have tolerances",
+            })
+        elif with_tolerance > 0:
+            checks.append({
+                "check": "Constraint tolerances defined",
+                "status": "warn",
+                "detail": f"{with_tolerance}/{len(project.topology.constraint_dimensions)} "
+                          "dimensions have tolerances",
+            })
+        else:
+            checks.append({
+                "check": "Constraint tolerances defined",
+                "status": "warn",
+                "detail": "No tolerances defined — v2.8 recommends measurable thresholds",
+            })
+
+    # 9. v2.8: Sensory events present
+    sensory_types = {"interoceptive_signal", "exteroceptive_signal", "affect_triage"}
+    sensory_count = sum(1 for e in project.events if e.event_type in sensory_types)
+    if sensory_count > 0:
+        checks.append({
+            "check": "Sensory events present",
+            "status": "pass",
+            "detail": f"{sensory_count} sensory events recorded",
+        })
+    else:
+        checks.append({
+            "check": "Sensory events present",
+            "status": "warn",
+            "detail": "No sensory events — v2.8 defines interoceptive/exteroceptive signals",
+        })
+
+    # 10. v2.8: Edge timestamps present
+    has_timestamps = False
+    for f in project.features:
+        for traj in f.trajectory.values():
+            if traj.started_at is not None:
+                has_timestamps = True
+                break
+        if has_timestamps:
+            break
+    if has_timestamps:
+        checks.append({
+            "check": "Edge timestamps present",
+            "status": "pass",
+            "detail": "Feature vectors include started_at/converged_at timestamps",
+        })
+    elif project.features:
+        checks.append({
+            "check": "Edge timestamps present",
+            "status": "warn",
+            "detail": "No edge timestamps — v2.8 recommends started_at/converged_at",
         })
 
     return checks

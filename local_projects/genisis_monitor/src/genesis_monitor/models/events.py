@@ -1,5 +1,7 @@
-# Implements: REQ-F-EVSCHEMA-001
-"""Typed event hierarchy for v2.5 event sourcing (§7.5.1)."""
+# Implements: REQ-F-EVSCHEMA-001, REQ-F-SENSE-001, REQ-F-SENSE-002, REQ-F-SENSE-003
+# Implements: REQ-F-MAGT-001, REQ-F-MAGT-002, REQ-F-MAGT-003
+# Implements: REQ-F-ETIM-001, REQ-F-FUNC-001, REQ-F-IENG-001
+"""Typed event hierarchy for v2.5/v2.8 event sourcing."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -24,6 +26,12 @@ class IterationCompletedEvent(Event):
     iteration: int = 0
     evaluators: dict[str, str] = field(default_factory=dict)
     context_hash: str = ""
+    # v2.8 additions
+    encoding: dict | None = None
+    source_findings: list = field(default_factory=list)
+    process_gaps: list = field(default_factory=list)
+    convergence_type: str = ""
+    intent_engine_output: str = ""
 
 
 @dataclass
@@ -101,7 +109,132 @@ class TelemetrySignalEmittedEvent(Event):
     value: str = ""
 
 
+# ── v2.8 Lifecycle Events ────────────────────────────────────────
+
+
+@dataclass
+class EdgeStartedEvent(Event):
+    """Emitted when work begins on an edge."""
+
+    edge: str = ""
+    feature: str = ""
+
+
+@dataclass
+class ProjectInitializedEvent(Event):
+    """Emitted when a project workspace is initialized."""
+
+    profile: str = ""
+    graph_edges: list[str] = field(default_factory=list)
+
+
+@dataclass
+class CheckpointCreatedEvent(Event):
+    """Emitted when a session checkpoint is saved."""
+
+    checkpoint_id: str = ""
+    edge: str = ""
+    feature: str = ""
+
+
+@dataclass
+class ReviewCompletedEvent(Event):
+    """Emitted when a human evaluator review completes."""
+
+    edge: str = ""
+    feature: str = ""
+    reviewer: str = ""
+    outcome: str = ""  # approved | changes_requested | deferred
+
+
+@dataclass
+class GapsValidatedEvent(Event):
+    """Emitted when traceability gap validation completes."""
+
+    total_gaps: int = 0
+    resolved_gaps: int = 0
+    unresolved_gaps: int = 0
+
+
+@dataclass
+class ReleaseCreatedEvent(Event):
+    """Emitted when a release is created."""
+
+    version: str = ""
+    req_coverage: str = ""
+    features_included: list[str] = field(default_factory=list)
+
+
+# ── v2.8 Sensory Events ─────────────────────────────────────────
+
+
+@dataclass
+class InteroceptiveSignalEvent(Event):
+    """Self-monitoring signal (convergence rate, budget usage, etc.)."""
+
+    signal_type: str = ""
+    measurement: str = ""
+    threshold: str = ""
+
+
+@dataclass
+class ExteroceptiveSignalEvent(Event):
+    """Environment-monitoring signal (dependency changes, ecosystem updates)."""
+
+    source: str = ""
+    signal_type: str = ""
+    payload: str = ""
+
+
+@dataclass
+class AffectTriageEvent(Event):
+    """Triage outcome of a sensory signal."""
+
+    signal_ref: str = ""
+    triage_result: str = ""  # reflex | escalate | ignore
+    rationale: str = ""
+
+
+# ── v2.8 Multi-Agent Events ─────────────────────────────────────
+
+
+@dataclass
+class ClaimRejectedEvent(Event):
+    """Emitted when an agent's edge claim is rejected."""
+
+    agent_id: str = ""
+    edge: str = ""
+    reason: str = ""
+
+
+@dataclass
+class EdgeReleasedEvent(Event):
+    """Emitted when an agent releases an edge."""
+
+    agent_id: str = ""
+    edge: str = ""
+
+
+@dataclass
+class ClaimExpiredEvent(Event):
+    """Emitted when an agent's edge claim times out."""
+
+    agent_id: str = ""
+    edge: str = ""
+    expiry_reason: str = ""
+
+
+@dataclass
+class ConvergenceEscalatedEvent(Event):
+    """Emitted when edge convergence requires human escalation."""
+
+    edge: str = ""
+    reason: str = ""
+    escalated_to: str = ""
+
+
 EVENT_TYPE_MAP: dict[str, type[Event]] = {
+    # v2.5 events
     "iteration_completed": IterationCompletedEvent,
     "edge_converged": EdgeConvergedEvent,
     "evaluator_ran": EvaluatorRanEvent,
@@ -111,4 +244,20 @@ EVENT_TYPE_MAP: dict[str, type[Event]] = {
     "intent_raised": IntentRaisedEvent,
     "spec_modified": SpecModifiedEvent,
     "telemetry_signal_emitted": TelemetrySignalEmittedEvent,
+    # v2.8 lifecycle
+    "edge_started": EdgeStartedEvent,
+    "project_initialized": ProjectInitializedEvent,
+    "checkpoint_created": CheckpointCreatedEvent,
+    "review_completed": ReviewCompletedEvent,
+    "gaps_validated": GapsValidatedEvent,
+    "release_created": ReleaseCreatedEvent,
+    # v2.8 sensory
+    "interoceptive_signal": InteroceptiveSignalEvent,
+    "exteroceptive_signal": ExteroceptiveSignalEvent,
+    "affect_triage": AffectTriageEvent,
+    # v2.8 multi-agent
+    "claim_rejected": ClaimRejectedEvent,
+    "edge_released": EdgeReleasedEvent,
+    "claim_expired": ClaimExpiredEvent,
+    "convergence_escalated": ConvergenceEscalatedEvent,
 }

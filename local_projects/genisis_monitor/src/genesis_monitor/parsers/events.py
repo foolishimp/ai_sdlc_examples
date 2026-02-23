@@ -1,4 +1,4 @@
-# Implements: REQ-F-PARSE-004, REQ-F-EVSCHEMA-001
+# Implements: REQ-F-PARSE-004, REQ-F-EVSCHEMA-001, REQ-F-IENG-001
 """Parse .ai-workspace/events/events.jsonl into typed Event models."""
 
 import dataclasses
@@ -84,3 +84,40 @@ def _parse_timestamp(ts: str) -> datetime:
         return datetime.fromisoformat(ts)
     except (ValueError, TypeError):
         return datetime.now()
+
+
+# ── IntentEngine output classification (v2.8 §4.6) ──────────────
+
+# Reflex events: autonomic logging, no human attention needed
+_REFLEX_LOG_TYPES = frozenset({
+    "iteration_completed", "edge_converged", "evaluator_ran",
+    "telemetry_signal_emitted", "edge_started", "checkpoint_created",
+    "edge_released", "interoceptive_signal",
+})
+
+# Spec-level events: modify the spec or feature graph
+_SPEC_EVENT_LOG_TYPES = frozenset({
+    "spec_modified", "feature_spawned", "feature_folded_back",
+    "finding_raised", "project_initialized", "gaps_validated",
+    "release_created", "exteroceptive_signal", "affect_triage",
+})
+
+# Escalation events: require human attention
+_ESCALATE_TYPES = frozenset({
+    "intent_raised", "convergence_escalated", "review_completed",
+    "claim_rejected", "claim_expired",
+})
+
+
+def classify_intent_engine_output(event_type: str) -> str:
+    """Classify an event type by IntentEngine output category.
+
+    Returns one of: 'reflex.log', 'specEventLog', 'escalate', 'unclassified'.
+    """
+    if event_type in _REFLEX_LOG_TYPES:
+        return "reflex.log"
+    if event_type in _SPEC_EVENT_LOG_TYPES:
+        return "specEventLog"
+    if event_type in _ESCALATE_TYPES:
+        return "escalate"
+    return "unclassified"

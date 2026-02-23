@@ -1,4 +1,4 @@
-# Implements: REQ-F-CDIM-002
+# Implements: REQ-F-CDIM-002, REQ-F-CTOL-001, REQ-F-CTOL-002
 """Build constraint dimension coverage matrix."""
 
 from __future__ import annotations
@@ -35,6 +35,9 @@ def build_dimension_coverage(
             "resolves_via": dim.resolves_via,
             "feature_count": len(covered_features),
             "features": covered_features,
+            # v2.8 additions
+            "tolerance": dim.tolerance,
+            "breach_status": dim.breach_status,
         })
 
     return result

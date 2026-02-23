@@ -4,10 +4,12 @@
 from __future__ import annotations
 
 from genesis_monitor.models.events import (
+    ConvergenceEscalatedEvent,
     Event,
     FeatureSpawnedEvent,
     FindingRaisedEvent,
     IntentRaisedEvent,
+    ReviewCompletedEvent,
     SpecModifiedEvent,
 )
 
@@ -18,6 +20,9 @@ CONSCIOUSNESS_EVENT_TYPES = frozenset({
     "finding_raised",
     "feature_spawned",
     "feature_folded_back",
+    # v2.8 additions
+    "convergence_escalated",
+    "review_completed",
 })
 
 
@@ -52,6 +57,15 @@ def build_consciousness_timeline(events: list[Event]) -> list[dict]:
             entry["parent_vector"] = e.parent_vector
             entry["child_vector"] = e.child_vector
             entry["reason"] = e.reason
+        elif isinstance(e, ConvergenceEscalatedEvent):
+            entry["edge"] = e.edge
+            entry["reason"] = e.reason
+            entry["escalated_to"] = e.escalated_to
+        elif isinstance(e, ReviewCompletedEvent):
+            entry["edge"] = e.edge
+            entry["feature"] = e.feature
+            entry["reviewer"] = e.reviewer
+            entry["outcome"] = e.outcome
 
         timeline.append(entry)
 

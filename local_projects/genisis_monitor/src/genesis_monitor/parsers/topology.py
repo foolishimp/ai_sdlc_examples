@@ -1,4 +1,4 @@
-# Implements: REQ-F-PARSE-003, REQ-F-CDIM-001, REQ-F-PROF-001
+# Implements: REQ-F-PARSE-003, REQ-F-CDIM-001, REQ-F-PROF-001, REQ-F-CTOL-001, REQ-F-CTOL-002
 """Parse .ai-workspace/graph/graph_topology.yml into a GraphTopology model."""
 
 from pathlib import Path
@@ -51,6 +51,9 @@ def parse_graph_topology(workspace: Path) -> GraphTopology | None:
                     name=str(name),
                     mandatory=bool(dim_data.get("mandatory", False)),
                     resolves_via=str(dim_data.get("resolves_via", "")),
+                    # v2.8 fields
+                    tolerance=str(dim_data.get("tolerance", "")),
+                    breach_status=str(dim_data.get("breach_status", "")),
                 ))
 
     # v2.5: parse profiles

@@ -135,12 +135,12 @@ class TestTypedEventParsing:
         assert len(events) == 6
 
     def test_backward_compatible_with_v21_events(self, tmp_path: Path):
-        """v2.1-style events (no typed fields) still parse as base Event."""
+        """v2.1-style events with unknown types still parse as base Event."""
         ws = tmp_path / ".ai-workspace"
         events_dir = ws / "events"
         events_dir.mkdir(parents=True)
         events = [
-            {"timestamp": "2026-02-01T10:00:00", "event_type": "edge_started", "project": "test"},
+            {"timestamp": "2026-02-01T10:00:00", "event_type": "some_v21_custom_event", "project": "test"},
         ]
         (events_dir / "events.jsonl").write_text(json.dumps(events[0]) + "\n")
         result = parse_events(ws)

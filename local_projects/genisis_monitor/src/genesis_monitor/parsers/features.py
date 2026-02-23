@@ -1,6 +1,8 @@
 # Implements: REQ-F-PARSE-002, REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-PROF-002
+# Implements: REQ-F-FUNC-001, REQ-F-ETIM-001, REQ-F-ETIM-003
 """Parse .ai-workspace/features/active/*.yml into FeatureVector models."""
 
+from datetime import datetime
 from pathlib import Path
 
 import yaml
@@ -59,6 +61,11 @@ def _parse_one(path: Path) -> FeatureVector | None:
                         str(k): str(v)
                         for k, v in (edge_data.get("evaluator_results", {}) or {}).items()
                     },
+                    # v2.8 fields
+                    started_at=_parse_optional_timestamp(edge_data.get("started_at")),
+                    converged_at=_parse_optional_timestamp(edge_data.get("converged_at")),
+                    convergence_type=str(edge_data.get("convergence_type", "")),
+                    escalations=list(edge_data.get("escalations", [])),
                 )
 
     # v2.5: parse time_box
@@ -72,6 +79,12 @@ def _parse_one(path: Path) -> FeatureVector | None:
             partial_results=bool(raw_tb.get("partial_results", True)),
         )
 
+    # v2.8: parse encoding block
+    encoding = None
+    raw_enc = data.get("encoding")
+    if isinstance(raw_enc, dict):
+        encoding = raw_enc
+
     return FeatureVector(
         feature_id=str(data.get("feature", data.get("feature_id", path.stem))),
         title=str(data.get("title", "")),
@@ -84,4 +97,16 @@ def _parse_one(path: Path) -> FeatureVector | None:
         spawned_by=data.get("spawned_by"),
         fold_back_status=data.get("fold_back_status"),
         time_box=time_box,
+        # v2.8 fields
+        encoding=encoding,
     )
+
+
+def _parse_optional_timestamp(value: str | None) -> datetime | None:
+    """Parse an ISO timestamp string, returning None if absent or invalid."""
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(str(value))
+    except (ValueError, TypeError):
+        return None

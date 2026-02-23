@@ -1,6 +1,6 @@
 # Genesis Monitor — Intent
 
-**Version**: 2.0.0
+**Version**: 3.0.0
 **Status**: Draft
 **Date**: 2026-02-21
 **Asset Type**: Intent
@@ -116,6 +116,39 @@ This is itself a telemetry signal (TELEM-004): the methodology evolved but its o
 
 ---
 
+## INT-GMON-005: Align with Genesis v2.8/v3.0 Asset Graph Model
+
+### Problem
+
+The monitor was aligned to v2.5 but the Asset Graph Model has evolved to v2.8/v3.0, introducing:
+
+- **Functor encoding** (§4.4) — mode/valence/active_units encoding per feature vector. The monitor cannot display functor state.
+- **Sensory system** (§4.6.7) — interoceptive (self-monitoring) and exteroceptive (environment-monitoring) signals with affect triage. The monitor has no sensory dashboard.
+- **IntentEngine classification** (§4.6) — typed outputs: reflex.log, specEventLog, escalate. The monitor cannot classify intent engine output.
+- **Multi-agent coordination** (ADR-013) — claim/release/expiry events for edge ownership. The monitor ignores agent coordination events.
+- **Constraint tolerances** (§4.6.9) — every constraint needs a measurable threshold and breach status. The monitor does not display tolerances.
+- **Edge timestamps** — started_at/converged_at/duration/convergence_type fields on edge trajectories. The monitor lacks temporal edge data.
+- **22 event types** — expanded from 9 to 22 typed event schemas. The monitor only recognises 9.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-025 | Functor encoding display | Parse and display encoding block (mode/valence/active_units) per feature vector |
+| OUT-026 | Sensory system dashboard | Parse interoceptive/exteroceptive/affect_triage events; display sensory signal feed |
+| OUT-027 | IntentEngine classification | Classify events by IntentEngine output type (reflex.log, specEventLog, escalate) |
+| OUT-028 | Multi-agent coordination events | Parse claim_rejected, edge_released, claim_expired events; display agent coordination |
+| OUT-029 | Constraint tolerance display | Parse tolerance thresholds and breach status per constraint dimension |
+| OUT-030 | Edge timestamp tracking | Parse started_at/converged_at/duration/convergence_type from edge trajectory data |
+| OUT-031 | Convergence type classification | Display convergence type (delta_zero, timeout, escalated) per edge |
+| OUT-032 | Backward compatibility | v2.5 workspaces still parse correctly; all new fields default to None/empty |
+
+### Rationale
+
+The v2.8/v3.0 spec formalises the IntentEngine as a composition law over the four primitives, introduces constraint tolerances for homeostasis, and expands the event vocabulary to 22 types covering sensory, multi-agent, and lifecycle events. A v2.5 monitor observing v2.8 projects misses these concepts entirely.
+
+---
+
 ## Constraints
 
 - **Read-only**: The monitor MUST NOT write to any target project's `.ai-workspace/`. It is a pure observer.
@@ -133,4 +166,5 @@ INT-GMON-001 → REQ-GMON-* (dashboard requirements)
 INT-GMON-002 → REQ-GMON-* (dogfood requirements)
 INT-GMON-003 → REQ-GMON-* (technology requirements)
 INT-GMON-004 → REQ-GMON-* (v2.5 alignment requirements)
+INT-GMON-005 → REQ-GMON-* (v2.8/v3.0 alignment requirements)
 ```

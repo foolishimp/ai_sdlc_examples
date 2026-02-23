@@ -1,4 +1,5 @@
 # Implements: REQ-F-PARSE-001 through REQ-F-PARSE-006, REQ-F-EVSCHEMA-001, REQ-F-VREL-001, REQ-F-TBOX-001, REQ-F-CDIM-001, REQ-F-PROF-001, REQ-F-REGIME-001
+# Implements: REQ-F-SENSE-001, REQ-F-SENSE-002, REQ-F-SENSE-003, REQ-F-MAGT-001, REQ-F-MAGT-002, REQ-F-MAGT-003
 from genesis_monitor.models.core import (
     AppConfig,
     AssetType,
@@ -16,14 +17,27 @@ from genesis_monitor.models.core import (
 )
 from genesis_monitor.models.events import (
     EVENT_TYPE_MAP,
+    AffectTriageEvent,
+    CheckpointCreatedEvent,
+    ClaimExpiredEvent,
+    ClaimRejectedEvent,
+    ConvergenceEscalatedEvent,
     EdgeConvergedEvent,
+    EdgeReleasedEvent,
+    EdgeStartedEvent,
     EvaluatorRanEvent,
     Event,
+    ExteroceptiveSignalEvent,
     FeatureFoldedBackEvent,
     FeatureSpawnedEvent,
     FindingRaisedEvent,
+    GapsValidatedEvent,
     IntentRaisedEvent,
+    InteroceptiveSignalEvent,
     IterationCompletedEvent,
+    ProjectInitializedEvent,
+    ReleaseCreatedEvent,
+    ReviewCompletedEvent,
     SpecModifiedEvent,
     TelemetrySignalEmittedEvent,
 )
@@ -61,6 +75,22 @@ __all__ = [
     "IterationCompletedEvent",
     "SpecModifiedEvent",
     "TelemetrySignalEmittedEvent",
+    # events (v2.8 lifecycle)
+    "EdgeStartedEvent",
+    "ProjectInitializedEvent",
+    "CheckpointCreatedEvent",
+    "ReviewCompletedEvent",
+    "GapsValidatedEvent",
+    "ReleaseCreatedEvent",
+    # events (v2.8 sensory)
+    "AffectTriageEvent",
+    "ExteroceptiveSignalEvent",
+    "InteroceptiveSignalEvent",
+    # events (v2.8 multi-agent)
+    "ClaimExpiredEvent",
+    "ClaimRejectedEvent",
+    "ConvergenceEscalatedEvent",
+    "EdgeReleasedEvent",
     # features (v2.5)
     "ConstraintDimension",
     "EvaluatorResult",

@@ -33,13 +33,16 @@ from genesis_monitor.models.features import (
 
 
 class TestTypedEvents:
-    def test_event_type_map_has_all_types(self):
-        expected = {
+    def test_event_type_map_has_v25_types(self):
+        v25_types = {
             "iteration_completed", "edge_converged", "evaluator_ran",
             "finding_raised", "feature_spawned", "feature_folded_back",
             "intent_raised", "spec_modified", "telemetry_signal_emitted",
         }
-        assert set(EVENT_TYPE_MAP.keys()) == expected
+        assert v25_types.issubset(set(EVENT_TYPE_MAP.keys()))
+
+    def test_event_type_map_has_all_types(self):
+        assert len(EVENT_TYPE_MAP) == 22
 
     def test_iteration_completed_event(self):
         e = IterationCompletedEvent(
