@@ -5,7 +5,8 @@
             <th>Edge</th>
             <th>Status</th>
             <th>Iterations</th>
-            <th>Evaluators</th>
+            <th>Features</th>
+            {% if convergence[0].duration %}<th>Duration</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -19,6 +20,7 @@
             </td>
             <td>{{ c.iterations }}</td>
             <td>{{ c.evaluator_summary }}</td>
+            {% if convergence[0].duration %}<td>{{ c.duration or '—' }}</td>{% endif %}
         </tr>
         {% endfor %}
     </tbody>

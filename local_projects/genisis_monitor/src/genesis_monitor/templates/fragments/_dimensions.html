@@ -5,6 +5,7 @@
             <th>Dimension</th>
             <th>Mandatory</th>
             <th>Resolves Via</th>
+            <th>Status</th>
             <th>Features</th>
         </tr>
     </thead>
@@ -20,6 +21,13 @@
                 {% endif %}
             </td>
             <td><code>{{ d.resolves_via }}</code></td>
+            <td>
+                {% if d.resolved %}
+                <span class="badge badge-converged">bound</span>
+                {% else %}
+                <span class="badge badge-in-progress">unbound</span>
+                {% endif %}
+            </td>
             <td>{{ d.feature_count }} feature{{ 's' if d.feature_count != 1 }}</td>
         </tr>
         {% endfor %}

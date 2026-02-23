@@ -52,7 +52,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             return HTMLResponse("<h1>Project not found</h1>", status_code=404)
 
         graph_mermaid = build_graph_mermaid(project.topology, project.status)
-        convergence = build_convergence_table(project.status)
+        convergence = build_convergence_table(project.status, project.events)
         gantt = build_gantt_mermaid(project.status)
 
         signals = project.status.telem_signals if project.status else []
@@ -60,7 +60,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
 
         # v2.5 projections
         spawn_tree = build_spawn_tree(project.features)
-        dimensions = build_dimension_coverage(project.topology, project.features)
+        dimensions = build_dimension_coverage(project.topology, project.features, project.constraints)
         regimes = build_regime_summary(project.events)
         consciousness = build_consciousness_timeline(project.events)
         compliance = build_compliance_report(project)
@@ -110,7 +110,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        convergence = build_convergence_table(project.status)
+        convergence = build_convergence_table(project.status, project.events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_edges.html",
             {"request": request, "convergence": convergence},
@@ -141,7 +141,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        convergence = build_convergence_table(project.status)
+        convergence = build_convergence_table(project.status, project.events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_convergence.html",
             {"request": request, "convergence": convergence},
@@ -187,7 +187,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        dimensions = build_dimension_coverage(project.topology, project.features)
+        dimensions = build_dimension_coverage(project.topology, project.features, project.constraints)
         return request.app.state.templates.TemplateResponse(
             "fragments/_dimensions.html",
             {"request": request, "dimensions": dimensions},

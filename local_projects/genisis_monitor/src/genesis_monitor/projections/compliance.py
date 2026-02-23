@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 def build_compliance_report(project: Project) -> list[dict]:
-    """Check project compliance with v2.5 protocol requirements.
+    """Check project compliance with v2.8 protocol requirements.
 
     Returns a list of dicts with:
         check (str), status ('pass'|'warn'|'fail'), detail (str).
@@ -49,7 +49,7 @@ def build_compliance_report(project: Project) -> list[dict]:
         checks.append({
             "check": "Constraint dimensions defined",
             "status": "warn",
-            "detail": "No constraint dimensions — v2.5 recommends at least one",
+            "detail": "No constraint dimensions — v2.8 recommends at least one",
         })
 
     # 3. Projection profiles
@@ -68,7 +68,7 @@ def build_compliance_report(project: Project) -> list[dict]:
         checks.append({
             "check": "Projection profiles defined",
             "status": "warn",
-            "detail": "No projection profiles — v2.5 recommends named profiles",
+            "detail": "No projection profiles — v2.8 recommends named profiles",
         })
 
     # 4. Feature vectors present
@@ -113,7 +113,7 @@ def build_compliance_report(project: Project) -> list[dict]:
         checks.append({
             "check": "Event log present",
             "status": "warn",
-            "detail": "No events — v2.5 requires append-only event sourcing",
+            "detail": "No events — v2.8 requires append-only event sourcing",
         })
 
     # 7. Status report present

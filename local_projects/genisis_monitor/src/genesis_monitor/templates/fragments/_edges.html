@@ -5,9 +5,9 @@
             <th>Edge</th>
             <th>Status</th>
             <th>Iterations</th>
-            <th>Evaluators</th>
-            <th>Findings</th>
-            <th>Gaps</th>
+            <th>Features</th>
+            <th>Duration</th>
+            <th>Type</th>
         </tr>
     </thead>
     <tbody>
@@ -17,8 +17,8 @@
             <td><span class="status-{{ c.status }}">{{ c.status }}</span></td>
             <td>{{ c.iterations }}</td>
             <td>{{ c.evaluator_summary }}</td>
-            <td>{{ c.source_findings }}</td>
-            <td>{{ c.process_gaps }}</td>
+            <td>{{ c.duration or '—' }}</td>
+            <td>{{ c.convergence_type or '—' }}</td>
         </tr>
         {% endfor %}
     </tbody>
