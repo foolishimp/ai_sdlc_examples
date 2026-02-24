@@ -23,6 +23,7 @@ from genesis_monitor.projections import (
     build_spawn_tree,
     collect_telem_signals,
 )
+from genesis_monitor.projections.traceability import build_traceability_view
 
 if TYPE_CHECKING:
     from genesis_monitor.registry import ProjectRegistry
@@ -66,6 +67,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         regimes = build_regime_summary(project.events)
         consciousness = build_consciousness_timeline(project.events)
         compliance = build_compliance_report(project)
+        traceability = build_traceability_view(project.features, project.traceability)
 
         return request.app.state.templates.TemplateResponse(
             "project.html",
@@ -83,6 +85,7 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                 "regimes": regimes,
                 "consciousness": consciousness,
                 "compliance": compliance,
+                "traceability": traceability,
             },
         )
 
@@ -236,6 +239,17 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         return request.app.state.templates.TemplateResponse(
             "fragments/_compliance.html",
             {"request": request, "compliance": compliance},
+        )
+
+    @router.get("/fragments/project/{project_id}/traceability", response_class=HTMLResponse)
+    async def fragment_traceability(request: Request, project_id: str):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        traceability = build_traceability_view(project.features, project.traceability)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_traceability.html",
+            {"request": request, "traceability": traceability},
         )
 
     # ── SSE endpoint ─────────────────────────────────────────────

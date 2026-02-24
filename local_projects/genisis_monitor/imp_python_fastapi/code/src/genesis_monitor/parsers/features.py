@@ -85,6 +85,10 @@ def _parse_one(path: Path) -> FeatureVector | None:
     if isinstance(raw_enc, dict):
         encoding = raw_enc
 
+    # Parse requirements list
+    raw_reqs = data.get("requirements", [])
+    requirements = [str(r) for r in raw_reqs] if isinstance(raw_reqs, list) else []
+
     return FeatureVector(
         feature_id=str(data.get("feature", data.get("feature_id", path.stem))),
         title=str(data.get("title", "")),
@@ -99,6 +103,7 @@ def _parse_one(path: Path) -> FeatureVector | None:
         time_box=time_box,
         # v2.8 fields
         encoding=encoding,
+        requirements=requirements,
     )
 
 

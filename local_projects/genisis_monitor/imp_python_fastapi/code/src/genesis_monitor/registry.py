@@ -16,6 +16,7 @@ from genesis_monitor.parsers import (
     parse_status,
     parse_tasks,
 )
+from genesis_monitor.parsers.traceability import parse_traceability
 
 
 def _slugify(name: str) -> str:
@@ -55,6 +56,7 @@ class ProjectRegistry:
             constraints=parse_constraints(workspace),
             has_bootloader=detect_bootloader(path),
             last_updated=datetime.now(),
+            traceability=parse_traceability(path),
         )
 
         with self._lock:

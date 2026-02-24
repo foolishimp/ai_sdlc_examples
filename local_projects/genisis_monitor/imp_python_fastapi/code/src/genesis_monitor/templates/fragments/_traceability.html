@@ -1,0 +1,107 @@
+{% if traceability and traceability.summary.total_req_keys > 0 %}
+<!-- Summary Bar -->
+<div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">
+    <small><strong>{{ traceability.summary.total_req_keys }}</strong> REQ keys</small>
+    <small>|</small>
+    <small><span style="color: #2e7d32;">{{ traceability.summary.full_coverage }} full</span></small>
+    <small><span style="color: #f57f17;">{{ traceability.summary.total_req_keys - traceability.summary.full_coverage - traceability.summary.no_coverage }} partial</span></small>
+    <small><span style="color: #c62828;">{{ traceability.summary.no_coverage }} none</span></small>
+    <small>|</small>
+    <small>{{ traceability.summary.code_files }} code files, {{ traceability.summary.test_files }} test files scanned</small>
+</div>
+
+<!-- Feature Coverage Summary -->
+{% if traceability.feature_coverage %}
+<details open>
+    <summary><strong>Feature Coverage</strong></summary>
+    <table>
+        <thead>
+            <tr>
+                <th>Feature</th>
+                <th>REQs</th>
+                <th>Implemented</th>
+                <th>Tested</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fc in traceability.feature_coverage %}
+            <tr>
+                <td>
+                    <code>{{ fc.feature_id }}</code>
+                    <small>{{ fc.title }}</small>
+                </td>
+                <td>{{ fc.total_reqs }}</td>
+                <td>
+                    <span style="color: {{ '#2e7d32' if fc.pct_implemented == 100 else '#f57f17' if fc.pct_implemented > 0 else '#c62828' }};">
+                        {{ fc.implemented }}/{{ fc.total_reqs }} ({{ fc.pct_implemented }}%)
+                    </span>
+                </td>
+                <td>
+                    <span style="color: {{ '#2e7d32' if fc.pct_tested == 100 else '#f57f17' if fc.pct_tested > 0 else '#c62828' }};">
+                        {{ fc.tested }}/{{ fc.total_reqs }} ({{ fc.pct_tested }}%)
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</details>
+{% endif %}
+
+<!-- REQ Key Details -->
+<details>
+    <summary><strong>REQ Key Details</strong> ({{ traceability.req_rows | length }} keys)</summary>
+    <table>
+        <thead>
+            <tr>
+                <th>REQ Key</th>
+                <th>Feature</th>
+                <th>Code</th>
+                <th>Tests</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in traceability.req_rows %}
+            <tr>
+                <td><code>{{ row.req_key }}</code></td>
+                <td>
+                    {% for fid in row.features %}
+                    <small><code>{{ fid }}</code></small>
+                    {% endfor %}
+                </td>
+                <td>
+                    {% if row.has_code %}
+                    <span title="{% for f in row.code_files %}{{ f }}&#10;{% endfor %}">
+                        {{ row.code_files | length }} file{{ 's' if row.code_files | length != 1 }}
+                    </span>
+                    {% else %}
+                    <span style="color: #c62828;">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.has_tests %}
+                    <span title="{% for f in row.test_files %}{{ f }}&#10;{% endfor %}">
+                        {{ row.test_files | length }} file{{ 's' if row.test_files | length != 1 }}
+                    </span>
+                    {% else %}
+                    <span style="color: #c62828;">-</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.status == 'full' %}
+                    <span class="badge badge-converged">full</span>
+                    {% elif row.status == 'partial' %}
+                    <span class="badge badge-in-progress">partial</span>
+                    {% else %}
+                    <span class="badge badge-not-started">none</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</details>
+{% else %}
+<p><em>No REQ key traceability data found. Add <code># Implements: REQ-*</code> tags to code and <code># Validates: REQ-*</code> tags to tests.</em></p>
+{% endif %}

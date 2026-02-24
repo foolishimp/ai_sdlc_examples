@@ -168,4 +168,15 @@
         {% include "fragments/_compliance.html" %}
     </div>
 </div>
+
+<!-- Test Traceability -->
+<div class="card">
+    <h3>Test Traceability</h3>
+    <div id="traceability-section"
+         hx-get="/fragments/project/{{ project.project_id }}/traceability"
+         hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
+         hx-swap="innerHTML">
+        {% include "fragments/_traceability.html" %}
+    </div>
+</div>
 {% endblock %}

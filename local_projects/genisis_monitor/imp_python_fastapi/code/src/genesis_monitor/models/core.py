@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         ProjectionProfile,
         TimeBox,
     )
+    from genesis_monitor.parsers.traceability import TraceabilityReport
 
 
 @dataclass
@@ -82,6 +83,7 @@ class FeatureVector:
     time_box: TimeBox | None = None
     # v2.8 additions
     encoding: dict | None = None
+    requirements: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -165,6 +167,7 @@ class Project:
     constraints: ProjectConstraints | None = None
     has_bootloader: bool = False
     last_updated: datetime = field(default_factory=datetime.now)
+    traceability: TraceabilityReport | None = None
 
 
 @dataclass

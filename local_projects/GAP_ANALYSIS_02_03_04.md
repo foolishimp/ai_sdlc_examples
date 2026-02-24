@@ -181,4 +181,5 @@ Legend: ░ = gap/absent   █ = present/strong
 | Unicode round-trip failure (ß→SS→ss) | `toUpperCase.toLowerCase` not idempotent for all Unicode | ScalaCheck found edge case — confirms property testing value |
 | Ambiguous `TypeUnifier` import | Defined in both `cdme.model.types` and `cdme.compiler` | Compiler error — deterministic check would have caught |
 
-**Conclusion**: 5/7 bugs are compiler errors that deterministic checks would have caught (GAP-014). 1 is a logic error that unit tests caught (GAP-011). 1 is a Unicode edge case that property-based testing caught. This strongly validates the methodology's TDD co-evolution thesis (TELEM-007) and confirms that evaluator rigour needs improvement (TELEM-001).
+**Conclusion**: 5/7 bugs are compiler errors that deterministic checks would have caught (GAP-014). 1 is a logic error that unit te
+sts caught (GAP-011). 1 is a Unicode edge case that property-based testing caught. This strongly validates the methodology's TDD co-evolution thesis (TELEM-007) and confirms that evaluator rigour needs improvement (TELEM-001).
