@@ -1,0 +1,147 @@
+# Edge Parameterisation: Design → Code
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "design→code"
+pattern: code_generation
+description: |
+  Generate implementation code from design specifications.
+  Code must be tagged with REQ keys and follow project standards.
+  Note: this edge typically feeds into the TDD co-evolution edge
+  (code↔unit_tests) for the actual implementation cycle.
+
+# ═══════════════════════════════════════════════════════════════════════
+# SOURCE ANALYSIS CHECKS (Backward — analyse the design)
+# ═══════════════════════════════════════════════════════════════════════
+
+source_analysis:
+
+  - name: "design_ambiguities_identified"
+    functional_unit: sense
+    criterion: |
+      Read the design document and identify every component or interface that is
+      ambiguous from a CODE perspective — unclear method signatures, unspecified
+      error handling, undefined concurrency semantics, missing state transitions.
+      Record each as SOURCE_AMBIGUITY.
+    required: true
+
+  - name: "design_gaps_for_code"
+    functional_unit: sense
+    criterion: |
+      Identify information the design SHOULD specify for code generation but doesn't —
+      missing configuration loading, unspecified persistence layer, implied but
+      undesigned utility functions, undefined logging/telemetry hooks.
+      Record each as SOURCE_GAP.
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST (Forward — evaluate the generated code)
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "code_matches_design"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Code implements the component interfaces and structure defined in the design document."
+    source: default
+    required: true
+
+  - name: "req_tags_present"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every code file has '# Implements: REQ-*' tags for the requirements it satisfies."
+    source: default
+    required: true
+
+  - name: "follows_coding_standards"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Code follows $standards.style_guide, $standards.docstrings, and $standards.type_hints policies."
+    source: default
+    required: true
+
+  - name: "compiles_or_parses"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Code compiles/parses without syntax errors"
+    source: default
+    required: true
+    command: "$tools.syntax_checker.command $tools.syntax_checker.args"
+    pass_criterion: "$tools.syntax_checker.pass_criterion"
+
+  - name: "lint_passes"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Linter reports zero violations"
+    source: default
+    required: true
+    command: "$tools.linter.command $tools.linter.args"
+    pass_criterion: "$tools.linter.pass_criterion"
+
+  - name: "type_check"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Type checker reports zero errors"
+    source: default
+    required: "$tools.type_checker.required"
+    command: "$tools.type_checker.command $tools.type_checker.args"
+    pass_criterion: "$tools.type_checker.pass_criterion"
+
+# ─── Traceability checks (composed from traceability.yml Layer 1) ────
+  - name: "req_tags_in_code"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Every production code file has at least one 'Implements: REQ-*' tag"
+    source: traceability
+    required: true
+
+  - name: "req_tags_valid_format"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All REQ tags follow format: (Implements|Validates): REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    source: traceability
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+  max_iterations: 5
+  stuck_threshold: 3
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONTEXT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+context_guidance:
+  required:
+    - "The design document (source asset)"
+    - "project_constraints.yml (language, tools, standards)"
+  recommended:
+    - "ADRs referenced by the design"
+    - "Existing code in the project (for consistency)"
+    - "Language/framework documentation for chosen stack"
+
+# ═══════════════════════════════════════════════════════════════════════
+# AGENT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+agent_guidance: |
+  When generating code from design:
+  1. BUILD EFFECTIVE CHECKLIST (edge defaults + project constraints)
+  2. ANALYSE SOURCE (backward gap detection):
+     - Read the design document
+     - Identify ambiguities from a code perspective
+     - Identify gaps: missing specs for error handling, configuration, logging
+     - Record all findings with classification and disposition
+  3. GENERATE CODE:
+     - Implement component interfaces from the design
+     - Tag every file with # Implements: REQ-*
+     - Follow coding standards from project_constraints.yml
+     - Start minimal — TDD edge will drive detailed implementation
+  4. EVALUATE OUTPUT (forward gap detection):
+     - Run traceability Layer 1 checks (REQ tag coverage)
+     - Run deterministic checks (compile, lint, type check)
+  5. EVALUATE PROCESS (inward gap detection) — what evaluators or context are missing?
+  6. Report: source findings, checklist results, process gaps

@@ -1,0 +1,8 @@
+feature: REQ-F-CDME-CORE
+intent: INT-001
+vector_type: feature
+status: pending
+parent: null
+trajectory:
+  intent:
+    status: converged

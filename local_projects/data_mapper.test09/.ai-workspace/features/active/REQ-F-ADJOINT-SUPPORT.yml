@@ -1,0 +1,8 @@
+feature: REQ-F-ADJOINT-SUPPORT
+intent: INT-005
+vector_type: feature
+status: pending
+parent: null
+trajectory:
+  intent:
+    status: converged

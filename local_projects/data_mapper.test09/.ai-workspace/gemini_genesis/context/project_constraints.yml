@@ -1,0 +1,33 @@
+
+project:
+  name: "data_mapper_test09"
+  kind: "Categorical Data Mapping Engine"
+  language: "Scala 2.13.12"
+  test_runner: "sbt test"
+
+constraints:
+  ecosystem_compatibility:
+    language: "Scala"
+    version: "2.13.12"
+    framework: "Apache Spark 3.5.0"
+  deployment_target:
+    platform: "Databricks / Kubernetes"
+  security_model:
+    authentication: "RBAC via Morphism Policy"
+  build_system:
+    tool: "sbt"
+
+tools:
+  test_runner:
+    command: "sbt"
+    args: "test"
+  linter:
+    command: "scalafmt"
+    args: "--check"
+
+thresholds:
+  test_coverage_minimum: 0.80
+
+structure:
+  design_tenants: ["imp_scala_spark"]
+  root_code_policy: reject

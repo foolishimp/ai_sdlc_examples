@@ -1,0 +1,311 @@
+# Edge Parameterisation: Code ↔ Unit Tests (TDD Co-Evolution)
+# Implements: REQ-EDGE-001
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §4.1
+
+---
+
+edge: "code↔unit_tests"
+pattern: tdd_co_evolution
+description: |
+  Test-Driven Development as co-evolution of code and tests.
+  This is a BIDIRECTIONAL edge — tests and code iterate together.
+  Neither is "upstream" of the other; they converge jointly.
+
+phases:
+  red:
+    description: "Write failing test first"
+    action: |
+      Write a test that exercises the next piece of functionality.
+      The test MUST:
+      - Reference the requirement: # Validates: REQ-*
+      - Follow AAA pattern (Arrange, Act, Assert)
+      - Be specific and focused (one behaviour per test)
+      - FAIL when run (no implementation yet)
+    evaluator: deterministic
+    convergence: "Test exists, is syntactically valid, and fails as expected"
+
+  green:
+    description: "Write minimal code to pass"
+    action: |
+      Write the MINIMUM code needed to make the test pass.
+      The code MUST:
+      - Reference the requirement: # Implements: REQ-*
+      - Be minimal — no premature optimisation or extra features
+      - Make the specific failing test pass
+    evaluator: deterministic
+    convergence: "All tests pass (not just the new one)"
+
+  refactor:
+    description: "Improve code quality while tests stay green"
+    action: |
+      Improve the code and/or tests:
+      - Extract patterns, reduce duplication
+      - Improve naming, readability
+      - Add type hints, documentation
+      - Ensure tests still pass after every change
+    evaluator: [agent, deterministic]
+    convergence: "Tests still pass, agent confirms quality improvement"
+
+  commit:
+    description: "Save with REQ key in commit message"
+    action: |
+      Commit the changes with a message that:
+      - Describes what was implemented
+      - Lists Implements: REQ-* tags
+      - Notes test evidence (count, coverage)
+    evaluator: deterministic
+    convergence: "Commit message includes REQ-* tag"
+
+# After commit, cycle repeats with next test
+cycle: "red → green → refactor → commit → red"
+
+# ═══════════════════════════════════════════════════════════════════════
+# SOURCE ANALYSIS CHECKS (Backward — analyse code and design)
+# ═══════════════════════════════════════════════════════════════════════
+
+source_analysis:
+
+  - name: "code_testability_issues"
+    functional_unit: sense
+    criterion: |
+      Analyse the existing code for testability issues — tight coupling,
+      hidden dependencies, global state, side effects in constructors.
+      Record each as SOURCE_AMBIGUITY (unclear how to test) or SOURCE_GAP
+      (code needs refactoring to be testable).
+    required: true
+
+  - name: "design_test_gaps"
+    functional_unit: sense
+    criterion: |
+      Identify requirements in the design that have no obvious test strategy —
+      NFRs that need integration tests, data quality rules that need
+      test data generators, business rules with complex state machines.
+      Record each as SOURCE_GAP.
+    required: true
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+# Concrete, enumerable checks. The iterate agent evaluates each and reports:
+#   "N of M required checks pass. Failing: [list]"
+#
+# $variable references resolve from project_constraints.yml.
+# Feature acceptance_criteria append at runtime from the feature file.
+
+checklist:
+
+  # ─── Deterministic checks ───────────────────────────────────────────
+  - name: "tests_pass"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All tests pass"
+    source: default
+    required: true
+    command: "$tools.test_runner.command $tools.test_runner.args"
+    pass_criterion: "$tools.test_runner.pass_criterion"
+
+  - name: "coverage_meets_threshold"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Test coverage >= $thresholds.test_coverage_minimum"
+    source: default
+    required: true
+    command: "$tools.coverage.command $tools.coverage.args"
+    pass_criterion: "$tools.coverage.pass_criterion"
+
+  - name: "lint_passes"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Linter reports zero violations"
+    source: default
+    required: true
+    command: "$tools.linter.command $tools.linter.args"
+    pass_criterion: "$tools.linter.pass_criterion"
+
+  - name: "format_check"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Code is properly formatted"
+    source: default
+    required: true
+    command: "$tools.formatter.command $tools.formatter.args"
+    pass_criterion: "$tools.formatter.pass_criterion"
+
+  - name: "type_check"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Type checker reports zero errors"
+    source: default
+    required: "$tools.type_checker.required"
+    command: "$tools.type_checker.command $tools.type_checker.args"
+    pass_criterion: "$tools.type_checker.pass_criterion"
+
+  # ─── Agent checks ──────────────────────────────────────────────────
+  - name: "req_tags_present"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Every code file has "# Implements: REQ-*" tag.
+      Every test file has "# Validates: REQ-*" tag.
+      All referenced REQ keys exist in the requirements.
+    source: default
+    required: true
+
+  - name: "all_req_keys_covered"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Every REQ key in scope for this feature has at least one test
+      that references it with "# Validates: REQ-*.
+    source: default
+    required: true
+
+  - name: "code_quality"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Code follows $standards.style_guide.
+      Functions focused (< $thresholds.max_function_lines lines).
+      Docstrings per $standards.docstrings policy.
+      Type hints per $standards.type_hints policy.
+      No duplication, dead code, or overly complex logic.
+    source: default
+    required: true
+
+  - name: "test_quality"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Tests follow $standards.test_structure pattern.
+      Tests are independent (no ordering dependencies).
+      Tests cover happy path, error paths, and edge cases.
+      Test names clearly describe the behaviour being tested.
+    source: default
+    required: true
+
+  # ─── Traceability checks (composed from traceability.yml) ──────────
+  # Layer 1: REQ tag coverage (required)
+  - name: "req_tags_in_code"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Every production code file has at least one 'Implements: REQ-*' tag"
+    source: traceability
+    required: true
+
+  - name: "req_tags_in_tests"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Every test file has at least one 'Validates: REQ-*' tag"
+    source: traceability
+    required: true
+
+  - name: "req_tags_valid_format"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All REQ tags follow format: (Implements|Validates): REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    source: traceability
+    required: true
+
+  # Layer 2: Test gap analysis (required)
+  - name: "all_req_keys_have_tests"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every REQ key in scope has at least one test with 'Validates: REQ-*' tag"
+    source: traceability
+    required: true
+
+  # ─── Test data strategy ──────────────────────────────────────────────
+  - name: "test_data_strategy"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Tests use representative test data — either generated or fixture-based.
+      Data generators (if any) are tagged with the REQ keys they exercise.
+      Test data covers: happy path, boundary conditions, error cases.
+      If the domain has complex data structures, dedicated data generators
+      or builders exist rather than inline literals.
+    source: default
+    required: true
+
+  # Layer 3: Telemetry gap analysis (advisory at TDD edge)
+  - name: "code_req_keys_have_telemetry"
+    type: agent
+    functional_unit: evaluate
+    criterion: "REQ keys in code have corresponding telemetry tagging (req=\"REQ-*\")"
+    source: traceability
+    required: false
+
+  # ─── Feature checks (injected at runtime) ──────────────────────────
+  # The iterate agent appends from:
+  #   feature.constraints.acceptance_criteria
+  #   feature.constraints.additional_checks
+
+# ═══════════════════════════════════════════════════════════════════════
+# CONVERGENCE
+# ═══════════════════════════════════════════════════════════════════════
+
+convergence:
+  rule: "all_required_checks_pass"
+  max_iterations: 5        # escalate to human after 5 non-converging iterations
+  stuck_threshold: 3       # emit intent_raised after 3 iterations with same delta
+  description: |
+    This edge converges when every check in the effective checklist
+    where required=true reports PASS.
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# AGENT GUIDANCE
+# ═══════════════════════════════════════════════════════════════════════
+
+context_guidance:
+  required:
+    - "The code under test (source asset)"
+    - "The design document (for interface contracts and REQ traceability)"
+    - "project_constraints.yml (test runner, coverage tool, standards)"
+  recommended:
+    - "Requirements document (for acceptance criteria)"
+    - "Existing tests (for consistency of style and patterns)"
+
+agent_guidance: |
+  When iterating on this edge:
+
+  1. BUILD THE EFFECTIVE CHECKLIST:
+     a. Start with the checklist above (edge defaults)
+     b. Resolve $tools/$thresholds/$standards from project_constraints.yml
+     c. Load feature file, apply threshold_overrides, append acceptance_criteria
+     d. The result is your concrete list of pass/fail checks
+
+  2. ANALYSE SOURCE (backward gap detection):
+     - Identify testability issues in the code
+     - Identify requirements that need complex test strategies
+     - Record all findings
+
+  3. ALWAYS follow RED → GREEN → REFACTOR → COMMIT
+
+  4. RUN DETERMINISTIC CHECKS: execute resolved commands, record pass/fail
+
+  5. EVALUATE AGENT CHECKS: assess candidate against each criterion honestly
+
+  6. EVALUATE PROCESS (inward gap detection) — what evaluators or context are missing?
+
+  7. REPORT: source findings, checklist results (as delta table), process gaps
+
+  8. If a test can't be written, that's feedback to upstream (requirement/design).
+     Emit an `intent_raised` event with signal_source: "test_failure" and
+     disposition: "escalate_upstream" so the deficiency is formally captured.
+
+  9. If a $variable can't be resolved, SKIP the check with a warning.
+
+  10. INTENT GENERATION FROM FAILURES (consciousness loop at TDD observer):
+      - If the SAME check fails > 3 iterations: emit `intent_raised` with
+        signal_source: "test_failure" — the delta is stuck, something is wrong
+        beyond this edge's scope.
+      - If the refactor phase reveals cross-cutting structural debt (duplication
+        across modules, missing abstraction, coupling patterns): emit
+        `intent_raised` with signal_source: "refactoring" — capture it as a
+        formal intent so it enters the graph, don't let it decay into TODO comments.
+      - If test coverage meets threshold but tests are fragile/slow/coupled:
+        emit `intent_raised` with signal_source: "refactoring" — test quality
+        degradation is a homeostatic signal.
+      Every evaluator is an observer. Every stuck delta or structural signal
+      is a potential intent. The human decides whether to act.

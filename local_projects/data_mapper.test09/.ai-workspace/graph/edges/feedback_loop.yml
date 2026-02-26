@@ -1,0 +1,306 @@
+# Edge Parameterisation: Telemetry → Intent (Feedback Loop)
+# Implements: REQ-LIFE-003, REQ-INTENT-003
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §7.3, §7.6, §7.7
+#
+# KEY INSIGHT: The consciousness loop occurs at EVERY observer point,
+# not just production telemetry. Every evaluator is an observer. Every
+# observer can detect a delta. Every delta is a potential intent.
+#
+# During development: gap analysis, test failures, source findings,
+# process gaps, and refactoring needs are ALL homeostatic signals.
+# During production: telemetry deviations and ecosystem changes.
+# Both use the same pattern: observe → detect delta → raise intent.
+
+---
+
+edge: "telemetry→intent"
+pattern: feedback_loop
+description: |
+  Close the lifecycle loop: ANY observation of a delta between expected
+  and actual state generates new intents that flow back into the graph.
+
+  This edge is not limited to production telemetry. The consciousness
+  loop (§7.7) operates at every observer point:
+
+  - Forward evaluation: output doesn't meet checklist → intent to fix
+  - Backward evaluation: upstream asset is ambiguous → intent to clarify
+  - Inward evaluation: evaluators are insufficient → intent to improve methodology
+  - Gap analysis: coverage gaps → intent to write tests or add telemetry
+  - Refactoring: structural degradation → intent to restructure
+  - Production: SLA deviation → intent to fix running system
+  - Ecosystem: dependency change → intent to adapt
+
+  Every evaluator is an observer. Every observer can emit intent_raised.
+
+# ═══════════════════════════════════════════════════════════════════════
+# SIGNAL SOURCES
+# ═══════════════════════════════════════════════════════════════════════
+#
+# Each source defines a class of observation that can generate intents.
+# The signal_source field in intent_raised events classifies which one fired.
+
+sources:
+
+  # ─── Production signals ────────────────────────────────────────────
+
+  runtime_deviation:
+    signal_source: runtime_feedback
+    description: "Telemetry shows system behaviour outside constraint bounds"
+    trigger: "SLA violation, error rate spike, performance degradation"
+    intent_template: |
+      ## INT-{SEQ}: {Issue Summary}
+
+      **Source**: runtime_feedback
+      **Priority**: {derived from severity}
+      **Triggered By**: Telemetry alert — {alert description}
+      **Affected Requirements**: REQ-{keys from telemetry tags}
+      **Description**: {What deviated, how much, since when}
+
+  ecosystem_change:
+    signal_source: ecosystem
+    description: "External ecosystem changes requiring adaptation"
+    trigger: "Dependency update, API deprecation, security advisory, regulation change"
+    intent_template: |
+      ## INT-{SEQ}: {Change Summary}
+
+      **Source**: ecosystem
+      **Priority**: {derived from impact assessment}
+      **Triggered By**: {ecosystem event}
+      **Affected Requirements**: {requirements impacted by the change}
+      **Description**: {What changed, what impact it has, what adaptation is needed}
+
+  # ─── Development-time homeostatic signals ──────────────────────────
+
+  gap_analysis:
+    signal_source: gap
+    description: "Traceability validation finds coverage holes"
+    trigger: "Test gaps, telemetry gaps, REQ tag coverage failures from /gen-gaps"
+    intent_template: |
+      ## INT-{SEQ}: Close {gap_type} gap for {REQ keys}
+
+      **Source**: gap
+      **Priority**: {High if test gap, Medium if telemetry gap}
+      **Triggered By**: /gen-gaps — {layer} validation found {count} uncovered REQ keys
+      **Affected Requirements**: {list of REQ keys without coverage}
+      **Description**: {What's missing and why it matters}
+      **Signal**: TELEM-{NNN}: {gap_type} gap — {count} REQ keys without {coverage_type}
+
+  test_failure:
+    signal_source: test_failure
+    description: "Repeated test failures that indicate upstream deficiency"
+    trigger: |
+      - Tests fail > 3 iterations on the same check (stuck delta)
+      - Test reveals requirement ambiguity or contradiction
+      - Test reveals design gap that can't be fixed in current scope
+      - UAT scenario fails in ways suggesting intent misunderstanding
+    intent_template: |
+      ## INT-{SEQ}: {Failure Summary}
+
+      **Source**: test_failure
+      **Priority**: {High if blocking convergence, Medium otherwise}
+      **Triggered By**: {edge} iteration {n} — {check_name} failed {count} times
+      **Affected Requirements**: {REQ keys from test tags}
+      **Root Cause**: {code bug | design gap | requirement gap | intent ambiguity}
+      **Description**: {What fails, why it can't be fixed in current scope}
+
+  refactoring_needed:
+    signal_source: refactoring
+    description: "Code/test structural degradation detected during iteration"
+    trigger: |
+      - TDD refactor phase identifies cross-cutting concerns beyond current feature
+      - Process gap (EVALUATOR_VAGUE, CONTEXT_MISSING) persists across iterations
+      - Architectural debt accumulates (duplicate code, tight coupling, missing abstractions)
+      - Coverage meets threshold but test quality is low (fragile, slow, coupled)
+    intent_template: |
+      ## INT-{SEQ}: Refactor {component/area}
+
+      **Source**: refactoring
+      **Priority**: {Medium — not blocking but degrading}
+      **Triggered By**: {edge} — {what was observed}
+      **Affected Requirements**: {REQ keys in affected code}
+      **Description**: {What needs restructuring and why}
+      **Technical Debt Signal**: {quantified if possible — duplication count, coupling metric}
+
+  source_finding_escalation:
+    signal_source: source_finding
+    description: "Backward gap detection finds upstream asset deficiency"
+    trigger: |
+      - SOURCE_GAP with disposition escalate_upstream
+      - SOURCE_AMBIGUITY that can't be resolved with assumption
+      - SOURCE_UNDERSPEC persisting across multiple features on same edge
+    intent_template: |
+      ## INT-{SEQ}: Clarify {upstream_asset} — {finding}
+
+      **Source**: source_finding
+      **Priority**: {High if blocking, Medium if workaround exists}
+      **Triggered By**: {edge} backward analysis — {classification}: {description}
+      **Affected Requirements**: {REQ keys}
+      **Description**: {What's ambiguous/missing in the upstream asset}
+
+  process_gap_escalation:
+    signal_source: process_gap
+    description: "Inward gap detection finds methodology deficiency"
+    trigger: |
+      - EVALUATOR_MISSING — no check for an important quality dimension
+      - EVALUATOR_VAGUE — check criterion too loose to be meaningful
+      - CONTEXT_MISSING — reference material needed but not in Context[]
+      - GUIDANCE_MISSING — agent doesn't know how to handle a pattern
+    intent_template: |
+      ## INT-{SEQ}: Improve methodology — {gap_type}
+
+      **Source**: process_gap
+      **Priority**: {Low — methodology improvement, not product deficiency}
+      **Triggered By**: {edge} process evaluation — {type}: {description}
+      **Affected Requirements**: N/A (methodology, not product)
+      **Description**: {What's missing in the methodology and recommended action}
+      **Note**: During dogfood, these are high-value methodology improvements
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "telemetry_tagged_with_req_keys"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Telemetry data includes REQ-* key tags linking metrics to requirements."
+    command: "grep -r 'REQ-' telemetry/ monitoring/ || true"
+    pass_criterion: "REQ key references found in telemetry configuration"
+    source: default
+    required: true
+
+  - name: "deviation_quantified"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      The deviation from expected behaviour is quantified with:
+      - What metric deviated
+      - What the expected bound was
+      - What the actual value is
+      - Duration of the deviation
+    source: default
+    required: true
+
+  - name: "root_cause_identified"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      A root cause analysis traces the deviation back to:
+      - The specific code path or component
+      - The REQ keys governing that behaviour
+      - Whether this is a code bug, design gap, or requirement gap
+    source: default
+    required: true
+
+  - name: "affected_requirements_traced"
+    type: agent
+    functional_unit: evaluate
+    criterion: "All REQ keys affected by the deviation are identified and listed."
+    source: default
+    required: true
+
+  - name: "priority_appropriate"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      The generated intent priority matches the severity:
+      - SLA violation → Critical
+      - Performance degradation → High
+      - Minor deviation → Medium
+      - Ecosystem advisory → derived from impact assessment
+    source: default
+    required: true
+
+  - name: "intent_well_formed"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      The generated intent follows the INT-{SEQ} template with:
+      source, priority, triggered_by, affected_requirements, description.
+    source: default
+    required: true
+
+  - name: "human_warrants_action"
+    type: human
+    functional_unit: evaluate
+    criterion: "Human confirms the deviation warrants a new intent (not noise or transient)."
+    source: default
+    required: true
+
+  - name: "human_confirms_priority"
+    type: human
+    functional_unit: evaluate
+    criterion: "Human confirms the priority assignment for the generated intent."
+    source: default
+    required: true
+
+  # ─── Traceability checks (composed from traceability.yml Layer 3) ──
+  - name: "code_req_keys_have_telemetry"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Every REQ key in code (Implements: REQ-*) has corresponding
+      telemetry tagging (req="REQ-*"). Telemetry gaps mean features
+      running without observability — the feedback loop cannot detect
+      deviations for unmonitored features.
+    source: traceability
+    required: true
+
+  - name: "telemetry_tag_format"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All telemetry REQ tags use structured format: req=\"REQ-*\""
+    source: traceability
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+  max_iterations: 5
+  stuck_threshold: 3
+
+
+agent_guidance: |
+  The consciousness loop fires at EVERY observer point, not just production.
+  When processing ANY signal (runtime, gap, test failure, refactoring, source finding, process gap):
+
+  1. Build effective checklist (edge defaults + any project overrides)
+  2. CLASSIFY the signal source (see sources above)
+  3. Quantify the delta (what was expected vs what was observed)
+  4. Trace back to affected REQ keys
+  5. Draft a new intent (INT-*) using the appropriate intent_template
+  6. Emit an `intent_raised` event to events.jsonl (see Event Schema below)
+  7. Present to human — they decide whether to create a new feature vector
+  8. Report checklist: "N of M required checks pass"
+
+  Signal source priority for intent generation:
+  - runtime_feedback, test_failure: ALWAYS generate intent
+  - gap (from /gen-gaps): generate intent for each uncovered REQ key cluster
+  - refactoring: generate intent when debt exceeds current scope
+  - source_finding: generate intent when escalate_upstream disposition
+  - process_gap: generate intent during dogfood; log as TELEM signal otherwise
+  - ecosystem: generate intent on impact assessment
+
+  Note: Development-time signals use the SAME mechanism as production signals.
+  The only difference is the trigger context (iteration vs running system).
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVENT SCHEMA: intent_raised
+# ═══════════════════════════════════════════════════════════════════════
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §7.7.2
+# This event closes the consciousness loop with full traceability.
+
+intent_raised_schema:
+  event_type: intent_raised
+  fields:
+    - timestamp: "ISO 8601"
+    - project: "project name"
+    - intent_id: "INT-{SEQ}"
+    - trigger: "which signal(s) caused this intent"
+    - delta: "spec vs observation deviation"
+    - signal_source: "gap | test_failure | refactoring | source_finding | process_gap | runtime_feedback | ecosystem | user | TELEM"
+    - vector_type: "discovery | PoC | feature | hotfix | spike"
+    - affected_req_keys: "[REQ-* list]"
+    - prior_intents: "[INT-* chain that led here — closes reflexive loop]"
+    - edge_context: "which edge was being traversed when signal fired"
+    - severity: "critical | high | medium | low"

@@ -1,0 +1,101 @@
+# Edge Parameterisation: Code Tagging
+# Implements: REQ-EDGE-004
+# Reference: AISDLC_IMPLEMENTATION_REQUIREMENTS.md REQ-EDGE-004
+#
+# Code tagging is not a specific edge — it's a cross-cutting concern
+# that applies to all edges that produce code or test assets.
+
+---
+
+pattern: code_tagging
+description: |
+  REQ key tagging in code and test files.
+  The TAG FORMAT is the contract. Comment syntax is language-specific.
+  Tooling validates the tag format, not the comment syntax.
+
+tag_formats:
+  implementation:
+    format: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    applies_to: [code]
+    example:
+      python: "# Implements: REQ-F-AUTH-001"
+      javascript: "// Implements: REQ-F-AUTH-001"
+      java: "// Implements: REQ-F-AUTH-001"
+      go: "// Implements: REQ-F-AUTH-001"
+      rust: "// Implements: REQ-F-AUTH-001"
+
+  validation:
+    format: "Validates: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    applies_to: [unit_tests, test_cases, uat_tests]
+    example:
+      python: "# Validates: REQ-F-AUTH-001"
+      gherkin: "# Validates: REQ-F-AUTH-001"
+
+  commit:
+    format: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    applies_to: [git_commit_messages]
+    example: |
+      Implement user login (REQ-F-AUTH-001)
+
+      Implements: REQ-F-AUTH-001, REQ-NFR-SEC-001
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+# Cross-cutting: these checks are COMPOSED INTO other edge checklists
+# when the edge produces code or test assets.
+
+checklist:
+
+  - name: "valid_tag_format"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All tags match the format: (Implements|Validates): REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    command: "grep -rPn '(Implements|Validates):\\s+REQ-' src/ tests/ || true"
+    pass_criterion: "All tags match regex: (Implements|Validates):\\s+REQ-[A-Z]+-[A-Z]+-\\d+"
+    source: default
+    required: true
+
+  - name: "valid_req_references"
+    type: agent
+    functional_unit: evaluate
+    criterion: "All REQ keys referenced in tags exist in the requirements document."
+    source: default
+    required: true
+
+  - name: "code_files_tagged"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every production code file has at least one '# Implements: REQ-*' tag."
+    source: default
+    required: true
+
+  - name: "test_files_tagged"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every test file has at least one '# Validates: REQ-*' tag."
+    source: default
+    required: true
+
+  - name: "commit_messages_tagged"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Commit messages reference at least one REQ key via 'Implements: REQ-*'."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+  max_iterations: 5
+  stuck_threshold: 3
+
+
+agent_guidance: |
+  When producing code or test assets:
+  1. ALWAYS include REQ key tags — this is non-negotiable
+  2. Place tags near the top of the file or near the relevant code section
+  3. Use the comment syntax appropriate for the language
+  4. If you're unsure which REQ key applies, flag it as a gap
+  5. Validate that referenced REQ keys exist in the requirements
+  6. Include tags in commit messages when committing
+  7. These checks compose INTO other edge checklists — they are not standalone
