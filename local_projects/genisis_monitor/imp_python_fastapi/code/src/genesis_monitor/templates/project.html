@@ -3,7 +3,12 @@
 
 {% block head_extra %}
     <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-    <script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral'
+        });
+    </script>
 {% endblock %}
 
 {% block scripts %}
@@ -18,7 +23,7 @@
 <hgroup>
     <h1>{{ project.name }}
         {% if project.has_bootloader %}
-            <span class="badge" style="background: #e3f2fd; color: #1565c0; font-size: 0.5em; vertical-align: middle;" title="Genesis Bootloader installed in CLAUDE.md">Bootloader</span>
+            <span class="badge" style="background: rgba(33, 150, 243, 0.15); color: #42a5f5; font-size: 0.5em; vertical-align: middle;" title="Genesis Bootloader installed in CLAUDE.md">Bootloader</span>
         {% endif %}
     </h1>
     <p>{{ project.path }}</p>
