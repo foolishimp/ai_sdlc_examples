@@ -1,0 +1,45 @@
+feature: REQ-F-CDME-CORE
+title: CDME Core Algebra and Pipeline Engine
+intent: INT-001
+vector_type: feature
+profile: standard
+status: in_progress
+priority: critical
+created: "2026-02-27T14:00:00Z"
+updated: "2026-02-27T14:00:00Z"
+
+description: |
+  Build the core categorical data mapping engine: schemas as categories,
+  transformations as functors, with mathematical guarantees for pipeline
+  correctness, lineage preservation, grain safety, and type enforcement.
+  Targets Scala 2.13 + Apache Spark 3.5.
+
+requirements:
+  - REQ-F-CDME-001   # Schema as Category (Objects + Morphisms)
+  - REQ-F-CDME-002   # LDM / PDM Separation
+  - REQ-F-CDME-003   # Transformations as Functors
+  - REQ-F-CDME-004   # Grain Safety (dimension checking)
+  - REQ-F-CDME-005   # Type Contracts (semantic types)
+  - REQ-NFR-CDME-001 # Pipeline Correctness at Definition Time
+  - REQ-NFR-CDME-002 # Full Lineage Traceability
+  - REQ-DATA-CDME-001 # Schema Validation Rules
+  - REQ-BR-CDME-001  # Topology as Guardrail (reject invalid mappings)
+
+dependencies: []
+
+constraints:
+  acceptance_criteria:
+    - key: REQ-F-CDME-001
+      criterion: "Schemas are modeled as Categories with Objects (entities) and Morphisms (relationships)"
+      priority: critical
+    - key: REQ-F-CDME-003
+      criterion: "Transformations compose as Functors with verified compositional consistency"
+      priority: critical
+    - key: REQ-NFR-CDME-001
+      criterion: "Invalid pipelines are rejected at definition time, not runtime"
+      priority: critical
+    - key: REQ-BR-CDME-001
+      criterion: "AI-generated mappings are validated against topology before execution"
+      priority: high
+
+trajectory: {}

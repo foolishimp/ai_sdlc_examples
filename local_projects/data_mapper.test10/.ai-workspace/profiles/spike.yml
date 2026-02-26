@@ -1,0 +1,82 @@
+# Projection Profile: Spike
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Technical spike — time-boxed risk assessment.
+# Minimal graph (hypothesis→experiment→assessment), agent + human evaluators.
+
+---
+
+profile: spike
+description: "Technical spike — time-boxed risk assessment"
+version: "1.0.0"
+
+# Graph: hypothesis-driven, minimal edges
+graph:
+  include:
+    - "intent→requirements"     # hypothesis framing
+    - "requirements→design"     # experiment design
+    - "design→code"             # experiment code
+  skip:
+    - "code↔unit_tests"         # throwaway experiment code
+    - "design→uat_tests"        # no formal UAT
+    - "design→test_cases"       # no formal test cases
+    - "code→cicd"               # no deployment
+
+# Evaluators: agent + human (no deterministic — experiment code)
+evaluators:
+  default: [agent, human]
+  overrides:
+    "design→code":
+      evaluators: [agent]       # no human review on experiment code
+
+# Convergence: risk assessed OR time_box_expired
+convergence:
+  rule: "question_answered_or_timeout"
+  conditions:
+    - risk_assessed              # human confirms risk is understood
+    - question_answered          # technical question answered
+    - time_box_expired           # fold back partial results
+
+# Context: intent + technical constraints
+context:
+  density: light
+  required_elements:
+    - project_constraints
+    - graph_topology
+  optional_elements:
+    - adrs                       # relevant prior decisions only
+    - prior_implementations      # relevant existing code
+
+# Encoding: functor encoding per §2.9
+encoding:
+  strategy: exploration
+  mode: interactive
+  valence: low
+  functional_units:
+    evaluate:    F_P                 # agent-assessed, exploration-driven
+    construct:   F_P
+    classify:    F_D
+    route:       F_P                 # agent picks route in exploration
+    propose:     F_P
+    sense:       F_D
+    emit:        F_D                 # category-fixed
+    decide:      F_H                 # category-fixed
+  edge_overrides: {}
+
+# Iteration budget
+iteration:
+  budget: time_boxed
+  time_box:
+    duration: "1 week"
+    check_in: daily
+    on_expiry: fold_back
+  escalation: human
+
+# Vector types permitted
+vector_types: [spike, discovery]
+
+# Spike-specific
+spike:
+  output_format: assessment      # produces risk assessment + recommendation
+  promotable_assets: false       # experiment code is NOT reusable
+  fold_back_as: context          # results become Context[] for parent

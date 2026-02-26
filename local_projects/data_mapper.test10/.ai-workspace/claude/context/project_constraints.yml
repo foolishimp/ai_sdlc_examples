@@ -1,0 +1,168 @@
+# Project Constraints — Categorical Data Mapping Engine (CDME)
+# Scala 2.13 + Apache Spark 3.5 implementation
+# Claude design tenant
+
+---
+
+project:
+  name: "cdme"
+  version: "0.1.0"
+  default_profile: standard
+
+context_sources: []
+
+language:
+  primary: scala
+  version: "2.13.12"
+  secondary: []
+
+tools:
+  syntax_checker:
+    command: "scalac"
+    args: ""
+    pass_criterion: "exit code 0"
+
+  test_runner:
+    command: "sbt"
+    args: "test"
+    pass_criterion: "exit code 0"
+
+  coverage:
+    command: "sbt"
+    args: "clean coverage test coverageReport"
+    pass_criterion: "coverage percentage >= $thresholds.test_coverage_minimum"
+
+  linter:
+    command: "sbt"
+    args: "scalafmtCheckAll"
+    pass_criterion: "exit code 0, zero violations"
+
+  formatter:
+    command: "sbt"
+    args: "scalafmtCheckAll"
+    pass_criterion: "exit code 0 (already formatted)"
+
+  type_checker:
+    command: "scalac"
+    args: ""
+    pass_criterion: "exit code 0, zero errors"
+    required: true
+
+thresholds:
+  test_coverage_minimum: 0.80
+  test_coverage_target: 1.00
+  critical_path_coverage: 1.00
+  max_function_complexity: 10
+  max_function_lines: 50
+  max_class_lines: 300
+  test_execution_timeout_seconds: 60
+
+standards:
+  style_guide: "Scala Style Guide + scalafmt"
+  docstrings: required
+  type_hints: required       # Scala is statically typed — always present
+  test_structure: "FlatSpec/FunSuite with describe/it"
+
+  commit_message_format: |
+    {type}: {short summary}
+
+    {detailed description}
+
+    Implements: REQ-*
+
+  req_tag_format:
+    code: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    tests: "Validates: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+    commits: "Implements: REQ-{TYPE}-{DOMAIN}-{SEQ}"
+
+constraint_dimensions:
+
+  ecosystem_compatibility:
+    language: "scala"
+    version: "2.13.12"
+    runtime: "Spark 3.5.0 on JVM 17"
+    frameworks:
+      - name: "Apache Spark"
+        version: "3.5.0"
+        scope: "provided"
+      - name: "Cats"
+        version: "2.10.0"
+        scope: "compile"
+      - name: "ScalaTest"
+        version: "3.2.17"
+        scope: "test"
+    compatibility_notes: "Spark 3.5.x supports Scala 2.12/2.13 only, NOT Scala 3"
+
+  deployment_target:
+    platform: "kubernetes"
+    cloud_provider: "aws"
+    environment_tiers:
+      - dev
+      - staging
+      - production
+    notes: "EMR on EKS for Spark, containerised driver/executors"
+
+  security_model:
+    authentication: "iam"
+    authorisation: "rbac"
+    data_protection: "encryption-at-rest and in-transit"
+    compliance:
+      - "BCBS 239"
+      - "FRTB"
+    notes: "Financial regulatory compliance required"
+
+  build_system:
+    tool: "sbt"
+    module_structure: "multi-module"
+    ci_integration: "github-actions"
+    notes: "sbt 1.9.x with sbt-assembly for fat JARs"
+
+  data_governance:
+    classification: "confidential"
+    retention_policy: "7 years"
+    lineage_required: true
+    compliance_frameworks:
+      - "BCBS 239"
+      - "FRTB"
+      - "GDPR"
+
+  performance_envelope:
+    latency_target: "batch: 1M records/hour minimum"
+    throughput_target: "10M records/job"
+    scaling_strategy: "horizontal"
+    resource_bounds: "Spark executors: 4 CPU, 16GB RAM each"
+
+  observability:
+    logging: "structured-json"
+    metrics: "prometheus"
+    tracing: "opentelemetry"
+    req_key_tagging: true
+
+  error_handling:
+    strategy: "fail-fast"
+    error_types: "structured"
+    degradation: "fail-fast"
+    notes: "Errors are data (Axiom 10) — routed to Error Domain, not exceptions"
+
+architecture:
+  patterns:
+    - "Category Theory foundations — schemas as categories, transforms as functors"
+    - "Separation of LDM (logical) / PDM (physical) / Binding (functor)"
+    - "Immutable data, functional paradigm for business logic"
+  dependency_rules:
+    - "Core algebra has zero Spark dependencies"
+    - "Spark adapter depends on core, never the reverse"
+    - "LDM layer has zero infrastructure dependencies"
+  forbidden:
+    - "Global mutable state"
+    - "Side effects in morphism definitions"
+    - "Direct Spark API in core algebra"
+
+structure:
+  design_tenants:
+    - name: "claude_spark"
+      output_dir: "imp_claude/"
+      description: "Claude-designed Scala 2.13 + Spark 3.5 implementation"
+  root_code_policy: reject
+
+evaluator_overrides: {}

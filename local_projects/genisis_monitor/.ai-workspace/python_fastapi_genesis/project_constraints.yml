@@ -1,3 +1,5 @@
+design_name: python_fastapi_genesis
+
 project:
   name: genesis-monitor
   version: 0.1.0

@@ -1,0 +1,79 @@
+# Projection Profile: PoC
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Proof of concept — time-boxed feasibility validation.
+# Lighter graph, agent + human evaluators, hypothesis-driven convergence.
+
+---
+
+profile: poc
+description: "Proof of concept — time-boxed feasibility validation"
+version: "1.0.0"
+
+# Graph: hypothesis-driven subset
+graph:
+  include:
+    - "intent→requirements"     # hypothesis framing
+    - "requirements→design"     # design sketch (not full design)
+    - "design→code"             # prototype code
+  skip:
+    - "code↔unit_tests"         # throwaway code, no TDD
+    - "design→uat_tests"        # no formal UAT
+    - "code→cicd"               # no deployment
+
+# Evaluators: agent + human (no deterministic — code is throwaway)
+evaluators:
+  default: [agent, human]
+  overrides:
+    "design→code":
+      evaluators: [agent]       # no human review on prototype code
+
+# Convergence: hypothesis confirmed/rejected OR time_box_expired
+convergence:
+  rule: "hypothesis_resolved_or_timeout"
+  conditions:
+    - hypothesis_confirmed       # human confirms feasibility
+    - hypothesis_rejected        # human rejects feasibility
+    - time_box_expired           # fold back partial results
+
+# Context: intent + relevant prior art
+context:
+  density: light
+  required_elements:
+    - project_constraints
+    - graph_topology
+  optional_elements:
+    - adrs                       # relevant prior decisions only
+
+# Encoding: functor encoding per §2.9
+encoding:
+  strategy: hypothesis_minimal
+  mode: interactive
+  valence: low
+  functional_units:
+    evaluate:    F_P                 # agent-assessed, no F_H gates except final
+    construct:   F_P
+    classify:    F_D
+    route:       F_H
+    propose:     F_P
+    sense:       F_D
+    emit:        F_D                 # category-fixed
+    decide:      F_H                 # category-fixed
+  edge_overrides: {}
+
+# Iteration budget
+iteration:
+  budget: time_boxed
+  time_box:
+    duration: "3 weeks"
+    check_in: weekly
+    on_expiry: fold_back
+  escalation: human
+
+# Vector types permitted
+vector_types: [poc, spike, discovery]
+
+# PoC-specific
+poc:
+  promotable_assets: true        # design/code CAN be promoted to feature vector
+  production_quality: false      # code is NOT production-ready

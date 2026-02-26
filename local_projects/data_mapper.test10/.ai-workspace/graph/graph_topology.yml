@@ -1,0 +1,333 @@
+# AI SDLC — Default Graph Topology
+# Implements: REQ-GRAPH-001, REQ-GRAPH-002, REQ-GRAPH-003, REQ-LIFE-001, REQ-LIFE-002
+# Version: 2.8.0
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md (v2.8.0)
+#
+# This file defines the asset types and admissible transitions for the
+# default SDLC graph. Projects can extend or modify this topology.
+# The graph topology is itself an element of Context[].
+
+---
+
+# ═══════════════════════════════════════════
+# Asset Type Registry
+# ═══════════════════════════════════════════
+#
+# Each asset type defines:
+#   schema:          what fields the asset has
+#   markov_criteria: conditions for promotion (candidate → stable)
+
+asset_types:
+
+  intent:
+    description: "Raw problem/opportunity statement that spawns development work"
+    schema:
+      id: "INT-{SEQ}"
+      description: string
+      source: enum[human, runtime_feedback, ecosystem]
+      priority: enum[critical, high, medium, low]
+      spawns_features: list
+    markov_criteria:
+      - has_id
+      - has_description
+      - has_source
+
+  requirements:
+    description: "Structured, testable requirements with unique immutable keys"
+    schema:
+      id: "REQ-{TYPE}-{DOMAIN}-{SEQ}"
+      type: enum[F, NFR, DATA, BR]
+      description: string
+      acceptance_criteria: list
+      priority: enum[critical, high, medium]
+      traces_to: "INT-*"
+    markov_criteria:
+      - has_id
+      - has_type
+      - has_acceptance_criteria
+      - traces_to_intent
+      - human_approved
+
+  design:
+    description: "Technical solution architecture with component specs and ADRs"
+    schema:
+      components: list
+      adrs: list
+      data_models: list
+      api_specs: list
+      dependencies: list
+    markov_criteria:
+      - has_components
+      - traces_to_requirements
+      - adrs_documented
+      - human_approved
+
+  code:
+    description: "Implementation source code tagged with REQ keys"
+    schema:
+      files: list
+      language: string
+      req_tags: list
+      # Tag format: "Implements: REQ-*" (comment syntax is language-specific)
+    markov_criteria:
+      - compiles
+      - has_req_tags
+      - style_compliant
+
+  unit_tests:
+    description: "Unit tests co-evolved with code via TDD"
+    schema:
+      files: list
+      coverage: float
+      req_tags: list
+      # Tag format: "Validates: REQ-*"
+    markov_criteria:
+      - all_pass
+      - coverage_above_threshold
+      - has_req_tags
+
+  test_cases:
+    description: "Integration/system test cases derived from design"
+    schema:
+      files: list
+      format: enum[gherkin, pytest, jest]
+      req_tags: list
+    markov_criteria:
+      - all_pass
+      - has_req_tags
+      - traces_to_requirements
+
+  uat_tests:
+    description: "Business acceptance tests in pure business language (BDD)"
+    schema:
+      scenarios: list
+      format: gherkin
+      language: business
+      req_tags: list
+    markov_criteria:
+      - all_pass
+      - business_language
+      - has_req_tags
+      - human_approved
+
+  cicd:
+    description: "CI/CD pipeline configuration and artifacts"
+    schema:
+      pipeline: string
+      artifacts: list
+      release_manifest: object
+    markov_criteria:
+      - build_passes
+      - deploy_succeeds
+
+  running_system:
+    description: "Deployed and running system with health checks"
+    schema:
+      endpoints: list
+      health: object
+      slas: list
+    markov_criteria:
+      - healthy
+      - within_sla
+
+  telemetry:
+    description: "Runtime metrics and alerts tagged with REQ keys"
+    schema:
+      metrics: list
+      alerts: list
+      req_tags: list
+    markov_criteria:
+      - collecting
+      - tagged_with_req_keys
+
+# ═══════════════════════════════════════════
+# Constraint Dimensions (Spec §2.6.1)
+# ═══════════════════════════════════════════
+#
+# Constraint dimensions are categories of disambiguation that design must
+# resolve at the Requirements → Design edge. Each unresolved mandatory
+# dimension leaves the design under-constrained — the constructor fills
+# the gap with implicit assumptions that may be wrong.
+#
+# These dimensions are SDLC-specific (graph package configuration).
+# Different domains have different dimension taxonomies.
+#
+# mandatory: must be explicitly resolved via ADR or design decision
+# advisory:  should be considered, may use implementation defaults
+#
+# Project bindings provide concrete values for each dimension in
+# project_constraints.yml under the `constraint_dimensions:` key.
+
+constraint_dimensions:
+
+  ecosystem_compatibility:
+    description: "Runtime platform, language version, framework versions, dependency compatibility"
+    mandatory: true
+    resolves_via: adr
+    examples:
+      - "Scala 2.13 + Spark 3.5 (not Scala 3 — incompatible)"
+      - "Python 3.12 + Django 5.0"
+      - "Node 20 + React 18 + Next.js 14"
+
+  deployment_target:
+    description: "Where and how the system runs, infrastructure assumptions"
+    mandatory: true
+    resolves_via: adr
+    examples:
+      - "Kubernetes on AWS EKS"
+      - "Serverless (Lambda + API Gateway)"
+      - "On-premise Docker Compose"
+
+  security_model:
+    description: "Authentication, authorisation, data protection, threat model"
+    mandatory: true
+    resolves_via: adr
+    examples:
+      - "OAuth2 + RBAC, mTLS between services"
+      - "API key + rate limiting"
+      - "JWT + row-level security"
+
+  data_governance:
+    description: "Privacy, lineage, retention, compliance frameworks"
+    mandatory: false
+    resolves_via: adr_or_design_section
+    examples:
+      - "GDPR compliant, data classification, 7-year retention"
+      - "SOC2 audit trail required"
+
+  performance_envelope:
+    description: "Latency, throughput, resource bounds, scaling strategy"
+    mandatory: false
+    resolves_via: design_section
+    examples:
+      - "p99 < 200ms, 10k RPS, horizontal scaling"
+      - "Batch processing: 1M records/hour"
+
+  build_system:
+    description: "Build tool, module structure, dependency management, CI integration"
+    mandatory: true
+    resolves_via: adr_or_design_section
+    examples:
+      - "sbt multi-module with dependency DAG"
+      - "npm workspaces monorepo"
+      - "Gradle with convention plugins"
+
+  observability:
+    description: "Logging, metrics, tracing, alerting strategy"
+    mandatory: false
+    resolves_via: design_section
+    examples:
+      - "OpenTelemetry, structured JSON logging, REQ-key tagging"
+      - "Prometheus + Grafana, ELK stack"
+
+  error_handling:
+    description: "Failure modes, retry strategy, circuit breaking, degradation"
+    mandatory: false
+    resolves_via: design_section
+    examples:
+      - "Fail-fast with structured error types"
+      - "Retry with exponential backoff, circuit breaker on external calls"
+
+# ═══════════════════════════════════════════
+# Admissible Transitions
+# ═══════════════════════════════════════════
+#
+# Each transition defines:
+#   source/target: asset types
+#   edge_type:     co_evolution (bidirectional) or standard (directional)
+#   evaluators:    which evaluator types check convergence
+#   constructor:   who produces the next candidate
+#   edge_config:   path to edge parameterisation file (optional)
+#                  In plugin source: relative to config/ (includes edge_params/ prefix)
+#                  In workspace: /gen-init strips the prefix — paths are relative
+#                  to .ai-workspace/graph/edges/
+
+transitions:
+
+  - name: "Intent → Requirements"
+    source: intent
+    target: requirements
+    edge_type: standard
+    evaluators: [agent, human]
+    constructor: agent
+    edge_config: "edge_params/intent_requirements.yml"
+
+  - name: "Requirements → Design"
+    source: requirements
+    target: design
+    edge_type: standard
+    evaluators: [agent, human]
+    constructor: agent
+    edge_config: "edge_params/requirements_design.yml"
+
+  - name: "Design → Code"
+    source: design
+    target: code
+    edge_type: standard
+    evaluators: [agent, deterministic]
+    constructor: agent
+    edge_config: "edge_params/design_code.yml"
+
+  - name: "Code ↔ Unit Tests"
+    source: code
+    target: unit_tests
+    edge_type: co_evolution
+    evaluators: [agent, deterministic]
+    constructor: agent
+    edge_config: "edge_params/tdd.yml"
+
+  - name: "Design → Test Cases"
+    source: design
+    target: test_cases
+    edge_type: standard
+    evaluators: [agent, deterministic]
+    constructor: agent
+    edge_config: "edge_params/design_tests.yml"
+
+  - name: "Design → UAT Tests"
+    source: design
+    target: uat_tests
+    edge_type: standard
+    evaluators: [agent, human]
+    constructor: agent
+    edge_config: "edge_params/bdd.yml"
+
+  - name: "Code → CI/CD"
+    source: code
+    target: cicd
+    edge_type: standard
+    evaluators: [deterministic]
+    constructor: deterministic
+
+  - name: "CI/CD → Running System"
+    source: cicd
+    target: running_system
+    edge_type: standard
+    evaluators: [deterministic]
+    constructor: deterministic
+
+  - name: "Running System → Telemetry"
+    source: running_system
+    target: telemetry
+    edge_type: standard
+    evaluators: [deterministic]
+    constructor: deterministic
+
+  - name: "Telemetry → Intent (Feedback Loop)"
+    source: telemetry
+    target: intent
+    edge_type: standard
+    evaluators: [agent, human]
+    constructor: agent
+    edge_config: "edge_params/feedback_loop.yml"
+
+# ═══════════════════════════════════════════
+# Graph Properties
+# ═══════════════════════════════════════════
+
+graph_properties:
+  directed: true
+  cyclic: true         # Feedback loop: telemetry → intent
+  extensible: true     # Add new asset types/transitions via YAML
+  zoomable: true       # Any edge can expand into a sub-graph
+  version: "2.7.0"

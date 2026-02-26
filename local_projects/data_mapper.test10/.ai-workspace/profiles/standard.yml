@@ -1,0 +1,77 @@
+# Projection Profile: Standard
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Normal feature development — team with CI/CD.
+# Core edges active, human review on key transitions, agent + deterministic elsewhere.
+
+---
+
+profile: standard
+description: "Normal feature development — team with CI/CD"
+version: "1.0.0"
+
+# Graph: core development edges
+graph:
+  include:
+    - "intent→requirements"
+    - "requirements→design"
+    - "design→code"
+    - "code↔unit_tests"
+  optional:
+    - "design→test_cases"
+    - "design→uat_tests"
+    - "code→cicd"
+
+# Evaluators: agent + deterministic on most, human on key edges
+evaluators:
+  default: [agent, deterministic]
+  overrides:
+    "intent→requirements":
+      evaluators: [agent, human]
+    "requirements→design":
+      evaluators: [agent, human]
+    "design→uat_tests":
+      evaluators: [agent, human]
+
+# Convergence: all required checks pass
+convergence:
+  rule: "all_required_checks_pass"
+  human_required_on_all_edges: false
+  threshold_strictness: standard
+
+# Context: project constraints + relevant ADRs
+context:
+  density: standard
+  required_elements:
+    - project_constraints
+    - adrs
+    - graph_topology
+  optional_elements:
+    - data_models
+    - templates
+    - policy
+
+# Encoding: functor encoding per §2.9
+encoding:
+  strategy: balanced
+  mode: interactive
+  valence: medium
+  functional_units:
+    evaluate:    F_D
+    construct:   F_P
+    classify:    F_D
+    route:       F_H
+    propose:     F_P
+    sense:       F_D
+    emit:        F_D                 # category-fixed
+    decide:      F_H                 # category-fixed
+  edge_overrides: {}
+
+# Iteration budget
+iteration:
+  budget: per_sprint    # bounded by sprint cadence
+  timeout: none         # no hard time box (sprint boundary is soft)
+  escalation: human
+
+# Vector types permitted
+vector_types: [feature, discovery, spike, hotfix]

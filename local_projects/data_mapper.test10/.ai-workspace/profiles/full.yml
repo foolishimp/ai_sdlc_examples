@@ -1,0 +1,71 @@
+# Projection Profile: Full
+# Reference: PROJECTIONS_AND_INVARIANTS.md §7.1
+#
+# Maximum rigour — regulated, audited, safety-critical environments.
+# All edges active, all evaluator types on every edge, strict convergence.
+
+---
+
+profile: full
+description: "Maximum rigour — regulated, audited, safety-critical"
+version: "1.0.0"
+
+# Graph: all edges from the default topology
+graph:
+  include: all
+  # No edges removed
+
+# Evaluators: all three types on every edge
+evaluators:
+  default: [human, agent, deterministic]
+  overrides: {}
+  # No overrides — full evaluator set everywhere
+
+# Convergence: strictest criteria
+convergence:
+  rule: "all_required_checks_pass"
+  human_required_on_all_edges: true
+  threshold_strictness: maximum
+  # δ = 0 for all checks, including human approval on every edge
+
+# Context: full constraint surface
+context:
+  density: full
+  required_elements:
+    - project_constraints
+    - adrs
+    - data_models
+    - templates
+    - policy
+    - prior_implementations
+    - graph_topology
+
+# Encoding: functor encoding per §2.9
+encoding:
+  strategy: maximum_explicit
+  mode: interactive
+  valence: high
+  functional_units:
+    evaluate:    F_D
+    construct:   F_P
+    classify:    F_D
+    route:       F_H
+    propose:     F_P
+    sense:       F_D
+    emit:        F_D                 # category-fixed
+    decide:      F_H                 # category-fixed
+  edge_overrides: {}
+
+# Iteration budget
+iteration:
+  budget: unlimited     # converge or escalate
+  timeout: none         # no time box
+  escalation: human     # if stuck, escalate to human
+
+# Vector types permitted in this profile
+vector_types: [feature, discovery, spike]
+
+# Post-convergence actions
+post_actions:
+  - audit_trail_complete    # verify full traceability
+  - human_sign_off          # final human approval of composite vector

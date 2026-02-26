@@ -1,0 +1,8 @@
+{
+  "version": "v1.0.0",
+  "timestamp": "2026-02-26T15:20:48.592966+00:00",
+  "features": [
+    "REQ-F-CDME-CORE",
+    "REQ-F-ADJOINT-SUPPORT"
+  ]
+}

@@ -1,0 +1,117 @@
+# Edge Parameterisation: Design → Test Cases
+# Reference: AI_SDLC_ASSET_GRAPH_MODEL.md §2, §3
+
+---
+
+edge: "design→test_cases"
+pattern: integration_test_generation
+description: |
+  Generate integration/system test cases from design specifications.
+  These test component interactions and system behaviour.
+  Distinct from unit tests (TDD) and UAT tests (BDD).
+
+# Test case template
+template: |
+  # Test Case: {Title}
+  # Validates: REQ-{TYPE}-{DOMAIN}-{SEQ}
+
+  ## Preconditions
+  - {Setup required}
+
+  ## Steps
+  1. {Action}
+  2. {Action}
+
+  ## Expected Result
+  - {What should happen}
+
+  ## Cleanup
+  - {Teardown if needed}
+
+# ═══════════════════════════════════════════════════════════════════════
+# EVALUATOR CHECKLIST
+# ═══════════════════════════════════════════════════════════════════════
+
+checklist:
+
+  - name: "covers_component_interactions"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Test cases cover interactions BETWEEN components, not individual function behaviour.
+      Each design component boundary has at least one integration test.
+    source: default
+    required: true
+
+  - name: "covers_error_paths"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      For each component interaction, tests include:
+      - At least one positive (expected) path
+      - At least one negative (error/failure) path
+      - Timeout and unavailability scenarios where applicable
+    source: default
+    required: true
+
+  - name: "req_tags_present"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every test case has '# Validates: REQ-*' linking to the requirement it verifies."
+    source: default
+    required: true
+
+  - name: "tests_are_independent"
+    type: agent
+    functional_unit: evaluate
+    criterion: |
+      Each test case can run in isolation — no ordering dependencies between tests.
+      Setup and teardown are self-contained within each test case.
+    source: default
+    required: true
+
+  - name: "all_design_components_covered"
+    type: agent
+    functional_unit: evaluate
+    criterion: "Every component in the design specification has at least one test case exercising it."
+    source: default
+    required: true
+
+  - name: "valid_test_syntax"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "Test files parse without syntax errors."
+    command: "$tools.test_runner.command --collect-only"
+    pass_criterion: "exit code 0"
+    source: default
+    required: true
+
+  - name: "tests_execute"
+    type: deterministic
+    functional_unit: evaluate
+    criterion: "All test cases execute successfully."
+    command: "$tools.test_runner.command $tools.test_runner.args"
+    pass_criterion: "$tools.test_runner.pass_criterion"
+    source: default
+    required: true
+
+  - name: "human_approves_coverage"
+    type: human
+    functional_unit: evaluate
+    criterion: "Human confirms test cases cover the critical integration points identified in design."
+    source: default
+    required: true
+
+convergence:
+  rule: "all_required_checks_pass"
+
+agent_guidance: |
+  When generating test cases from design:
+  1. Build effective checklist (edge defaults + feature acceptance_criteria)
+  2. Focus on component INTERACTIONS, not individual functions (those are unit tests)
+  3. Test error paths and edge cases, not just happy paths
+  4. Each test case must reference # Validates: REQ-*
+  5. Tests must be independent — no ordering dependencies
+  6. Include both positive and negative scenarios
+  7. Present to human for coverage validation
+  8. Report checklist: "N of M required checks pass"
