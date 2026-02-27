@@ -917,3 +917,43 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | Edge Timestamps (ETIM) | 3 | 0 | 3 | 0 |
 | Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
 | **Total** | **61** | **13** | **33** | **15** |
+
+--- 
+
+## 27. Executive Presentation (v3.1)
+
+### REQ-F-DASH-007: Explanatory Hovers
+**Priority**: Medium | **Traces To**: INT-GMON-006
+The system MUST provide informational hover icons next to all derived metrics and status indicators, explaining how the value was computed and which artifact provided the source data.
+
+### REQ-F-DASH-008: Real-Time Timestamps
+**Priority**: High | **Traces To**: INT-GMON-006
+Every dashboard fragment (HTMX swap) MUST include a "Last updated at [HH:MM:SS]" timestamp to provide immediate confidence in data freshness.
+
+### REQ-F-UX-006: Interactive Gantt Drill-Down
+**Priority**: High | **Traces To**: INT-GMON-006
+The Gantt chart component MUST be interactive. Clicking a task/edge bar MUST trigger an HTMX swap that displays the detailed iteration history and findings for that specific edge.
+
+### REQ-F-UX-007: Data Lineage Surface
+**Priority**: High | **Traces To**: INT-GMON-006
+The system MUST provide a "Show Source Data" toggle or link for every status card, rendering the raw underlying filesystem artifact (YAML, JSONL, or MD) used to generate that specific view.
+
+--- 
+
+## 28. Temporal Navigation (v3.2)
+
+### REQ-F-NAV-001: Event History Indexing
+**Priority**: High | **Traces To**: INT-GMON-007
+The system MUST index the full events.jsonl on startup, providing a temporal map of all methodology transitions.
+
+### REQ-F-NAV-002: Temporal Scrubber UI
+**Priority**: Critical | **Traces To**: INT-GMON-007
+The system MUST provide a UI scrubber (slider) that allows the user to select a specific timestamp in the project's history.
+
+### REQ-F-NAV-003: State Reconstruction at T
+**Priority**: Critical | **Traces To**: INT-GMON-007
+When a historical timestamp T is selected, all dashboard fragments MUST use HTMX to re-render the state of assets, features, and the graph as they existed at time T.
+
+### REQ-F-NAV-004: Event-Link Tracing
+**Priority**: High | **Traces To**: INT-GMON-007
+The system MUST provide a visual trace of the causal chain for any selected event, showing its parent intents or subsequent child spawns.

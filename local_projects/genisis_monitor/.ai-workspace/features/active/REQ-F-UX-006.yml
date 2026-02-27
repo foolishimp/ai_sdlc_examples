@@ -1,0 +1,14 @@
+feature: REQ-F-UX-006
+intent: INT-GMON-006
+vector_type: feature
+status: converged
+parent: null
+trajectory:
+  intent:
+    status: converged
+  requirements:
+    status: converged
+  design:
+    status: converged
+  "code\u2194unit_tests":
+    status: converged

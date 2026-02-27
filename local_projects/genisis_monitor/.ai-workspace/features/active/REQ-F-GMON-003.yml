@@ -1,114 +1,136 @@
 feature: REQ-F-GMON-003
-title: v2.5 Alignment — Projections and Dashboard Views
+title: "v2.5 Alignment \u2014 Projections and Dashboard Views"
 intent: INT-GMON-004
 vector_type: feature
 profile: standard
 status: converged
-created: "2026-02-21T12:00:00Z"
-updated: "2026-02-21T14:00:00Z"
+created: '2026-02-21T12:00:00Z'
+updated: '2026-02-21T14:00:00Z'
 parent_id: REQ-F-GMON-001
 spawned_by: REQ-F-GMON-001
+description: 'Dashboard vector: add the 5 new projection functions and their corresponding
 
-description: |
-  Dashboard vector: add the 5 new projection functions and their corresponding
   fragment routes and templates. Depends on REQ-F-GMON-002 (models/parsers).
 
+  '
 requirements:
-  - REQ-F-VREL-002      # Fold-back state tracking
-  - REQ-F-VREL-003      # Vector relationship visualization (spawn tree)
-  - REQ-F-CDIM-002      # Dimension coverage matrix
-  - REQ-F-PROF-002      # Profile display per vector
-  - REQ-F-REGIME-002    # Reflex completeness verification
-  - REQ-F-CONSC-001     # Intent causal chain parsing
-  - REQ-F-CONSC-002     # Spec modification event parsing
-  - REQ-F-CONSC-003     # Consciousness phase display
-  - REQ-F-TBOX-002      # Time-box display
-  - REQ-F-PROTO-001     # Protocol compliance view
-
+- REQ-F-VREL-002
+- REQ-F-VREL-003
+- REQ-F-CDIM-002
+- REQ-F-PROF-002
+- REQ-F-REGIME-002
+- REQ-F-CONSC-001
+- REQ-F-CONSC-002
+- REQ-F-CONSC-003
+- REQ-F-TBOX-002
+- REQ-F-PROTO-001
 depends_on:
-  - REQ-F-GMON-002  # Models and parsers must exist first
-
+- REQ-F-GMON-002
 trajectory:
   requirements:
     status: converged
     iteration: 1
-    started_at: "2026-02-21T12:00:00Z"
-    converged_at: "2026-02-21T12:00:00Z"
+    started_at: '2026-02-21T12:00:00Z'
+    converged_at: '2026-02-21T12:00:00Z'
     asset: docs/specification/REQUIREMENTS.md
-
   design:
     status: converged
     iteration: 1
-    started_at: "2026-02-21T12:00:00Z"
-    converged_at: "2026-02-21T12:00:00Z"
+    started_at: '2026-02-21T12:00:00Z'
+    converged_at: '2026-02-21T12:00:00Z'
     asset: docs/design/genesis_monitor/DESIGN.md
-
   code:
     status: converged
     iteration: 1
-    started_at: "2026-02-21T13:00:00Z"
-    converged_at: "2026-02-21T14:00:00Z"
-
+    started_at: '2026-02-21T13:00:00Z'
+    converged_at: '2026-02-21T14:00:00Z'
   unit_tests:
     status: converged
     iteration: 1
-    started_at: "2026-02-21T13:00:00Z"
-    converged_at: "2026-02-21T14:00:00Z"
+    started_at: '2026-02-21T13:00:00Z'
+    converged_at: '2026-02-21T14:00:00Z'
     evaluator_results:
-      pytest: pass  # 162/162 tests passing (28 new projection tests)
-
+      pytest: pass
 work_breakdown:
-  - id: WU-011
-    title: "Implement spawn_tree.py projection"
-    req: [REQ-F-VREL-002, REQ-F-VREL-003]
-    status: completed
-
-  - id: WU-012
-    title: "Implement dimensions.py projection"
-    req: [REQ-F-CDIM-002]
-    status: completed
-
-  - id: WU-013
-    title: "Implement regimes.py projection"
-    req: [REQ-F-REGIME-001, REQ-F-REGIME-002]
-    status: completed
-
-  - id: WU-014
-    title: "Implement consciousness.py projection"
-    req: [REQ-F-CONSC-001, REQ-F-CONSC-002, REQ-F-CONSC-003]
-    status: completed
-
-  - id: WU-015
-    title: "Implement compliance.py projection"
-    req: [REQ-F-PROTO-001]
-    status: completed
-
-  - id: WU-016
-    title: "Extend features.html template (profile badge, parent link, time-box)"
-    req: [REQ-F-PROF-002, REQ-F-TBOX-002]
-    status: completed
-
-  - id: WU-017
-    title: "Extend convergence.html template (regime column)"
-    req: [REQ-F-REGIME-001]
-    status: deferred  # Regime data shown in dedicated section instead
-
-  - id: WU-018
-    title: "Add 5 new fragment templates (_spawn_tree, _regimes, _consciousness, _dimensions, _compliance)"
-    req: [REQ-F-VREL-003, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-CDIM-002, REQ-F-PROTO-001]
-    status: completed
-
-  - id: WU-019
-    title: "Add 5 new fragment routes in routes.py"
-    req: [REQ-F-VREL-003, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-CDIM-002, REQ-F-PROTO-001]
-    status: completed
-
-  - id: WU-020
-    title: "Extend project.html to include new dashboard sections"
-    req: [REQ-F-VREL-003, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-CDIM-002, REQ-F-PROTO-001]
-    status: completed
-
-  - id: WU-021
-    title: "Tests for all new projections, routes, and templates"
-    req: [REQ-F-VREL-002, REQ-F-VREL-003, REQ-F-CDIM-002, REQ-F-PROF-002, REQ-F-REGIME-002, REQ-F-CONSC-001, REQ-F-CONSC-002, REQ-F-CONSC-003, REQ-F-TBOX-002, REQ-F-PROTO-001]
-    status: completed
+- id: WU-011
+  title: Implement spawn_tree.py projection
+  req:
+  - REQ-F-VREL-002
+  - REQ-F-VREL-003
+  status: completed
+- id: WU-012
+  title: Implement dimensions.py projection
+  req:
+  - REQ-F-CDIM-002
+  status: completed
+- id: WU-013
+  title: Implement regimes.py projection
+  req:
+  - REQ-F-REGIME-001
+  - REQ-F-REGIME-002
+  status: completed
+- id: WU-014
+  title: Implement consciousness.py projection
+  req:
+  - REQ-F-CONSC-001
+  - REQ-F-CONSC-002
+  - REQ-F-CONSC-003
+  status: completed
+- id: WU-015
+  title: Implement compliance.py projection
+  req:
+  - REQ-F-PROTO-001
+  status: completed
+- id: WU-016
+  title: Extend features.html template (profile badge, parent link, time-box)
+  req:
+  - REQ-F-PROF-002
+  - REQ-F-TBOX-002
+  status: completed
+- id: WU-017
+  title: Extend convergence.html template (regime column)
+  req:
+  - REQ-F-REGIME-001
+  status: deferred
+- id: WU-018
+  title: Add 5 new fragment templates (_spawn_tree, _regimes, _consciousness, _dimensions,
+    _compliance)
+  req:
+  - REQ-F-VREL-003
+  - REQ-F-REGIME-002
+  - REQ-F-CONSC-003
+  - REQ-F-CDIM-002
+  - REQ-F-PROTO-001
+  status: completed
+- id: WU-019
+  title: Add 5 new fragment routes in routes.py
+  req:
+  - REQ-F-VREL-003
+  - REQ-F-REGIME-002
+  - REQ-F-CONSC-003
+  - REQ-F-CDIM-002
+  - REQ-F-PROTO-001
+  status: completed
+- id: WU-020
+  title: Extend project.html to include new dashboard sections
+  req:
+  - REQ-F-VREL-003
+  - REQ-F-REGIME-002
+  - REQ-F-CONSC-003
+  - REQ-F-CDIM-002
+  - REQ-F-PROTO-001
+  status: completed
+- id: WU-021
+  title: Tests for all new projections, routes, and templates
+  req:
+  - REQ-F-VREL-002
+  - REQ-F-VREL-003
+  - REQ-F-CDIM-002
+  - REQ-F-PROF-002
+  - REQ-F-REGIME-002
+  - REQ-F-CONSC-001
+  - REQ-F-CONSC-002
+  - REQ-F-CONSC-003
+  - REQ-F-TBOX-002
+  - REQ-F-PROTO-001
+  status: completed

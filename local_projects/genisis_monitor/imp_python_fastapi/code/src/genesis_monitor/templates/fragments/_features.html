@@ -1,3 +1,4 @@
+<div class="timestamp" id="feat-ts">Last updated: {{ current_time }}</div>
 {% if features %}
 {% for f in features %}
 <details>
@@ -31,7 +32,7 @@
     {% if f.trajectory %}
     <table>
         <thead>
-            <tr><th>Edge</th><th>Status</th><th>Iterations</th></tr>
+            <tr><th>Edge</th><th>Status <span class="help-hover" data-tooltip="Derived from events.jsonl or feature vector YAML">?</span></th><th>Iterations</th></tr>
         </thead>
         <tbody>
             {% for edge_name, traj in f.trajectory.items() %}
@@ -46,6 +47,14 @@
     {% else %}
     <p><em>No trajectory data.</em></p>
     {% endif %}
+
+    <div style="text-align: right;">
+        <span class="lineage-toggle" hx-get="/lineage/source/feature/{{ f.feature_id }}" hx-target="#raw-{{ f.feature_id }}" hx-swap="innerHTML">
+            View Source YAML
+        </span>
+    </div>
+    <div id="raw-{{ f.feature_id }}"></div>
+
 </details>
 {% endfor %}
 {% else %}

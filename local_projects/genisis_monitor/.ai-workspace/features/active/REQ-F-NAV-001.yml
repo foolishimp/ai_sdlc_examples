@@ -1,0 +1,8 @@
+feature: REQ-F-NAV-001
+intent: INT-GMON-007
+vector_type: feature
+status: pending
+parent: null
+trajectory:
+  intent:
+    status: converged

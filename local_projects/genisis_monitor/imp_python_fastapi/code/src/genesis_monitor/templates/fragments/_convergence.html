@@ -1,3 +1,4 @@
+<div class="timestamp" id="conv-ts">Last updated: {{ current_time }}</div>
 {% if convergence %}
 {% set has_delta = convergence | selectattr('delta_curve') | list | length > 0 %}
 <table>
@@ -6,7 +7,7 @@
             <th>Edge</th>
             <th>Status</th>
             <th>Iterations</th>
-            {% if has_delta %}<th>Delta</th>{% endif %}
+            {% if has_delta %}<th>Delta <span class="help-hover" data-tooltip="Sum of failing checks across evaluators (0 = converged)">?</span></th>{% endif %}
             <th>Features</th>
             {% if convergence[0].duration %}<th>Duration</th>{% endif %}
         </tr>

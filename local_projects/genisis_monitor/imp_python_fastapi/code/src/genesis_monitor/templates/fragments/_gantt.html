@@ -1,7 +1,16 @@
+
 {% if gantt %}
+<div class="timestamp" id="gantt-ts">Last updated: {{ current_time }}</div>
+<div class="mermaid-container">
 <pre class="mermaid">
 {{ gantt | safe }}
 </pre>
+</div>
+<script>
+    if (typeof mermaid !== 'undefined') {
+        mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+    }
+</script>
 {% else %}
 <p><em>No timeline data available.</em></p>
 {% endif %}

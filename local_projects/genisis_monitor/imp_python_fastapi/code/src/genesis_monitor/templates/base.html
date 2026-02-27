@@ -31,6 +31,71 @@
         .badge-in-progress { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
         .badge-not-started { background: rgba(153, 153, 153, 0.15); color: #999; }
         @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    
+        /* Executive Polish & Tooltips */
+        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: box-shadow 0.2s; }
+        .card:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+        .timestamp { font-size: 0.75rem; color: var(--pico-muted-color); text-align: right; margin-top: -10px; margin-bottom: 10px; font-family: monospace; }
+        
+        .help-hover {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background-color: var(--pico-primary);
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 5px;
+            position: relative;
+        }
+        
+        .help-hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .help-hover:hover::after {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .lineage-toggle {
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: var(--pico-primary);
+            text-decoration: underline;
+            margin-top: 10px;
+            display: inline-block;
+        }
+        
+        .raw-data-block {
+            background-color: #f4f5f6;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body hx-ext="sse" sse-connect="/events/stream">

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
@@ -251,6 +252,44 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             "fragments/_traceability.html",
             {"request": request, "traceability": traceability},
         )
+
+    
+    @router.get("/lineage/source/feature/{feature_id}", response_class=HTMLResponse)
+    async def get_feature_source(request: Request, feature_id: str):
+        import yaml
+        
+        # Find the project containing this feature
+        projects = registry.list_projects()
+        target_proj = None
+        target_feat = None
+        
+        for p in projects:
+            for f in p.features:
+                if f.feature_id == feature_id:
+                    target_proj = p
+                    target_feat = f
+                    break
+            if target_proj:
+                break
+                
+        if not target_proj:
+            return HTMLResponse("Feature not found.", status_code=404)
+            
+        feat_path = target_proj.path / "features" / "active" / f"{feature_id}.yml"
+        if not feat_path.exists():
+            feat_path = target_proj.path / "features" / "completed" / f"{feature_id}.yml"
+            
+        if not feat_path.exists():
+            return HTMLResponse(f"YAML source not found for {feature_id}", status_code=404)
+            
+        raw_content = feat_path.read_text()
+        
+        html = f'''
+        <div class="raw-data-block">
+            <pre><code>{raw_content}</code></pre>
+        </div>
+        '''
+        return HTMLResponse(html)
 
     # ── SSE endpoint ─────────────────────────────────────────────
 

@@ -168,3 +168,69 @@ INT-GMON-003 → REQ-GMON-* (technology requirements)
 INT-GMON-004 → REQ-GMON-* (v2.5 alignment requirements)
 INT-GMON-005 → REQ-GMON-* (v2.8/v3.0 alignment requirements)
 ```
+
+--- 
+
+## INT-GMON-006: Executive Presentation & Drill-Down
+
+### Problem
+The current dashboard lacks intuitive explanations for data derivation and aesthetic polish required for executive stakeholders. The Gantt chart is compressed and non-interactive, and the lineage from dashboard metrics back to underlying data is not visible.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-033 | Explanatory Hovers | "?" icons with hover text explaining data derivation and sources |
+| OUT-034 | Real-Time Status | "Last Updated" timestamps on all data fragments |
+| OUT-035 | Presentation UX | Executive-grade CSS styling and layout improvements |
+| OUT-036 | Interactive Gantt | Clickable Gantt bars that drill down into edge details |
+| OUT-037 | Data Lineage | "Explain this" view showing the raw underlying artifact data |
+
+--- 
+
+## INT-GMON-006: Executive Presentation & Drill-Down
+
+### Problem
+The current dashboard lacks intuitive explanations for data derivation and aesthetic polish required for executive stakeholders. The Gantt chart is compressed and non-interactive, and the lineage from dashboard metrics back to underlying data is not visible.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-033 | Explanatory Hovers | "?" icons with hover text explaining data derivation and sources |
+| OUT-034 | Real-Time Status | "Last Updated" timestamps on all data fragments |
+| OUT-035 | Presentation UX | Executive-grade CSS styling and layout improvements |
+| OUT-036 | Interactive Gantt | Clickable Gantt bars that drill down into edge details |
+| OUT-037 | Data Lineage | "Explain this" view showing the raw underlying artifact data |
+
+--- 
+
+## INT-GMON-007: Interactive Temporal Navigator
+
+### Problem
+The dashboard is currently locked to the "now" state. Understanding system evolution requires the ability to scan backwards through the event log, zoom into specific periods of high activity, and observe the state of the graph as it existed at any historical timestamp.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-038 | Temporal Scrubber | A UI slider to navigate the entire history of the events.jsonl |
+| OUT-039 | Zoomable Execution View | Variable-scale visualization of event density over time |
+| OUT-040 | State Reconstruction | Dashboard fragments update to reflect state at selected timestamp T |
+| OUT-041 | Causal Event Tracing | Visual links between historical events (e.g. intent → spawn → convergence) |
+
+--- 
+
+## INT-GMON-007: Interactive Temporal Navigator
+
+### Problem
+The dashboard is currently locked to the "now" state. Understanding system evolution requires the ability to scan backwards through the event log, zoom into specific periods of high activity, and observe the state of the graph as it existed at any historical timestamp.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-038 | Temporal Scrubber | A UI slider to navigate the entire history of the events.jsonl |
+| OUT-039 | Zoomable Execution View | Variable-scale visualization of event density over time |
+| OUT-040 | State Reconstruction | Dashboard fragments update to reflect state at selected timestamp T |
+| OUT-041 | Causal Event Tracing | Visual links between historical events (e.g. intent → spawn → convergence) |
