@@ -25,6 +25,7 @@ from genesis_monitor.projections import (
     collect_telem_signals,
 )
 from genesis_monitor.projections.traceability import build_traceability_view
+from genesis_monitor.projections.temporal import reconstruct_features
 
 if TYPE_CHECKING:
     from genesis_monitor.registry import ProjectRegistry
@@ -49,26 +50,41 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         )
 
     @router.get("/project/{project_id}", response_class=HTMLResponse)
-    async def project_detail(request: Request, project_id: str):
+    async def project_detail(request: Request, project_id: str, t: str = None):
         """Project detail dashboard."""
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("<h1>Project not found</h1>", status_code=404)
 
-        graph_mermaid = build_graph_mermaid(project.topology, project.status)
-        convergence = build_convergence_table(project.status, project.events)
-        gantt = build_gantt_mermaid(project.status, project.features)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+
+        graph_mermaid = build_graph_mermaid(project.topology, status)
+        convergence = build_convergence_table(status, events)
+        gantt = build_gantt_mermaid(status, features)
 
         signals = project.status.telem_signals if project.status else []
-        events = project.events[-50:]
+        events = events[-50:]
 
         # v2.5 projections
-        spawn_tree = build_spawn_tree(project.features)
-        dimensions = build_dimension_coverage(project.topology, project.features, project.constraints)
-        regimes = build_regime_summary(project.events)
-        consciousness = build_consciousness_timeline(project.events)
+        spawn_tree = build_spawn_tree(features)
+        dimensions = build_dimension_coverage(project.topology, features, project.constraints)
+        regimes = build_regime_summary(events)
+        consciousness = build_consciousness_timeline(events)
         compliance = build_compliance_report(project)
-        traceability = build_traceability_view(project.features, project.traceability)
+        traceability = build_traceability_view(features, project.traceability)
 
         return request.app.state.templates.TemplateResponse(
             "project.html",
@@ -78,9 +94,9 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                 "graph_mermaid": graph_mermaid,
                 "convergence": convergence,
                 "gantt": gantt,
-                "features": project.features,
+                "features": features,
                 "signals": signals,
-                "events": events,
+                "events": events[-50:],
                 "spawn_tree": spawn_tree,
                 "dimensions": dimensions,
                 "regimes": regimes,
@@ -111,74 +127,172 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         )
 
     @router.get("/fragments/project/{project_id}/graph", response_class=HTMLResponse)
-    async def fragment_graph(request: Request, project_id: str):
+    async def fragment_graph(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        mermaid = build_graph_mermaid(project.topology, project.status)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        mermaid = build_graph_mermaid(project.topology, status)
         return request.app.state.templates.TemplateResponse(
             "fragments/_graph.html",
             {"request": request, "mermaid_code": mermaid},
         )
 
     @router.get("/fragments/project/{project_id}/edges", response_class=HTMLResponse)
-    async def fragment_edges(request: Request, project_id: str):
+    async def fragment_edges(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        convergence = build_convergence_table(project.status, project.events)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        convergence = build_convergence_table(status, events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_edges.html",
             {"request": request, "convergence": convergence},
         )
 
     @router.get("/fragments/project/{project_id}/features", response_class=HTMLResponse)
-    async def fragment_features(request: Request, project_id: str):
+    async def fragment_features(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
         return request.app.state.templates.TemplateResponse(
             "fragments/_features.html",
-            {"request": request, "features": project.features},
+            {"request": request, "features": features},
         )
 
     @router.get("/fragments/project/{project_id}/events", response_class=HTMLResponse)
-    async def fragment_events(request: Request, project_id: str):
+    async def fragment_events(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
         return request.app.state.templates.TemplateResponse(
             "fragments/_events.html",
-            {"request": request, "events": project.events[-50:]},
+            {"request": request, "events": events[-50:]},
         )
 
     @router.get("/fragments/project/{project_id}/convergence", response_class=HTMLResponse)
-    async def fragment_convergence(request: Request, project_id: str):
+    async def fragment_convergence(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        convergence = build_convergence_table(project.status, project.events)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        convergence = build_convergence_table(status, events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_convergence.html",
             {"request": request, "convergence": convergence},
         )
 
     @router.get("/fragments/project/{project_id}/gantt", response_class=HTMLResponse)
-    async def fragment_gantt(request: Request, project_id: str):
+    async def fragment_gantt(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        gantt = build_gantt_mermaid(project.status, project.features)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        gantt = build_gantt_mermaid(status, features)
         return request.app.state.templates.TemplateResponse(
             "fragments/_gantt.html",
             {"request": request, "gantt": gantt},
         )
 
     @router.get("/fragments/project/{project_id}/telem", response_class=HTMLResponse)
-    async def fragment_telem(request: Request, project_id: str):
+    async def fragment_telem(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
         signals = project.status.telem_signals if project.status else []
         return request.app.state.templates.TemplateResponse(
             "fragments/_telem.html",
@@ -188,54 +302,124 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
     # ── v2.5 Fragment routes ────────────────────────────────────
 
     @router.get("/fragments/project/{project_id}/spawn-tree", response_class=HTMLResponse)
-    async def fragment_spawn_tree(request: Request, project_id: str):
+    async def fragment_spawn_tree(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        spawn_tree = build_spawn_tree(project.features)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        spawn_tree = build_spawn_tree(features)
         return request.app.state.templates.TemplateResponse(
             "fragments/_spawn_tree.html",
             {"request": request, "spawn_tree": spawn_tree},
         )
 
     @router.get("/fragments/project/{project_id}/dimensions", response_class=HTMLResponse)
-    async def fragment_dimensions(request: Request, project_id: str):
+    async def fragment_dimensions(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        dimensions = build_dimension_coverage(project.topology, project.features, project.constraints)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        dimensions = build_dimension_coverage(project.topology, features, project.constraints)
         return request.app.state.templates.TemplateResponse(
             "fragments/_dimensions.html",
             {"request": request, "dimensions": dimensions},
         )
 
     @router.get("/fragments/project/{project_id}/regimes", response_class=HTMLResponse)
-    async def fragment_regimes(request: Request, project_id: str):
+    async def fragment_regimes(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        regimes = build_regime_summary(project.events)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        regimes = build_regime_summary(events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_regimes.html",
             {"request": request, "regimes": regimes},
         )
 
     @router.get("/fragments/project/{project_id}/consciousness", response_class=HTMLResponse)
-    async def fragment_consciousness(request: Request, project_id: str):
+    async def fragment_consciousness(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        consciousness = build_consciousness_timeline(project.events)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        consciousness = build_consciousness_timeline(events)
         return request.app.state.templates.TemplateResponse(
             "fragments/_consciousness.html",
             {"request": request, "consciousness": consciousness},
         )
 
     @router.get("/fragments/project/{project_id}/compliance", response_class=HTMLResponse)
-    async def fragment_compliance(request: Request, project_id: str):
+    async def fragment_compliance(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
         compliance = build_compliance_report(project)
         return request.app.state.templates.TemplateResponse(
             "fragments/_compliance.html",
@@ -243,26 +427,39 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         )
 
     @router.get("/fragments/project/{project_id}/traceability", response_class=HTMLResponse)
-    async def fragment_traceability(request: Request, project_id: str):
+    async def fragment_traceability(request: Request, project_id: str, t: str = None):
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("")
-        traceability = build_traceability_view(project.features, project.traceability)
+        if t:
+            try:
+                limit = datetime.fromisoformat(t.replace("Z", "+00:00"))
+                events = [e for e in project.events if e.timestamp <= limit]
+                features = reconstruct_features(events, limit)
+                status = project.status  # Fallback for now
+            except ValueError:
+                events = project.events
+                features = project.features
+                status = project.status
+        else:
+            events = project.events
+            features = project.features
+            status = project.status
+        traceability = build_traceability_view(features, project.traceability)
         return request.app.state.templates.TemplateResponse(
             "fragments/_traceability.html",
             {"request": request, "traceability": traceability},
         )
 
-    
     @router.get("/lineage/source/feature/{feature_id}", response_class=HTMLResponse)
     async def get_feature_source(request: Request, feature_id: str):
         import yaml
-        
+
         # Find the project containing this feature
         projects = registry.list_projects()
         target_proj = None
         target_feat = None
-        
+
         for p in projects:
             for f in p.features:
                 if f.feature_id == feature_id:
@@ -271,24 +468,24 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                     break
             if target_proj:
                 break
-                
+
         if not target_proj:
             return HTMLResponse("Feature not found.", status_code=404)
-            
+
         feat_path = target_proj.path / "features" / "active" / f"{feature_id}.yml"
         if not feat_path.exists():
             feat_path = target_proj.path / "features" / "completed" / f"{feature_id}.yml"
-            
+
         if not feat_path.exists():
             return HTMLResponse(f"YAML source not found for {feature_id}", status_code=404)
-            
+
         raw_content = feat_path.read_text()
-        
-        html = f'''
+
+        html = f"""
         <div class="raw-data-block">
             <pre><code>{raw_content}</code></pre>
         </div>
-        '''
+        """
         return HTMLResponse(html)
 
     # ── SSE endpoint ─────────────────────────────────────────────

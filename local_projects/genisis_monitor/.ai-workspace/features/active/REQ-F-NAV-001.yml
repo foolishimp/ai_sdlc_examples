@@ -1,8 +1,34 @@
 feature: REQ-F-NAV-001
 intent: INT-GMON-007
-vector_type: feature
-status: pending
 parent: null
+status: converged
 trajectory:
+  code:
+    asset: /Users/jim/src/apps/ai_sdlc_examples/local_projects/genisis_monitor/imp_python_fastapi/code/src/genesis_monitor/projections/temporal.py
+    delta: 0
+    iteration: 1
+    status: converged
+    updated_at: '2026-02-27T02:15:53.010954+00:00'
+  design:
+    asset: /Users/jim/src/apps/ai_sdlc_examples/local_projects/genisis_monitor/imp_python_fastapi/design/TEMPORAL_NAVIGATOR_DESIGN.md
+    delta: 0
+    iteration: 1
+    status: converged
+    updated_at: '2026-02-27T02:12:14.283540+00:00'
   intent:
     status: converged
+  requirements:
+    asset: /Users/jim/src/apps/ai_sdlc_examples/local_projects/genisis_monitor/.ai-workspace/spec/REQUIREMENTS.md
+    delta: 0
+    iteration: 1
+    status: converged
+    updated_at: '2026-02-27T02:09:21.248643+00:00'
+  unit_tests:
+    asset: /Users/jim/src/apps/ai_sdlc_examples/local_projects/genisis_monitor/imp_python_fastapi/tests/test_temporal.py
+    delta: 0
+    iteration: 1
+    status: converged
+    updated_at: '2026-02-27T02:16:50.762107+00:00'
+  "code\u2194unit_tests":
+    status: converged
+vector_type: feature

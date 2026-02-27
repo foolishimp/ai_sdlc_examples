@@ -1,6 +1,6 @@
 {
   "extraKnownMarketplaces": {
-    "genisis": {
+    "genesis": {
       "source": {
         "source": "github",
         "repo": "foolishimp/ai_sdlc_method"
@@ -8,7 +8,7 @@
     }
   },
   "enabledPlugins": {
-    "genisis@genisis": true
+    "genesis@genesis": true
   },
   "hooks": {
     "SessionStart": [

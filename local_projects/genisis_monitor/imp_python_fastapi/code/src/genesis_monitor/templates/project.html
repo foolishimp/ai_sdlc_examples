@@ -29,7 +29,69 @@
     <p>{{ project.path }}</p>
 </hgroup>
 
-<div class="grid-2">
+
+    <!-- Temporal Scrubber UI -->
+    <div class="card temporal-scrubber" style="background-color: var(--pico-background-color);">
+        <label for="time-scrubber">
+            <strong>Interactive Temporal Navigator</strong>
+            <span class="help-hover" data-tooltip="Slide to reconstruct the project state at a historical point in time.">?</span>
+            <span id="scrubber-display" style="float: right; font-family: monospace;">Live (Now)</span>
+        </label>
+        <input type="range" id="time-scrubber" min="0" max="100" value="100" 
+               oninput="updateScrubberLabel(this.value)" 
+               onchange="triggerTimeTravel(this.value)">
+        <small style="color: var(--pico-muted-color);">Event Log Density</small>
+    </div>
+
+    <script>
+        // Store the timestamps of all events passed from the backend
+        window.eventTimestamps = [
+            {% for ev in events %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        ];
+        
+        function updateScrubberLabel(val) {
+            const display = document.getElementById('scrubber-display');
+            if (val == 100) {
+                display.innerText = "Live (Now)";
+                return;
+            }
+            if (window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                const ts = new Date(window.eventTimestamps[idx]);
+                display.innerText = ts.toLocaleString();
+            }
+        }
+        
+        function triggerTimeTravel(val) {
+            let tParam = "";
+            if (val != 100 && window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                tParam = "?t=" + encodeURIComponent(window.eventTimestamps[idx]);
+            }
+            
+            // Trigger HTMX to reload fragments with the new timestamp
+            const fragments = document.querySelectorAll('[hx-get]');
+            fragments.forEach(el => {
+                const basePath = el.getAttribute('hx-get').split('?')[0];
+                el.setAttribute('hx-get', basePath + tParam);
+                htmx.process(el);
+                htmx.trigger(el, 'load'); // or custom trigger if we set one
+                // Since they are SSE driven, we might need to manually trigger ajax
+                htmx.ajax('GET', basePath + tParam, {target: el.getAttribute('hx-target')});
+            });
+            
+            // Toggle SSE off if we are in the past
+            if (val != 100) {
+                document.body.removeAttribute('hx-ext');
+                document.getElementById('scrubber-display').style.color = 'var(--pico-primary)';
+            } else {
+                document.body.setAttribute('hx-ext', 'sse');
+                document.getElementById('scrubber-display').style.color = 'inherit';
+            }
+        }
+    </script>
+
+    <div class="grid-2">
     <!-- Asset Graph -->
     <div class="card">
         <h3>Asset Graph</h3>
@@ -64,7 +126,69 @@
     </div>
 </div>
 
-<div class="grid-2">
+
+    <!-- Temporal Scrubber UI -->
+    <div class="card temporal-scrubber" style="background-color: var(--pico-background-color);">
+        <label for="time-scrubber">
+            <strong>Interactive Temporal Navigator</strong>
+            <span class="help-hover" data-tooltip="Slide to reconstruct the project state at a historical point in time.">?</span>
+            <span id="scrubber-display" style="float: right; font-family: monospace;">Live (Now)</span>
+        </label>
+        <input type="range" id="time-scrubber" min="0" max="100" value="100" 
+               oninput="updateScrubberLabel(this.value)" 
+               onchange="triggerTimeTravel(this.value)">
+        <small style="color: var(--pico-muted-color);">Event Log Density</small>
+    </div>
+
+    <script>
+        // Store the timestamps of all events passed from the backend
+        window.eventTimestamps = [
+            {% for ev in events %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        ];
+        
+        function updateScrubberLabel(val) {
+            const display = document.getElementById('scrubber-display');
+            if (val == 100) {
+                display.innerText = "Live (Now)";
+                return;
+            }
+            if (window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                const ts = new Date(window.eventTimestamps[idx]);
+                display.innerText = ts.toLocaleString();
+            }
+        }
+        
+        function triggerTimeTravel(val) {
+            let tParam = "";
+            if (val != 100 && window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                tParam = "?t=" + encodeURIComponent(window.eventTimestamps[idx]);
+            }
+            
+            // Trigger HTMX to reload fragments with the new timestamp
+            const fragments = document.querySelectorAll('[hx-get]');
+            fragments.forEach(el => {
+                const basePath = el.getAttribute('hx-get').split('?')[0];
+                el.setAttribute('hx-get', basePath + tParam);
+                htmx.process(el);
+                htmx.trigger(el, 'load'); // or custom trigger if we set one
+                // Since they are SSE driven, we might need to manually trigger ajax
+                htmx.ajax('GET', basePath + tParam, {target: el.getAttribute('hx-target')});
+            });
+            
+            // Toggle SSE off if we are in the past
+            if (val != 100) {
+                document.body.removeAttribute('hx-ext');
+                document.getElementById('scrubber-display').style.color = 'var(--pico-primary)';
+            } else {
+                document.body.setAttribute('hx-ext', 'sse');
+                document.getElementById('scrubber-display').style.color = 'inherit';
+            }
+        }
+    </script>
+
+    <div class="grid-2">
     <!-- Feature Vectors -->
     <div class="card">
         <h3>Feature Vectors</h3>
@@ -88,7 +212,69 @@
     </div>
 </div>
 
-<div class="grid-2">
+
+    <!-- Temporal Scrubber UI -->
+    <div class="card temporal-scrubber" style="background-color: var(--pico-background-color);">
+        <label for="time-scrubber">
+            <strong>Interactive Temporal Navigator</strong>
+            <span class="help-hover" data-tooltip="Slide to reconstruct the project state at a historical point in time.">?</span>
+            <span id="scrubber-display" style="float: right; font-family: monospace;">Live (Now)</span>
+        </label>
+        <input type="range" id="time-scrubber" min="0" max="100" value="100" 
+               oninput="updateScrubberLabel(this.value)" 
+               onchange="triggerTimeTravel(this.value)">
+        <small style="color: var(--pico-muted-color);">Event Log Density</small>
+    </div>
+
+    <script>
+        // Store the timestamps of all events passed from the backend
+        window.eventTimestamps = [
+            {% for ev in events %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        ];
+        
+        function updateScrubberLabel(val) {
+            const display = document.getElementById('scrubber-display');
+            if (val == 100) {
+                display.innerText = "Live (Now)";
+                return;
+            }
+            if (window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                const ts = new Date(window.eventTimestamps[idx]);
+                display.innerText = ts.toLocaleString();
+            }
+        }
+        
+        function triggerTimeTravel(val) {
+            let tParam = "";
+            if (val != 100 && window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                tParam = "?t=" + encodeURIComponent(window.eventTimestamps[idx]);
+            }
+            
+            // Trigger HTMX to reload fragments with the new timestamp
+            const fragments = document.querySelectorAll('[hx-get]');
+            fragments.forEach(el => {
+                const basePath = el.getAttribute('hx-get').split('?')[0];
+                el.setAttribute('hx-get', basePath + tParam);
+                htmx.process(el);
+                htmx.trigger(el, 'load'); // or custom trigger if we set one
+                // Since they are SSE driven, we might need to manually trigger ajax
+                htmx.ajax('GET', basePath + tParam, {target: el.getAttribute('hx-target')});
+            });
+            
+            // Toggle SSE off if we are in the past
+            if (val != 100) {
+                document.body.removeAttribute('hx-ext');
+                document.getElementById('scrubber-display').style.color = 'var(--pico-primary)';
+            } else {
+                document.body.setAttribute('hx-ext', 'sse');
+                document.getElementById('scrubber-display').style.color = 'inherit';
+            }
+        }
+    </script>
+
+    <div class="grid-2">
     <!-- TELEM Signals -->
     <div class="card">
         <h3>TELEM Signals</h3>
@@ -114,7 +300,69 @@
 </div>
 
 <!-- Vector Relationships & Constraint Dimensions -->
-<div class="grid-2">
+
+    <!-- Temporal Scrubber UI -->
+    <div class="card temporal-scrubber" style="background-color: var(--pico-background-color);">
+        <label for="time-scrubber">
+            <strong>Interactive Temporal Navigator</strong>
+            <span class="help-hover" data-tooltip="Slide to reconstruct the project state at a historical point in time.">?</span>
+            <span id="scrubber-display" style="float: right; font-family: monospace;">Live (Now)</span>
+        </label>
+        <input type="range" id="time-scrubber" min="0" max="100" value="100" 
+               oninput="updateScrubberLabel(this.value)" 
+               onchange="triggerTimeTravel(this.value)">
+        <small style="color: var(--pico-muted-color);">Event Log Density</small>
+    </div>
+
+    <script>
+        // Store the timestamps of all events passed from the backend
+        window.eventTimestamps = [
+            {% for ev in events %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        ];
+        
+        function updateScrubberLabel(val) {
+            const display = document.getElementById('scrubber-display');
+            if (val == 100) {
+                display.innerText = "Live (Now)";
+                return;
+            }
+            if (window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                const ts = new Date(window.eventTimestamps[idx]);
+                display.innerText = ts.toLocaleString();
+            }
+        }
+        
+        function triggerTimeTravel(val) {
+            let tParam = "";
+            if (val != 100 && window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                tParam = "?t=" + encodeURIComponent(window.eventTimestamps[idx]);
+            }
+            
+            // Trigger HTMX to reload fragments with the new timestamp
+            const fragments = document.querySelectorAll('[hx-get]');
+            fragments.forEach(el => {
+                const basePath = el.getAttribute('hx-get').split('?')[0];
+                el.setAttribute('hx-get', basePath + tParam);
+                htmx.process(el);
+                htmx.trigger(el, 'load'); // or custom trigger if we set one
+                // Since they are SSE driven, we might need to manually trigger ajax
+                htmx.ajax('GET', basePath + tParam, {target: el.getAttribute('hx-target')});
+            });
+            
+            // Toggle SSE off if we are in the past
+            if (val != 100) {
+                document.body.removeAttribute('hx-ext');
+                document.getElementById('scrubber-display').style.color = 'var(--pico-primary)';
+            } else {
+                document.body.setAttribute('hx-ext', 'sse');
+                document.getElementById('scrubber-display').style.color = 'inherit';
+            }
+        }
+    </script>
+
+    <div class="grid-2">
     <!-- Spawn Tree -->
     <div class="card">
         <h3>Vector Relationships</h3>
@@ -139,7 +387,69 @@
 </div>
 
 <!-- Processing Phases & Consciousness -->
-<div class="grid-2">
+
+    <!-- Temporal Scrubber UI -->
+    <div class="card temporal-scrubber" style="background-color: var(--pico-background-color);">
+        <label for="time-scrubber">
+            <strong>Interactive Temporal Navigator</strong>
+            <span class="help-hover" data-tooltip="Slide to reconstruct the project state at a historical point in time.">?</span>
+            <span id="scrubber-display" style="float: right; font-family: monospace;">Live (Now)</span>
+        </label>
+        <input type="range" id="time-scrubber" min="0" max="100" value="100" 
+               oninput="updateScrubberLabel(this.value)" 
+               onchange="triggerTimeTravel(this.value)">
+        <small style="color: var(--pico-muted-color);">Event Log Density</small>
+    </div>
+
+    <script>
+        // Store the timestamps of all events passed from the backend
+        window.eventTimestamps = [
+            {% for ev in events %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+        ];
+        
+        function updateScrubberLabel(val) {
+            const display = document.getElementById('scrubber-display');
+            if (val == 100) {
+                display.innerText = "Live (Now)";
+                return;
+            }
+            if (window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                const ts = new Date(window.eventTimestamps[idx]);
+                display.innerText = ts.toLocaleString();
+            }
+        }
+        
+        function triggerTimeTravel(val) {
+            let tParam = "";
+            if (val != 100 && window.eventTimestamps.length > 0) {
+                const idx = Math.floor((val / 100) * (window.eventTimestamps.length - 1));
+                tParam = "?t=" + encodeURIComponent(window.eventTimestamps[idx]);
+            }
+            
+            // Trigger HTMX to reload fragments with the new timestamp
+            const fragments = document.querySelectorAll('[hx-get]');
+            fragments.forEach(el => {
+                const basePath = el.getAttribute('hx-get').split('?')[0];
+                el.setAttribute('hx-get', basePath + tParam);
+                htmx.process(el);
+                htmx.trigger(el, 'load'); // or custom trigger if we set one
+                // Since they are SSE driven, we might need to manually trigger ajax
+                htmx.ajax('GET', basePath + tParam, {target: el.getAttribute('hx-target')});
+            });
+            
+            // Toggle SSE off if we are in the past
+            if (val != 100) {
+                document.body.removeAttribute('hx-ext');
+                document.getElementById('scrubber-display').style.color = 'var(--pico-primary)';
+            } else {
+                document.body.setAttribute('hx-ext', 'sse');
+                document.getElementById('scrubber-display').style.color = 'inherit';
+            }
+        }
+    </script>
+
+    <div class="grid-2">
     <!-- Phase Summary -->
     <div class="card">
         <h3>Processing Phases</h3>
