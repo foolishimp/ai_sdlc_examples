@@ -957,3 +957,19 @@ When a historical timestamp T is selected, all dashboard fragments MUST use HTMX
 ### REQ-F-NAV-004: Event-Link Tracing
 **Priority**: High | **Traces To**: INT-GMON-007
 The system MUST provide a visual trace of the causal chain for any selected event, showing its parent intents or subsequent child spawns.
+
+--- 
+
+## 29. Global Control Plane (v3.3)
+
+### REQ-F-NAV-005: Fixed Global Footer
+**Priority**: High | **Traces To**: INT-GMON-008
+The system MUST provide a fixed-position footer that contains the temporal navigation controls, versioning, and event metrics, ensuring they are always accessible regardless of scroll position.
+
+### REQ-F-NAV-006: Dual-Handle Temporal Scrubber
+**Priority**: Critical | **Traces To**: INT-GMON-008
+The temporal navigator MUST support selecting a range (Start T to End T). Reconstructed views must reflect the methodology state transitions that occurred within that specific window.
+
+### REQ-F-NAV-007: Event Density Visualization
+**Priority**: Medium | **Traces To**: INT-GMON-008
+The scrubber bar MUST visually represent event clustering using a heatmap or marker system, allowing users to identify periods of high-intensity activity.

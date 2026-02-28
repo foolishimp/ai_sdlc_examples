@@ -51,7 +51,7 @@ class ProjectRegistry:
             status=status,
             features=parse_feature_vectors(workspace),
             topology=parse_graph_topology(workspace),
-            events=parse_events(workspace),
+            events=parse_events(workspace, max_events=100000),
             tasks=parse_tasks(workspace),
             constraints=parse_constraints(workspace),
             has_bootloader=detect_bootloader(path),

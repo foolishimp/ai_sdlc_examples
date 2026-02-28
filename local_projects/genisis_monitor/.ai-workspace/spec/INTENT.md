@@ -234,3 +234,35 @@ The dashboard is currently locked to the "now" state. Understanding system evolu
 | OUT-039 | Zoomable Execution View | Variable-scale visualization of event density over time |
 | OUT-040 | State Reconstruction | Dashboard fragments update to reflect state at selected timestamp T |
 | OUT-041 | Causal Event Tracing | Visual links between historical events (e.g. intent → spawn → convergence) |
+
+--- 
+
+## INT-GMON-008: Static Global Control Plane & Zoomable Scrubber
+
+### Problem
+The temporal controls are currently lost when scrolling, and the single-point slider does not allow for viewing a window of time or understanding where activity is clustered. Executives need a persistent control plane that allows them to "zoom in" on specific periods of intense methodology execution.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-042 | Fixed Global Footer | Scrubber and versioning are persistent at the bottom of the viewport |
+| OUT-043 | Dual-Handle Zoom | Ability to select a Start and End timestamp to define a view period |
+| OUT-044 | Activity Clustering | Visual markers or heatmap on the slider showing event density |
+| OUT-045 | Contextual Metadata | Footer displays event count range and total duration |
+
+--- 
+
+## INT-GMON-008: Static Global Control Plane & Zoomable Scrubber
+
+### Problem
+The temporal controls are currently lost when scrolling, and the single-point slider does not allow for viewing a window of time or understanding where activity is clustered. Executives need a persistent control plane that allows them to "zoom in" on specific periods of intense methodology execution.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-042 | Fixed Global Footer | Scrubber and versioning are persistent at the bottom of the viewport |
+| OUT-043 | Dual-Handle Zoom | Ability to select a Start and End timestamp to define a view period |
+| OUT-044 | Activity Clustering | Visual markers or heatmap on the slider showing event density |
+| OUT-045 | Contextual Metadata | Footer displays event count range and total duration |

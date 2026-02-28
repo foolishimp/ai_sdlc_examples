@@ -15,7 +15,7 @@ from genesis_monitor.models.events import (
 logger = logging.getLogger(__name__)
 
 
-def parse_events(workspace: Path, max_events: int = 200) -> list[Event]:
+def parse_events(workspace: Path, max_events: int = 100000) -> list[Event]:
     """Parse the append-only event log with v2.5 typed dispatch.
 
     Returns an empty list if the file doesn't exist.
@@ -28,7 +28,7 @@ def parse_events(workspace: Path, max_events: int = 200) -> list[Event]:
     events: list[Event] = []
     try:
         lines = events_path.read_text(encoding="utf-8").strip().splitlines()
-        for line in lines[-max_events:]:
+        for line in lines:
             line = line.strip()
             if not line:
                 continue
@@ -92,28 +92,50 @@ def _parse_timestamp(ts: str) -> datetime:
 # ── IntentEngine output classification (v2.8 §4.6) ──────────────
 
 # Reflex events: autonomic logging, no human attention needed
-_REFLEX_LOG_TYPES = frozenset({
-    "iteration_completed", "edge_converged", "evaluator_ran",
-    "telemetry_signal_emitted", "edge_started", "checkpoint_created",
-    "edge_released", "interoceptive_signal",
-    "evaluator_detail", "command_error", "health_checked",
-    "artifact_modified",
-})
+_REFLEX_LOG_TYPES = frozenset(
+    {
+        "iteration_completed",
+        "edge_converged",
+        "evaluator_ran",
+        "telemetry_signal_emitted",
+        "edge_started",
+        "checkpoint_created",
+        "edge_released",
+        "interoceptive_signal",
+        "evaluator_detail",
+        "command_error",
+        "health_checked",
+        "artifact_modified",
+    }
+)
 
 # Spec-level events: modify the spec or feature graph
-_SPEC_EVENT_LOG_TYPES = frozenset({
-    "spec_modified", "feature_spawned", "feature_folded_back",
-    "finding_raised", "project_initialized", "gaps_validated",
-    "release_created", "exteroceptive_signal", "affect_triage",
-    "encoding_escalated",
-})
+_SPEC_EVENT_LOG_TYPES = frozenset(
+    {
+        "spec_modified",
+        "feature_spawned",
+        "feature_folded_back",
+        "finding_raised",
+        "project_initialized",
+        "gaps_validated",
+        "release_created",
+        "exteroceptive_signal",
+        "affect_triage",
+        "encoding_escalated",
+    }
+)
 
 # Escalation events: require human attention
-_ESCALATE_TYPES = frozenset({
-    "intent_raised", "convergence_escalated", "review_completed",
-    "claim_rejected", "claim_expired",
-    "iteration_abandoned",
-})
+_ESCALATE_TYPES = frozenset(
+    {
+        "intent_raised",
+        "convergence_escalated",
+        "review_completed",
+        "claim_rejected",
+        "claim_expired",
+        "iteration_abandoned",
+    }
+)
 
 
 def classify_intent_engine_output(event_type: str) -> str:

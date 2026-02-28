@@ -1,3 +1,9 @@
+
+{% if current_time and request.query_params.get("t") %}
+<div class="card" style="border-left: 4px solid var(--pico-primary);">
+    <small><strong>Note:</strong> Traceability is calculated from the <em>live</em> filesystem. REQ key matching may be inaccurate for historical timestamps.</small>
+</div>
+{% endif %}
 {% if traceability and traceability.summary.total_req_keys > 0 %}
 <!-- Summary Bar -->
 <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;">

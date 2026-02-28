@@ -1,0 +1,11 @@
+{
+  "version": "v3.3.0",
+  "timestamp": "2026-02-28T02:32:49.384365+00:00",
+  "features": [
+    "REQ-F-GMON-002",
+    "REQ-F-GMON-003",
+    "REQ-F-UX-006",
+    "REQ-F-NAV-001",
+    "REQ-F-NAV-005"
+  ]
+}

@@ -1,3 +1,4 @@
+<!-- Implements: REQ-F-NAV-005, REQ-F-NAV-006, REQ-F-NAV-007 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,6 +33,87 @@
         .badge-not-started { background: rgba(153, 153, 153, 0.15); color: #999; }
         @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
     
+        
+        /* Global Control Plane (v3.3) */
+        main.container { padding-bottom: 120px; } /* Space for fixed footer */
+        
+        .global-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background: #1a1d21;
+            color: #fff;
+            padding: 15px 0;
+            border-top: 1px solid #333;
+            z-index: 2000;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 200px 1fr 200px;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        /* Dual Range Slider Styles */
+        .range-wrapper {
+            position: relative;
+            width: 100%;
+            height: 30px;
+        }
+        
+        .range-track {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .density-heatmap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.6;
+        }
+        
+        input[type="range"].dual-handle {
+            position: absolute;
+            width: 100%;
+            pointer-events: none;
+            appearance: none;
+            background: none;
+            margin: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        input[type="range"].dual-handle::-webkit-slider-thumb {
+            pointer-events: auto;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--pico-primary);
+            cursor: pointer;
+            border: 2px solid #fff;
+        }
+        
+        .scrubber-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: #999;
+            margin-top: 5px;
+            font-family: monospace;
+        }
         /* Executive Polish & Tooltips */
         .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: box-shadow 0.2s; }
         .card:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
@@ -113,10 +195,39 @@
         {% block content %}{% endblock %}
     </main>
 
-    <footer class="container">
-        <small>Genesis Monitor — AI SDLC v2.8 Methodology Dashboard</small>
+    <!-- Legacy Footer Replaced -->
+        <small>Genesis Monitor — AI SDLC v3.2.0 Methodology Dashboard</small>
     </footer>
 
     {% block scripts %}{% endblock %}
+
+    <footer class="global-footer">
+        <div class="container footer-grid">
+            <div class="version-info">
+                <small><strong>Genesis Monitor</strong><br>v3.3.0 Platinum</small>
+            </div>
+            
+            <div class="scrubber-container">
+                <div class="range-wrapper">
+                    <div class="range-track">
+                        <div class="density-heatmap" id="heatmap-gradient"></div>
+                    </div>
+                    <input type="range" id="range-start" class="dual-handle" min="0" max="100" value="0">
+                    <input type="range" id="range-end" class="dual-handle" min="0" max="100" value="100">
+                </div>
+                <div class="scrubber-labels">
+                    <span id="label-start">Start</span>
+                    <span id="label-range">Full History</span>
+                    <span id="label-end">Now</span>
+                </div>
+            </div>
+            
+            <div class="metrics-info" style="text-align: right;">
+                <small id="event-count-display">0 Events</small><br>
+                <small id="time-window-display">---</small>
+            </div>
+        </div>
+    </footer>
+
 </body>
 </html>
