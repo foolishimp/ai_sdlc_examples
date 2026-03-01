@@ -57,34 +57,30 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
 
     @router.get("/", response_class=HTMLResponse)
     async def index(request: Request):
-        """Project index page."""
         projects = registry.list_projects()
         tree = build_project_tree(projects)
         return request.app.state.templates.TemplateResponse(
             "index.html",
-            {"request": request, "projects": projects, "tree": tree},
+            {"request": request, "projects": projects, "tree": tree, "density": []},
         )
 
     @router.get("/project/{project_id}", response_class=HTMLResponse)
     async def project_detail(request: Request, project_id: str, t: str = None):
-        """Project detail dashboard."""
         project = registry.get_project(project_id)
         if not project:
             return HTMLResponse("<h1>Project not found</h1>", status_code=404)
 
-        events, features, status = _get_historical_state(project, t)
+        hist_events, features, status = _get_historical_state(project, t)
         density = get_event_density(project.events) if project.events else []
 
         graph_mermaid = build_graph_mermaid(project.topology, status)
-        convergence = build_convergence_table(status, events)
+        convergence = build_convergence_table(status, hist_events)
         gantt = build_gantt_mermaid(status, features)
-
         signals = status.telem_signals if status else []
-
         spawn_tree = build_spawn_tree(features)
         dimensions = build_dimension_coverage(project.topology, features, project.constraints)
-        regimes = build_regime_summary(events)
-        consciousness = build_consciousness_timeline(events)
+        regimes = build_regime_summary(hist_events)
+        consciousness = build_consciousness_timeline(hist_events)
         compliance = build_compliance_report(project)
         traceability = build_traceability_view(features, project.traceability)
 
@@ -98,7 +94,8 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
                 "gantt": gantt,
                 "features": features,
                 "signals": signals,
-                "events": events,
+                "all_events": project.events,
+                "recent_events": hist_events[-50:],
                 "spawn_tree": spawn_tree,
                 "dimensions": dimensions,
                 "regimes": regimes,
@@ -111,14 +108,6 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
         )
 
     # ── Fragment routes (HTMX partials) ──────────────────────────
-
-    @router.get("/fragments/project-list", response_class=HTMLResponse)
-    async def fragment_project_list(request: Request):
-        projects = registry.list_projects()
-        return request.app.state.templates.TemplateResponse(
-            "fragments/_project_list.html",
-            {"request": request, "projects": projects},
-        )
 
     @router.get("/fragments/project/{project_id}/graph", response_class=HTMLResponse)
     async def fragment_graph(request: Request, project_id: str, t: str = None):
@@ -210,6 +199,101 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             {
                 "request": request,
                 "signals": signals,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/spawn-tree", response_class=HTMLResponse)
+    async def fragment_spawn_tree(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        _, features, _ = _get_historical_state(project, t)
+        spawn_tree = build_spawn_tree(features)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_spawn_tree.html",
+            {
+                "request": request,
+                "spawn_tree": spawn_tree,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/dimensions", response_class=HTMLResponse)
+    async def fragment_dimensions(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        _, features, _ = _get_historical_state(project, t)
+        dimensions = build_dimension_coverage(project.topology, features, project.constraints)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_dimensions.html",
+            {
+                "request": request,
+                "dimensions": dimensions,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/regimes", response_class=HTMLResponse)
+    async def fragment_regimes(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        events, _, _ = _get_historical_state(project, t)
+        regimes = build_regime_summary(events)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_regimes.html",
+            {
+                "request": request,
+                "regimes": regimes,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/consciousness", response_class=HTMLResponse)
+    async def fragment_consciousness(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        events, _, _ = _get_historical_state(project, t)
+        consciousness = build_consciousness_timeline(events)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_consciousness.html",
+            {
+                "request": request,
+                "consciousness": consciousness,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/compliance", response_class=HTMLResponse)
+    async def fragment_compliance(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        # Compliance doesn'"'"'t easily ghost without deeper logic, but we pass project
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_compliance.html",
+            {
+                "request": request,
+                "project": project,
+                "current_time": datetime.now().strftime("%H:%M:%S"),
+            },
+        )
+
+    @router.get("/fragments/project/{project_id}/traceability", response_class=HTMLResponse)
+    async def fragment_traceability(request: Request, project_id: str, t: str = None):
+        project = registry.get_project(project_id)
+        if not project:
+            return HTMLResponse("")
+        _, features, _ = _get_historical_state(project, t)
+        traceability = build_traceability_view(features, project.traceability)
+        return request.app.state.templates.TemplateResponse(
+            "fragments/_traceability.html",
+            {
+                "request": request,
+                "traceability": traceability,
                 "current_time": datetime.now().strftime("%H:%M:%S"),
             },
         )

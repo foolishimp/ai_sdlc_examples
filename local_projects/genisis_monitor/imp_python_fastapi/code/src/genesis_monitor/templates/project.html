@@ -12,12 +12,17 @@
 {% endblock %}
 
 {% block scripts %}
-    <script>
-        document.body.addEventListener('htmx:afterSwap', function() {
-            if (typeof mermaid !== 'undefined') { mermaid.run(); }
-        });
-    </script>
-{% endblock %}
+        <script>
+            document.body.addEventListener("htmx:afterSwap", function(evt) {
+                if (typeof mermaid !== "undefined") {
+                    // Re-run mermaid on the newly swapped content
+                    mermaid.run({
+                        nodes: document.querySelectorAll(".mermaid")
+                    });
+                }
+            });
+        </script>
+    {% endblock %}
 
 {% block content %}
 
@@ -25,9 +30,9 @@
     <script>
         // Store timestamps and density for the global control plane
         window.eventTimestamps = [
-            {% for ev in events | sort(attribute="timestamp") %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
+            {% for ev in all_events | sort(attribute="timestamp") %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
         ];
-        window.eventDensity = {{ density | tojson }};
+        window.eventDensity = {{ (density or []) | tojson }};
         
         function initGlobalScrubber() {
             const startSlider = document.getElementById("range-start");
@@ -64,20 +69,39 @@
             
             const triggerReload = () => {
                 const eIdx = Math.floor((endSlider.value / 100) * (window.eventTimestamps.length - 1));
-                const tParam = "?t=" + encodeURIComponent(window.eventTimestamps[eIdx]);
+                const isLive = (eIdx === window.eventTimestamps.length - 1);
+                const tParam = isLive ? "" : "?t=" + encodeURIComponent(window.eventTimestamps[eIdx]);
                 
                 document.querySelectorAll("[hx-get]").forEach(el => {
                     const getAttr = el.getAttribute("hx-get");
                     if (getAttr && getAttr.includes("/fragments/")) {
                         const basePath = getAttr.split("?")[0];
-                        const target = el.getAttribute("hx-target");
-                        if (target) htmx.ajax("GET", basePath + tParam, {target: target});
+                        const target = el.getAttribute("hx-target") || el; // Use element itself if no target
+                        htmx.ajax("GET", basePath + tParam, {target: target});
                     }
                 });
+                
+                // Toggle SSE back on if we are at the end
+                const display = document.getElementById("label-end");
+                if (isLive) {
+                    display.innerText = "Live (Now)";
+                    display.style.color = "inherit";
+                } else {
+                    display.style.color = "var(--pico-primary)";
+                }
             };
             
             startSlider.oninput = () => {
                 if (parseInt(startSlider.value) >= parseInt(endSlider.value)) startSlider.value = endSlider.value - 1;
+                startSlider.style.zIndex = "100";
+                endSlider.style.zIndex = "10";
+                updateLabels();
+            };
+            
+            endSlider.oninput = () => {
+                if (parseInt(endSlider.value) <= parseInt(startSlider.value)) endSlider.value = startSlider.value + 1;
+                endSlider.style.zIndex = "100";
+                startSlider.style.zIndex = "10";
                 updateLabels();
             };
             
@@ -93,7 +117,9 @@
         }
         
         // Run on load
-        initGlobalScrubber();
+        document.addEventListener("DOMContentLoaded", initGlobalScrubber);
+        // Also run if HTMX reloads the main content
+        document.body.addEventListener("htmx:afterOnLoad", initGlobalScrubber);
     </script>
 <hgroup>
     <h1>{{ project.name }}
@@ -192,7 +218,7 @@
              hx-trigger="sse:project_updated[detail.project_id=='{{ project.project_id }}']"
              hx-swap="innerHTML"
              class="event-feed">
-            {% include "fragments/_events.html" %}
+            {% with events = recent_events %}{% include "fragments/_events.html" %}{% endwith %}
         </div>
     </div>
 </div>
