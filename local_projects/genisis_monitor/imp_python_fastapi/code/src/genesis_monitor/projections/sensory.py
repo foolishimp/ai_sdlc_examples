@@ -31,6 +31,7 @@ def build_sensory_dashboard(events: list[Event]) -> dict:
                 "measurement": e.measurement,
                 "threshold": e.threshold,
                 "project": e.project,
+                "valence": e.valence,
             })
         elif isinstance(e, ExteroceptiveSignalEvent):
             exteroceptive.append({
@@ -39,6 +40,7 @@ def build_sensory_dashboard(events: list[Event]) -> dict:
                 "signal_type": e.signal_type,
                 "payload": e.payload,
                 "project": e.project,
+                "valence": e.valence,
             })
         elif isinstance(e, AffectTriageEvent):
             triage.append({

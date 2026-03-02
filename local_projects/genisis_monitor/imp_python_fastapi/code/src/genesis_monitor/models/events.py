@@ -176,6 +176,7 @@ class InteroceptiveSignalEvent(Event):
     signal_type: str = ""
     measurement: str = ""
     threshold: str = ""
+    valence: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -185,6 +186,7 @@ class ExteroceptiveSignalEvent(Event):
     source: str = ""
     signal_type: str = ""
     payload: str = ""
+    valence: dict = field(default_factory=dict)
 
 
 @dataclass

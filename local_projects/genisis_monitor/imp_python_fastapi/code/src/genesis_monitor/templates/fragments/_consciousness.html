@@ -12,7 +12,7 @@
                 {% if c.event_type == 'intent_raised' %}
                 trigger: {{ c.trigger }}{% if c.signal_source %}, source: {{ c.signal_source }}{% endif %}
                 {% elif c.event_type == 'spec_modified' %}
-                {{ c.delta | truncate(60) }}{% if c.trigger_intent %} ({{ c.trigger_intent }}){% endif %}
+                {{ c.delta | string | truncate(60) }}{% if c.trigger_intent %} ({{ c.trigger_intent }}){% endif %}
                 {% elif c.event_type == 'finding_raised' %}
                 {{ c.finding_type }}: {{ c.description | truncate(60) }}
                 {% elif c.event_type == 'feature_spawned' %}

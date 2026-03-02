@@ -6,12 +6,13 @@ from datetime import datetime
 from pathlib import Path
 
 import yaml
+import re
 
 from genesis_monitor.models.core import EdgeTrajectory, FeatureVector
 from genesis_monitor.models.features import TimeBox
 
 
-def parse_feature_vectors(workspace: Path) -> list[FeatureVector]:
+def parse_feature_vectors(workspace: Path, project_path: Path = None) -> list[FeatureVector]:
     """Parse all active feature vector YAML files.
 
     Returns an empty list if the directory doesn't exist or contains no valid files.
@@ -21,11 +22,40 @@ def parse_feature_vectors(workspace: Path) -> list[FeatureVector]:
     if not features_dir.is_dir():
         return []
 
-    vectors: list[FeatureVector] = []
+    vectors_dict: dict[str, FeatureVector] = {}
+    
+    # 1. Load Singleton Definitions from Spec (The "WHAT")
+    if project_path:
+        spec_file = project_path / "specification" / "features" / "FEATURE_VECTORS.md"
+        if spec_file.exists():
+            spec_content = spec_file.read_text(encoding="utf-8")
+            # Parse ### REQ-F-ID: Title
+            feat_matches = re.finditer(r"### (REQ-F-[A-Z0-9-]+): (.*)", spec_content)
+            for m in feat_matches:
+                fid, title = m.group(1), m.group(2)
+                vectors_dict[fid] = FeatureVector(
+                    feature_id=fid,
+                    title=title.strip(),
+                    status="pending",
+                    vector_type="feature"
+                )
+
+    # 2. Overlay Trajectories from Workspace (The "HOW")
     for yml_path in sorted(features_dir.glob("*.yml")):
-        vec = _parse_one(yml_path)
-        if vec:
-            vectors.append(vec)
+        workspace_vec = _parse_one(yml_path)
+        if workspace_vec:
+            fid = workspace_vec.feature_id
+            if fid in vectors_dict:
+                # Merge: title and requirements from spec, trajectory and status from workspace
+                spec_vec = vectors_dict[fid]
+                spec_vec.status = workspace_vec.status
+                spec_vec.trajectory = workspace_vec.trajectory
+                spec_vec.encoding = workspace_vec.encoding
+                # Use titles from spec as source of truth
+            else:
+                vectors_dict[fid] = workspace_vec
+
+    vectors = list(vectors_dict.values())
 
     # Cross-reference pass: populate children from parent_id
     id_to_vec = {v.feature_id: v for v in vectors}
