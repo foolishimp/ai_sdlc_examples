@@ -97,7 +97,7 @@ class TestFragmentRoutes:
     def test_edges_fragment(self, test_client: TestClient):
         resp = test_client.get("/fragments/project/test-project/edges")
         assert resp.status_code == 200
-        assert "intent" in resp.text.lower()
+        assert "edge" in resp.text.lower() or "converged" in resp.text.lower()
 
     def test_features_fragment(self, test_client: TestClient):
         resp = test_client.get("/fragments/project/test-project/features")
@@ -115,12 +115,37 @@ class TestFragmentRoutes:
     def test_gantt_fragment(self, test_client: TestClient):
         resp = test_client.get("/fragments/project/test-project/gantt")
         assert resp.status_code == 200
-        assert "gantt" in resp.text.lower() or "mermaid" in resp.text.lower()
+        # Matrix renders a table with id="gantt-ts" timestamp div
+        assert "gantt" in resp.text.lower() or "table" in resp.text.lower()
 
     def test_telem_fragment(self, test_client: TestClient):
         resp = test_client.get("/fragments/project/test-project/telem")
         assert resp.status_code == 200
         assert "TELEM" in resp.text
+
+    def test_spawn_tree_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/spawn-tree")
+        assert resp.status_code == 200
+
+    def test_dimensions_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/dimensions")
+        assert resp.status_code == 200
+
+    def test_regimes_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/regimes")
+        assert resp.status_code == 200
+
+    def test_consciousness_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/consciousness")
+        assert resp.status_code == 200
+
+    def test_compliance_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/compliance")
+        assert resp.status_code == 200
+
+    def test_traceability_fragment(self, test_client: TestClient):
+        resp = test_client.get("/fragments/project/test-project/traceability")
+        assert resp.status_code == 200
 
     def test_unknown_project_returns_empty(self, test_client: TestClient):
         resp = test_client.get("/fragments/project/nonexistent/graph")
@@ -172,6 +197,12 @@ class TestReadOnlyContract:
             "/fragments/project/test-project/convergence",
             "/fragments/project/test-project/gantt",
             "/fragments/project/test-project/telem",
+            "/fragments/project/test-project/spawn-tree",
+            "/fragments/project/test-project/dimensions",
+            "/fragments/project/test-project/regimes",
+            "/fragments/project/test-project/consciousness",
+            "/fragments/project/test-project/compliance",
+            "/fragments/project/test-project/traceability",
         ]:
             test_client.get(endpoint)
         after = set(ws.rglob("*"))

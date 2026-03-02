@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from event_factory import make_ol2_event
+
 
 @pytest.fixture
 def tmp_workspace(tmp_path: Path) -> Path:
@@ -84,12 +86,14 @@ gantt
         ],
     }))
 
-    # Events
+    # Events (OL v2 format — the parser only processes events with 'eventType')
     events_dir = ws / "events"
     events_dir.mkdir()
     events = [
-        {"timestamp": "2026-02-01T10:00:00", "event_type": "edge_started", "project": "test"},
-        {"timestamp": "2026-02-01T10:05:00", "event_type": "edge_converged", "project": "test"},
+        make_ol2_event("edge_started", timestamp="2026-02-01T10:00:00Z",
+                       project="test", edge="design→code"),
+        make_ol2_event("edge_converged", timestamp="2026-02-01T10:05:00Z",
+                       project="test", edge="design→code"),
     ]
     (events_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events) + "\n"

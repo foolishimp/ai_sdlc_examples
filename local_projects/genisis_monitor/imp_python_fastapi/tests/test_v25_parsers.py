@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from event_factory import make_ol2_event
+
 from genesis_monitor.models.events import (
     EdgeConvergedEvent,
     Event,
@@ -26,61 +28,54 @@ from genesis_monitor.parsers.topology import parse_graph_topology
 
 @pytest.fixture
 def v25_events_workspace(tmp_path: Path) -> Path:
-    """Create workspace with v2.5 typed events."""
+    """Create workspace with v2.5-equivalent typed events in OL v2 format."""
     ws = tmp_path / ".ai-workspace"
     events_dir = ws / "events"
     events_dir.mkdir(parents=True)
 
     events = [
-        {
-            "timestamp": "2026-02-21T08:00:00",
-            "event_type": "iteration_completed",
-            "project": "test",
-            "edge": "design→code",
-            "feature": "REQ-F-001",
-            "iteration": 2,
-            "evaluators": {"agent": "pass", "pytest": "fail"},
-            "context_hash": "sha256:abc123",
-        },
-        {
-            "timestamp": "2026-02-21T08:10:00",
-            "event_type": "edge_converged",
-            "project": "test",
-            "edge": "design→code",
-            "feature": "REQ-F-001",
-            "convergence_time": "10m",
-        },
-        {
-            "timestamp": "2026-02-21T08:15:00",
-            "event_type": "feature_spawned",
-            "project": "test",
-            "parent_vector": "REQ-F-001",
-            "child_vector": "REQ-F-002",
-            "reason": "gap",
-        },
-        {
-            "timestamp": "2026-02-21T08:20:00",
-            "event_type": "intent_raised",
-            "project": "test",
-            "trigger": "gap_found",
-            "signal_source": "TELEM-001",
-            "prior_intents": ["INT-001", "INT-042"],
-        },
-        {
-            "timestamp": "2026-02-21T08:25:00",
-            "event_type": "spec_modified",
-            "project": "test",
-            "previous_hash": "sha256:old",
-            "new_hash": "sha256:new",
-            "delta": "Added REQ-F-003",
-            "trigger_intent": "INT-042",
-        },
-        {
-            "timestamp": "2026-02-21T08:30:00",
-            "event_type": "unknown_future_event",
-            "project": "test",
-            "some_field": "some_value",
-        },
+        make_ol2_event(
+            "iteration_completed",
+            timestamp="2026-02-21T08:00:00Z",
+            edge="design→code",
+            feature="REQ-F-001",
+            iteration=2,
+            evaluators={"agent": "pass", "pytest": "fail"},
+            context_hash="sha256:abc123",
+        ),
+        make_ol2_event(
+            "edge_converged",
+            timestamp="2026-02-21T08:10:00Z",
+            edge="design→code",
+            feature="REQ-F-001",
+            convergence_time="10m",
+        ),
+        make_ol2_event(
+            "feature_spawned",
+            timestamp="2026-02-21T08:15:00Z",
+            parent_vector="REQ-F-001",
+            child_vector="REQ-F-002",
+            reason="gap",
+        ),
+        make_ol2_event(
+            "intent_raised",
+            timestamp="2026-02-21T08:20:00Z",
+            trigger="gap_found",
+            signal_source="TELEM-001",
+            prior_intents=["INT-001", "INT-042"],
+        ),
+        make_ol2_event(
+            "spec_modified",
+            timestamp="2026-02-21T08:25:00Z",
+            previous_hash="sha256:old",
+            new_hash="sha256:new",
+            trigger_intent="INT-042",
+        ),
+        make_ol2_event(
+            "unknown_future_event",
+            timestamp="2026-02-21T08:30:00Z",
+            some_field="some_value",
+        ),
     ]
     (events_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events) + "\n"
@@ -128,21 +123,20 @@ class TestTypedEventParsing:
         unknowns = [e for e in events if type(e) is Event]
         assert len(unknowns) == 1
         assert unknowns[0].event_type == "unknown_future_event"
-        assert unknowns[0].data["some_field"] == "some_value"
+        # In OL v2, original fields live in _metadata.original_data
+        assert unknowns[0].data["_metadata"]["original_data"]["some_field"] == "some_value"
 
     def test_total_event_count(self, v25_events_workspace: Path):
         events = parse_events(v25_events_workspace)
         assert len(events) == 6
 
     def test_backward_compatible_with_v21_events(self, tmp_path: Path):
-        """v2.1-style events with unknown types still parse as base Event."""
+        """OL v2 events with unknown sdlc:event_type still parse as base Event."""
         ws = tmp_path / ".ai-workspace"
         events_dir = ws / "events"
         events_dir.mkdir(parents=True)
-        events = [
-            {"timestamp": "2026-02-01T10:00:00", "event_type": "some_v21_custom_event", "project": "test"},
-        ]
-        (events_dir / "events.jsonl").write_text(json.dumps(events[0]) + "\n")
+        event = make_ol2_event("some_v21_custom_event", project="test")
+        (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
         result = parse_events(ws)
         assert len(result) == 1
         assert type(result[0]) is Event

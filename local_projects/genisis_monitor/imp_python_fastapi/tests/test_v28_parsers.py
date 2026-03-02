@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from event_factory import make_ol2_event
+
 from genesis_monitor.models.events import (
     AffectTriageEvent,
     CheckpointCreatedEvent,
@@ -42,180 +44,75 @@ from genesis_monitor.parsers.topology import parse_graph_topology
 
 @pytest.fixture
 def v28_events_workspace(tmp_path: Path) -> Path:
-    """Create workspace with v2.8 typed events."""
+    """Create workspace with v2.8 typed events in OL v2 format."""
     ws = tmp_path / ".ai-workspace"
     events_dir = ws / "events"
     events_dir.mkdir(parents=True)
 
     events = [
         # Lifecycle events
-        {
-            "timestamp": "2026-02-23T08:00:00",
-            "event_type": "edge_started",
-            "project": "test",
-            "edge": "design→code",
-            "feature": "REQ-F-001",
-        },
-        {
-            "timestamp": "2026-02-23T08:05:00",
-            "event_type": "project_initialized",
-            "project": "test",
-            "profile": "standard",
-            "graph_edges": ["intent→req", "req→design"],
-        },
-        {
-            "timestamp": "2026-02-23T08:10:00",
-            "event_type": "checkpoint_created",
-            "project": "test",
-            "checkpoint_id": "chk-001",
-            "edge": "design→code",
-            "feature": "REQ-F-001",
-        },
-        {
-            "timestamp": "2026-02-23T08:15:00",
-            "event_type": "review_completed",
-            "project": "test",
-            "edge": "req→design",
-            "feature": "REQ-F-001",
-            "reviewer": "human",
-            "outcome": "approved",
-        },
-        {
-            "timestamp": "2026-02-23T08:20:00",
-            "event_type": "gaps_validated",
-            "project": "test",
-            "total_gaps": 10,
-            "resolved_gaps": 8,
-            "unresolved_gaps": 2,
-        },
-        {
-            "timestamp": "2026-02-23T08:25:00",
-            "event_type": "release_created",
-            "project": "test",
-            "version": "1.0.0",
-            "req_coverage": "95%",
-            "features_included": ["REQ-F-001"],
-        },
+        make_ol2_event("edge_started", timestamp="2026-02-23T08:00:00Z",
+                       edge="design→code", feature="REQ-F-001"),
+        make_ol2_event("project_initialized", timestamp="2026-02-23T08:05:00Z",
+                       profile="standard", graph_edges=["intent→req", "req→design"]),
+        make_ol2_event("checkpoint_created", timestamp="2026-02-23T08:10:00Z",
+                       edge="design→code", feature="REQ-F-001", checkpoint_id="chk-001"),
+        make_ol2_event("review_completed", timestamp="2026-02-23T08:15:00Z",
+                       edge="req→design", feature="REQ-F-001",
+                       reviewer="human", outcome="approved"),
+        make_ol2_event("gaps_validated", timestamp="2026-02-23T08:20:00Z",
+                       total_gaps=10, resolved_gaps=8, unresolved_gaps=2),
+        make_ol2_event("release_created", timestamp="2026-02-23T08:25:00Z",
+                       version="1.0.0", req_coverage="95%",
+                       features_included=["REQ-F-001"]),
         # Sensory events
-        {
-            "timestamp": "2026-02-23T09:00:00",
-            "event_type": "interoceptive_signal",
-            "project": "test",
-            "signal_type": "convergence_rate",
-            "measurement": "0.3/h",
-            "threshold": "0.5/h",
-        },
-        {
-            "timestamp": "2026-02-23T09:05:00",
-            "event_type": "exteroceptive_signal",
-            "project": "test",
-            "source": "npm_audit",
-            "signal_type": "vulnerability",
-            "payload": "CVE-2026-001",
-        },
-        {
-            "timestamp": "2026-02-23T09:10:00",
-            "event_type": "affect_triage",
-            "project": "test",
-            "signal_ref": "intero-001",
-            "triage_result": "escalate",
-            "rationale": "below threshold",
-        },
+        make_ol2_event("interoceptive_signal", timestamp="2026-02-23T09:00:00Z",
+                       signal_type="convergence_rate", measurement="0.3/h",
+                       threshold="0.5/h"),
+        make_ol2_event("exteroceptive_signal", timestamp="2026-02-23T09:05:00Z",
+                       source="npm_audit", signal_type="vulnerability",
+                       payload="CVE-2026-001"),
+        make_ol2_event("affect_triage", timestamp="2026-02-23T09:10:00Z",
+                       signal_ref="intero-001", triage_result="escalate",
+                       rationale="below threshold"),
         # Multi-agent events
-        {
-            "timestamp": "2026-02-23T10:00:00",
-            "event_type": "claim_rejected",
-            "project": "test",
-            "agent_id": "agent-002",
-            "edge": "design→code",
-            "reason": "already claimed",
-        },
-        {
-            "timestamp": "2026-02-23T10:05:00",
-            "event_type": "edge_released",
-            "project": "test",
-            "agent_id": "agent-001",
-            "edge": "design→code",
-        },
-        {
-            "timestamp": "2026-02-23T10:10:00",
-            "event_type": "claim_expired",
-            "project": "test",
-            "agent_id": "agent-001",
-            "edge": "code→tests",
-            "expiry_reason": "timeout",
-        },
-        {
-            "timestamp": "2026-02-23T10:15:00",
-            "event_type": "convergence_escalated",
-            "project": "test",
-            "edge": "code→tests",
-            "reason": "no progress",
-            "escalated_to": "human",
-        },
+        make_ol2_event("claim_rejected", timestamp="2026-02-23T10:00:00Z",
+                       edge="design→code", agent_id="agent-002",
+                       reason="already claimed"),
+        make_ol2_event("edge_released", timestamp="2026-02-23T10:05:00Z",
+                       edge="design→code", agent_id="agent-001"),
+        make_ol2_event("claim_expired", timestamp="2026-02-23T10:10:00Z",
+                       edge="code→tests", agent_id="agent-001",
+                       expiry_reason="timeout"),
+        make_ol2_event("convergence_escalated", timestamp="2026-02-23T10:15:00Z",
+                       edge="code→tests", reason="no progress",
+                       escalated_to="human"),
         # Enriched iteration_completed (with delta)
-        {
-            "timestamp": "2026-02-23T11:00:00",
-            "event_type": "iteration_completed",
-            "project": "test",
-            "edge": "design→code",
-            "feature": "REQ-F-001",
-            "iteration": 3,
-            "evaluators": {"agent": "pass"},
-            "context_hash": "sha256:xyz",
-            "encoding": {"mode": "constructive", "valence": "+", "active_units": 3},
-            "source_findings": ["gap in auth"],
-            "process_gaps": ["missing test"],
-            "convergence_type": "delta_zero",
-            "intent_engine_output": "reflex.log",
-            "delta": 8,
-        },
+        make_ol2_event("iteration_completed", timestamp="2026-02-23T11:00:00Z",
+                       edge="design→code", feature="REQ-F-001", delta=8,
+                       iteration=3, evaluators={"agent": "pass"},
+                       context_hash="sha256:xyz",
+                       encoding={"mode": "constructive", "valence": "+", "active_units": 3},
+                       source_findings=["gap in auth"],
+                       process_gaps=["missing test"],
+                       convergence_type="delta_zero",
+                       intent_engine_output="reflex.log"),
         # Failure observability events
-        {
-            "timestamp": "2026-02-23T11:05:00",
-            "event_type": "evaluator_detail",
-            "project": "test",
-            "edge": "code↔tests",
-            "feature": "REQ-F-001",
-            "iteration": 1,
-            "check_name": "tests_pass",
-            "check_type": "deterministic",
-            "result": "fail",
-        },
-        {
-            "timestamp": "2026-02-23T11:10:00",
-            "event_type": "command_error",
-            "project": "test",
-            "command": "pytest",
-            "error": "exit code 1",
-            "edge": "code↔tests",
-        },
-        {
-            "timestamp": "2026-02-23T11:15:00",
-            "event_type": "health_checked",
-            "project": "test",
-            "workspace": "/tmp/ws",
-            "status": "healthy",
-        },
-        {
-            "timestamp": "2026-02-23T11:20:00",
-            "event_type": "iteration_abandoned",
-            "project": "test",
-            "edge": "code↔tests",
-            "feature": "REQ-F-001",
-            "iteration": 3,
-            "reason": "max_retries",
-        },
-        {
-            "timestamp": "2026-02-23T11:25:00",
-            "event_type": "encoding_escalated",
-            "project": "test",
-            "edge": "code↔tests",
-            "feature": "REQ-F-001",
-            "previous_valence": "medium",
-            "new_valence": "high",
-            "trigger": "evaluator_failures",
-        },
+        make_ol2_event("evaluator_detail", timestamp="2026-02-23T11:05:00Z",
+                       edge="code↔tests", feature="REQ-F-001",
+                       iteration=1, check_name="tests_pass",
+                       check_type="deterministic", result="fail"),
+        make_ol2_event("command_error", timestamp="2026-02-23T11:10:00Z",
+                       edge="code↔tests", command="pytest", error="exit code 1"),
+        make_ol2_event("health_checked", timestamp="2026-02-23T11:15:00Z",
+                       workspace="/tmp/ws", status="healthy"),
+        make_ol2_event("iteration_abandoned", timestamp="2026-02-23T11:20:00Z",
+                       edge="code↔tests", feature="REQ-F-001",
+                       iteration=3, reason="max_retries"),
+        make_ol2_event("encoding_escalated", timestamp="2026-02-23T11:25:00Z",
+                       edge="code↔tests", feature="REQ-F-001",
+                       previous_valence="medium", new_valence="high",
+                       trigger="evaluator_failures"),
     ]
     (events_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events) + "\n"
@@ -369,25 +266,23 @@ class TestV28EventParsing:
 
 
 class TestNestedDataFieldParsing:
-    """E2E runs emit some events with typed fields nested inside 'data'."""
+    """Fields in _metadata.original_data are correctly extracted into typed events."""
 
-    def test_evaluator_detail_nested_in_data(self, tmp_path: Path):
+    def test_evaluator_detail_from_original_data(self, tmp_path: Path):
+        """Fields in _metadata.original_data are extracted into typed event fields."""
         ws = tmp_path / ".ai-workspace"
         events_dir = ws / "events"
         events_dir.mkdir(parents=True)
-        event = {
-            "event_type": "evaluator_detail",
-            "timestamp": "2026-02-23T08:00:01",
-            "project": "test",
-            "data": {
-                "feature": "REQ-F-CONV-001",
-                "edge": "code↔unit_tests",
-                "iteration": 1,
-                "check_name": "tests_pass",
-                "check_type": "deterministic",
-                "result": "fail",
-            },
-        }
+        event = make_ol2_event(
+            "evaluator_detail",
+            timestamp="2026-02-23T08:00:01Z",
+            edge="code↔unit_tests",
+            feature="REQ-F-CONV-001",
+            iteration=1,
+            check_name="tests_pass",
+            check_type="deterministic",
+            result="fail",
+        )
         (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
         result = parse_events(ws)
         assert len(result) == 1
@@ -397,39 +292,38 @@ class TestNestedDataFieldParsing:
         assert result[0].result == "fail"
         assert result[0].iteration == 1
 
-    def test_top_level_fields_take_precedence_over_nested(self, tmp_path: Path):
+    def test_facet_edge_takes_precedence_over_original_data(self, tmp_path: Path):
+        """sdlc:req_keys.edge takes precedence over _metadata.original_data.edge."""
         ws = tmp_path / ".ai-workspace"
         events_dir = ws / "events"
         events_dir.mkdir(parents=True)
-        event = {
-            "event_type": "evaluator_detail",
-            "timestamp": "2026-02-23T08:00:01",
-            "project": "test",
-            "edge": "top-level-edge",
-            "data": {"edge": "nested-edge", "check_name": "tests_pass"},
-        }
+        event = make_ol2_event(
+            "evaluator_detail",
+            timestamp="2026-02-23T08:00:01Z",
+            edge="facet-edge",
+            check_name="tests_pass",
+        )
+        # Overwrite original_data.edge to differ from the facet value
+        event["_metadata"]["original_data"]["edge"] = "original-data-edge"
         (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
         result = parse_events(ws)
         assert isinstance(result[0], EvaluatorDetailEvent)
-        # Top-level should win
-        assert result[0].edge == "top-level-edge"
-        # Nested-only field should still be extracted
+        # sdlc:req_keys.edge wins
+        assert result[0].edge == "facet-edge"
+        # Field from original_data still extracted
         assert result[0].check_name == "tests_pass"
 
 
 class TestV25EventsStillWork:
     def test_v25_edge_started_now_typed(self, tmp_path: Path):
-        """edge_started was generic in v2.5, now typed in v2.8."""
+        """edge_started in OL v2 format (eventType=START) parses as EdgeStartedEvent."""
         ws = tmp_path / ".ai-workspace"
         events_dir = ws / "events"
         events_dir.mkdir(parents=True)
-        events = [
-            {"timestamp": "2026-02-01T10:00:00", "event_type": "edge_started", "project": "test"},
-        ]
-        (events_dir / "events.jsonl").write_text(json.dumps(events[0]) + "\n")
+        event = make_ol2_event("edge_started", edge="design→code")
+        (events_dir / "events.jsonl").write_text(json.dumps(event) + "\n")
         result = parse_events(ws)
         assert len(result) == 1
-        # Now typed as EdgeStartedEvent instead of generic Event
         assert isinstance(result[0], EdgeStartedEvent)
 
 

@@ -1,0 +1,70 @@
+{% if feature_module_map and feature_module_map.rows %}
+<div class="timestamp">Last updated: {{ current_time }}</div>
+
+<div style="margin-bottom: 0.75rem; font-size: 0.82em; color: var(--pico-muted-color);">
+  {{ feature_module_map.total_features }} features &nbsp;·&nbsp;
+  {{ feature_module_map.total_modules }} modules &nbsp;·&nbsp;
+  {{ feature_module_map.traced_req_keys }}/{{ feature_module_map.total_req_keys }} REQ keys traced
+  &nbsp;({{ feature_module_map.coverage_pct }}%)
+</div>
+
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 0.82em;">
+  <thead>
+    <tr>
+      <th style="text-align: left; padding: 4px 8px; white-space: nowrap;">Feature</th>
+      <th style="text-align: left; padding: 4px 8px;">REQ Keys</th>
+      <th style="text-align: left; padding: 4px 8px;">Implementing Modules</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in feature_module_map.rows %}
+    <tr style="border-top: 1px solid var(--pico-muted-border-color); vertical-align: top;">
+      <td style="padding: 5px 8px; white-space: nowrap;">
+        <strong>{{ row.feature_id }}</strong>
+        {% if row.title %}
+        <br><span style="color: var(--pico-muted-color); font-size: 0.88em;">{{ row.title | truncate(32, true, '…') }}</span>
+        {% endif %}
+      </td>
+      <td style="padding: 5px 8px;">
+        {% for req in row.req_keys %}
+          {% if req in row.untraced_keys %}
+            <code style="background: rgba(255,80,80,0.12); color: #e57373; font-size: 0.8em;" title="No implementing file found">{{ req }}</code>
+          {% else %}
+            <code style="background: rgba(76,175,80,0.1); color: #81c784; font-size: 0.8em;">{{ req }}</code>
+          {% endif %}
+          {% if not loop.last %} {% endif %}
+        {% endfor %}
+      </td>
+      <td style="padding: 5px 8px;">
+        {% if row.modules %}
+          {% for mod in row.modules %}
+            <code style="font-size: 0.78em; display: inline-block; margin: 1px 2px; padding: 1px 5px;
+                         background: rgba(33, 150, 243, 0.1); color: #64b5f6; border-radius: 3px;"
+                  title="{{ mod }}">{{ mod.split('/')[-1] }}</code>
+          {% endfor %}
+        {% else %}
+          <span style="color: var(--pico-muted-color); font-style: italic;">no code tags found</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+<p style="font-size: 0.75em; color: var(--pico-muted-color); margin-top: 6px;">
+  <code style="background: rgba(76,175,80,0.1); color: #81c784;">REQ</code> = has <kbd># Implements:</kbd> tag &nbsp;
+  <code style="background: rgba(255,80,80,0.12); color: #e57373;">REQ</code> = untraced gap &nbsp;|&nbsp;
+  hover module filename for full path
+</p>
+
+{% else %}
+<p><em>
+  {% if feature_module_map is none %}
+    No traceability data available. Run the project scanner to index <kbd># Implements:</kbd> tags.
+  {% else %}
+    No features with declared requirements found.
+  {% endif %}
+</em></p>
+{% endif %}

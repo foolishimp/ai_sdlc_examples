@@ -28,9 +28,9 @@ def test_reconstruct_features_basic():
     assert f_t1[0].feature_id == "REQ-001"
     assert f_t1[0].status == "iterating" or f_t1[0].status == "pending"
     
-    # 2. State at t2: Edge iterating
+    # 2. State at t2: Edge started (in_progress)
     f_t2 = reconstruct_features(events, t2)
-    assert f_t2[0].trajectory["requirements"].status == "iterating"
+    assert f_t2[0].trajectory["requirements"].status == "in_progress"
     
     # 3. State at t4: Edge converged
     f_t4 = reconstruct_features(events, t4)

@@ -108,7 +108,10 @@ def reconstruct_status(events: list[Event], timestamp_limit: datetime) -> Status
             state["status"] = "in_progress"
             delta = getattr(ev, "delta", None)
             if delta is not None:
-                state["delta_curve"].append(int(delta))
+                try:
+                    state["delta_curve"].append(int(delta))
+                except (TypeError, ValueError):
+                    pass
             if delta == 0:
                 state["status"] = "converged"
         elif ev.event_type == "edge_converged":

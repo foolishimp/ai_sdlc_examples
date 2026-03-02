@@ -1,16 +1,66 @@
-
-{% if gantt %}
+{% if matrix and matrix.rows %}
 <div class="timestamp" id="gantt-ts">Last updated: {{ current_time }}</div>
-<div class="mermaid-container">
-<pre class="mermaid">
-{{ gantt | safe }}
-</pre>
+<div style="overflow-x: auto;">
+<table style="width: 100%; border-collapse: collapse; font-size: 0.82em;">
+  <thead>
+    <tr>
+      <th style="text-align: left; padding: 4px 8px; white-space: nowrap; min-width: 180px;">Feature</th>
+      {% for edge in matrix.edges %}
+      <th style="text-align: center; padding: 4px 6px; font-size: 0.78em; white-space: nowrap;"
+          title="{{ edge }}">
+        {{ edge.split('↔')[-1].split('→')[-1] | replace('_', ' ') | truncate(12, true, '…') }}
+      </th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in matrix.rows %}
+    <tr style="border-top: 1px solid var(--pico-muted-border-color);">
+      <td style="padding: 4px 8px; padding-left: {{ 8 + row.indent * 20 }}px; white-space: nowrap;">
+        <span class="badge badge-{{ 'converged' if row.status == 'converged' else ('in-progress' if row.status == 'in_progress' else 'not-started') }}"
+              style="font-size: 0.75em;">{{ row.feature_id }}</span>
+        {% if row.title %}
+        <span style="color: var(--pico-muted-color); font-size: 0.85em; margin-left: 4px;">
+          {{ row.title | truncate(28, true, '…') }}
+        </span>
+        {% endif %}
+      </td>
+      {% for edge in matrix.edges %}
+        {% set cell = row.cells.get(edge) %}
+        {% if cell %}
+          {% if cell.status == 'converged' %}
+            {% set bg = 'rgba(76, 175, 80, 0.12)' %}
+            {% set symbol = '✓' %}
+            {% set color = '#4caf50' %}
+          {% elif cell.status == 'in_progress' %}
+            {% set bg = 'rgba(255, 152, 0, 0.12)' %}
+            {% set symbol = '⟳' %}
+            {% set color = '#ff9800' %}
+          {% else %}
+            {% set bg = 'transparent' %}
+            {% set symbol = '·' %}
+            {% set color = '#aaa' %}
+          {% endif %}
+          <td style="text-align: center; padding: 4px 6px; background: {{ bg }};"
+              title="{{ edge }}: {{ cell.status }}{% if cell.started_at %} | started {{ cell.started_at.strftime('%m-%d %H:%M') }}{% endif %}{% if cell.converged_at %} → {{ cell.converged_at.strftime('%m-%d %H:%M') }}{% endif %}">
+            <span style="color: {{ color }}; font-weight: bold;">{{ symbol }}</span>
+            {% if cell.iteration > 0 %}
+            <sub style="color: var(--pico-muted-color); font-size: 0.75em;">{{ cell.iteration }}</sub>
+            {% endif %}
+          </td>
+        {% else %}
+          <td style="text-align: center; padding: 4px 6px; color: var(--pico-muted-border-color);">—</td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
 </div>
-<script>
-    if (typeof mermaid !== 'undefined') {
-        mermaid.init(undefined, document.querySelectorAll('.mermaid'));
-    }
-</script>
+<p style="font-size: 0.75em; color: var(--pico-muted-color); margin-top: 6px;">
+  ✓ converged &nbsp; ⟳ in-progress &nbsp; · pending &nbsp;
+  <sub>n</sub> = iteration count &nbsp;|&nbsp; hover cell for timestamps
+</p>
 {% else %}
 <p><em>No timeline data available.</em></p>
 {% endif %}

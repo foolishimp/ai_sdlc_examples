@@ -1,7 +1,10 @@
 # Validates: REQ-F-PARSE-001, REQ-F-PARSE-002, REQ-F-PARSE-003, REQ-F-PARSE-004, REQ-F-PARSE-005, REQ-F-PARSE-006
 """Tests for all parsers."""
 
+import json
 from pathlib import Path
+
+from event_factory import make_ol2_event
 
 from genesis_monitor.parsers import (
     parse_constraints,
@@ -142,7 +145,9 @@ class TestParseEvents:
     def test_parse_corrupt_line(self, tmp_path: Path):
         events_dir = tmp_path / "events"
         events_dir.mkdir()
-        (events_dir / "events.jsonl").write_text('{"event_type": "ok"}\nnot json\n{"event_type": "also_ok"}\n')
+        ev1 = json.dumps(make_ol2_event("edge_started", edge="design→code"))
+        ev2 = json.dumps(make_ol2_event("edge_converged", edge="design→code"))
+        (events_dir / "events.jsonl").write_text(f"{ev1}\nnot json\n{ev2}\n")
         result = parse_events(tmp_path)
         assert len(result) == 2
 
