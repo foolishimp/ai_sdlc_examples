@@ -1,4 +1,4 @@
-# Implements: REQ-F-NAV-003
+# Validates: REQ-F-NAV-003
 """Tests for the temporal state reconstruction engine."""
 
 from datetime import datetime, timezone

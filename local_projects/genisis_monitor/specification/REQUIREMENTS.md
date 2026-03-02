@@ -873,6 +873,83 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 
 ---
 
+## 23. Traceability Projections (v3.0 — code-coverage iteration)
+
+### REQ-F-TRACE-001: Feature-Code Traceability Cross-Reference
+
+**Priority**: High
+**Traces To**: INT-GMON-006 (REQ key coverage visibility)
+
+The system MUST scan project code and test files for REQ key tags (`# Implements: REQ-*` in code files, `# Validates: REQ-*` in test files) and produce a per-requirement coverage map showing which requirements have code implementations, test coverage, and full traceability.
+
+**Acceptance Criteria**:
+- AC-1: Scanner reads all `.py` files under the project path recursively
+- AC-2: `# Implements: REQ-*` tags extracted from code files; `# Validates: REQ-*` from test files
+- AC-3: Coverage map produced per REQ key: `{has_code: bool, code_files: list, has_tests: bool, test_files: list, status: full|partial|none}`
+- AC-4: Summary statistics computed: total_req_keys, full_coverage, partial_coverage, no_coverage counts
+- AC-5: Per-feature rollup computes percentage of that feature's REQ keys that are implemented and tested
+
+### REQ-F-TRACE-002: Feature × Module Bipartite Map
+
+**Priority**: High
+**Traces To**: INT-GMON-006 (design-layer module visibility)
+
+The system MUST produce a bipartite mapping between feature vectors and implementing code modules, derived by joining each feature's REQ keys against the code coverage scan, and display which modules carry implementation responsibility for each feature.
+
+**Acceptance Criteria**:
+- AC-1: Bipartite map built from feature vector REQ keys joined with traceability scanner output
+- AC-2: Each row shows: feature_id, req_keys, implementing modules (file paths), untraced keys count
+- AC-3: Untraced keys (REQ keys in feature spec with no code tag) highlighted as gaps
+- AC-4: Map rendered as an HTML fragment accessible via `/fragments/project/{id}/feature-module-map`
+
+---
+
+## 24. Temporal Navigation (v3.0 — time-travel iteration)
+
+### REQ-F-NAV-001: Event Log Temporal Query
+
+**Priority**: High
+**Traces To**: INT-GMON-007 (historical state visibility)
+
+The system MUST support querying project state at arbitrary past timestamps by accepting a `?t=ISO8601` parameter and filtering the event log to events at or before that timestamp, enabling inspection of any historical project state.
+
+**Acceptance Criteria**:
+- AC-1: `?t=` query parameter accepted on all page and fragment routes
+- AC-2: Event list filtered to `event.timestamp <= t` before any projection is computed
+- AC-3: All projections (graph, convergence, features, gantt, edges) reflect the filtered event set
+- AC-4: When `?t=` is absent or equals the latest event timestamp, live state is shown
+
+### REQ-F-NAV-003: Feature State Reconstruction from Events
+
+**Priority**: High
+**Traces To**: INT-GMON-007 (event-sourced state reconstruction)
+
+The system MUST reconstruct the complete feature vector state at a given timestamp by replaying a filtered event log, deriving edge trajectory statuses (in_progress, converged), iteration counts, and delta curves without reading feature YAML files.
+
+**Acceptance Criteria**:
+- AC-1: `reconstruct_features(events, timestamp_limit) → list[FeatureVector]` function implemented
+- AC-2: `reconstruct_status(events, timestamp_limit) → StatusReport` function implemented
+- AC-3: `edge_started` events set trajectory status to `in_progress`
+- AC-4: `iteration_completed` events increment iteration count and append delta to delta_curve
+- AC-5: `edge_converged` events set trajectory status to `converged`
+- AC-6: Feature overall status derived from trajectory: all edges converged → `converged`, else `in_progress`
+
+### REQ-F-NAV-007: Event Density Heatmap
+
+**Priority**: Medium
+**Traces To**: INT-GMON-007 (activity visualization)
+
+The system MUST compute a normalized event activity density distribution across the project's event timeline, divided into configurable buckets, for use as a heatmap overlay in the temporal scrubber UI.
+
+**Acceptance Criteria**:
+- AC-1: `get_event_density(events, buckets=100) → list[float]` function implemented
+- AC-2: Timeline divided into N equal time buckets between first and last event timestamps
+- AC-3: Each bucket's count normalized to [0.0, 1.0] relative to the peak bucket
+- AC-4: Returns `[0.0] * buckets` for empty event lists; `[1.0] * buckets` for zero-duration timelines
+- AC-5: Output consumed by the global scrubber UI as `window.eventDensity`
+
+---
+
 ## 25. Source Findings (v2.5/v2.8 Iteration)
 
 | # | Type | Finding | Resolution |
@@ -887,6 +964,7 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | 8 | GAP | INT-GMON-004 does not specify Markov criteria validation display | Deferred — covered implicitly by convergence view + protocol compliance |
 | 9 | AMBIGUITY | Constraint dimension "resolved" status — how to detect from artifacts | Resolved: check for ADR files matching dimension name or design section grep |
 | 10 | GAP | INT-GMON-004 does not specify how vector nesting depth is bounded | Deferred — display depth, but enforcement is the methodology's responsibility |
+| 11 | GAP | Code implemented REQ-F-TRACE-* and REQ-F-NAV-* before spec was written | Added sections 23–24 (TRACE, NAV) retroactively to close the traceability chain |
 
 ---
 
@@ -916,4 +994,6 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | IntentEngine Classification (IENG) | 2 | 0 | 1 | 1 |
 | Edge Timestamps (ETIM) | 3 | 0 | 3 | 0 |
 | Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
-| **Total** | **61** | **13** | **33** | **15** |
+| Traceability Projections (TRACE) | 2 | 0 | 2 | 0 |
+| Temporal Navigation (NAV) | 3 | 0 | 2 | 1 |
+| **Total** | **66** | **13** | **37** | **16** |
