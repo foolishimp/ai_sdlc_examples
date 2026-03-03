@@ -1,0 +1,14 @@
+feature: REQ-F-TODO-001
+status: in_progress
+title: Todo Item CRUD
+trajectory:
+  code:
+    iteration: 2
+    status: converged
+  design:
+    iteration: 2
+    status: converged
+  requirements:
+    iteration: 2
+    status: converged
+vector_type: feature

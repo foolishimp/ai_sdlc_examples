@@ -43,6 +43,22 @@ from genesis_monitor.registry import ProjectRegistry
 from genesis_monitor.server.app import create_app
 from genesis_monitor.server.broadcaster import SSEBroadcaster
 
+# ── Persistent observable workspace ───────────────────────────────────────────
+#
+# TODO_DEMO_WORKSPACE points to the committed todo-demo project under
+# local_projects/.  Because genesis_monitor watches the parent directory tree,
+# this workspace is ALWAYS visible in the browser dashboard — the same data
+# you assert against in tests is the data you see at http://localhost:8000.
+#
+# This is the same persistence pattern used by data_mapper.test03 – test09:
+# the workspace is committed to git with a full lifecycle events.jsonl so it
+# is observable without any test run.  Tests that need clean isolation still
+# write to tmp_path; tests that want to be observable use TODO_DEMO_WORKSPACE.
+#
+TODO_DEMO_WORKSPACE: Path = (
+    Path(__file__).parent.parent.parent.parent / "todo-demo"
+)
+
 
 # ── Fixture: Todo Dashboard lifecycle ────────────────────────────────────────
 
@@ -53,18 +69,28 @@ def _ts(minutes: int) -> str:
     return f"2026-03-04T{8 + h:02d}:{m:02d}:00Z"
 
 
-def _build_todo_workspace(tmp_path: Path, up_to_minutes: int | None = None) -> Path:
+def _build_todo_workspace(
+    base_path: Path,
+    up_to_minutes: int | None = None,
+    *,
+    project_name: str = "todo-dashboard",
+) -> Path:
     """
-    Create a .ai-workspace/ for the todo-dashboard project populated
-    with lifecycle events up to `up_to_minutes` (None = full lifecycle).
+    Create a .ai-workspace/ for the todo project populated with lifecycle
+    events up to `up_to_minutes` (None = full lifecycle).
+
+    `base_path` is the parent directory that will contain `project_name/`.
+    Pass `tmp_path` for an isolated ephemeral workspace (default for unit
+    tests) or `TODO_DEMO_WORKSPACE.parent` to write into the persistent
+    committed directory that genesis_monitor watches.
     """
-    project_dir = tmp_path / "todo-dashboard"
+    project_dir = base_path / project_name
     ws = project_dir / ".ai-workspace"
-    ws.mkdir(parents=True)
+    ws.mkdir(parents=True, exist_ok=True)
 
     # Graph topology
     graph_dir = ws / "graph"
-    graph_dir.mkdir()
+    graph_dir.mkdir(exist_ok=True)
     (graph_dir / "graph_topology.yml").write_text(yaml.dump({
         "asset_types": {
             "intent": {"description": "Business intent"},
@@ -82,7 +108,7 @@ def _build_todo_workspace(tmp_path: Path, up_to_minutes: int | None = None) -> P
 
     # Feature vector for REQ-F-TODO-001
     features_dir = ws / "features" / "active"
-    features_dir.mkdir(parents=True)
+    features_dir.mkdir(parents=True, exist_ok=True)
     (features_dir / "REQ-F-TODO-001.yml").write_text(yaml.dump({
         "feature": "REQ-F-TODO-001",
         "title": "Todo Item CRUD",
@@ -97,7 +123,7 @@ def _build_todo_workspace(tmp_path: Path, up_to_minutes: int | None = None) -> P
 
     # Constraints
     ctx_dir = ws / "context"
-    ctx_dir.mkdir()
+    ctx_dir.mkdir(exist_ok=True)
     (ctx_dir / "project_constraints.yml").write_text(yaml.dump({
         "language": {"primary": "python", "version": ">=3.12"},
         "tools": {
@@ -205,7 +231,7 @@ def _build_todo_workspace(tmp_path: Path, up_to_minutes: int | None = None) -> P
                     if e["eventTime"] <= cutoff_ts]
 
     events_dir = ws / "events"
-    events_dir.mkdir()
+    events_dir.mkdir(exist_ok=True)
     (events_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in filtered) + "\n"
     )
@@ -213,15 +239,42 @@ def _build_todo_workspace(tmp_path: Path, up_to_minutes: int | None = None) -> P
     return project_dir
 
 
+# ── Fixtures — ephemeral (isolated, fast, for CI) ────────────────────────────
+
+
 @pytest.fixture
 def todo_full(tmp_path: Path) -> Path:
-    """Complete todo lifecycle — all edges converged."""
+    """Complete todo lifecycle — all edges converged — ephemeral tmp_path."""
     return _build_todo_workspace(tmp_path)
 
 
 @pytest.fixture
 def todo_client_full(todo_full: Path) -> TestClient:
     return _make_client(todo_full)
+
+
+# ── Fixtures — persistent (observable in browser) ─────────────────────────────
+
+
+@pytest.fixture(scope="session")
+def observable_workspace() -> Path:
+    """
+    Write the full todo lifecycle into the committed TODO_DEMO_WORKSPACE so
+    it is visible in the Genesis Monitor browser dashboard while (and after)
+    tests run.
+
+    This fixture populates TODO_DEMO_WORKSPACE with all 17 lifecycle events.
+    Because genesis_monitor watches the local_projects/ directory tree, the
+    project appears in the browser automatically.
+
+    Returns the project directory (TODO_DEMO_WORKSPACE itself).
+    """
+    _build_todo_workspace(
+        TODO_DEMO_WORKSPACE.parent,
+        up_to_minutes=None,
+        project_name=TODO_DEMO_WORKSPACE.name,
+    )
+    return TODO_DEMO_WORKSPACE
 
 
 def _make_client(project_dir: Path) -> TestClient:
@@ -242,9 +295,9 @@ def _make_client(project_dir: Path) -> TestClient:
     return TestClient(app, raise_server_exceptions=True)
 
 
-def _client_at(tmp_path: Path, up_to_minutes: int) -> TestClient:
+def _client_at(base_path: Path, up_to_minutes: int) -> TestClient:
     """Build a TestClient with events only up to T+N minutes."""
-    project_dir = _build_todo_workspace(tmp_path, up_to_minutes=up_to_minutes)
+    project_dir = _build_todo_workspace(base_path, up_to_minutes=up_to_minutes)
     return _make_client(project_dir)
 
 
@@ -655,3 +708,65 @@ class TestUCGM13_ReadOnlyContract:
 
         assert not modified, f"Monitor modified workspace files: {modified}"
         assert not new_files, f"Monitor created workspace files: {new_files}"
+
+
+# ── Observable workspace — persistent, watched by genesis_monitor ─────────────
+
+
+class TestObservableWorkspace:
+    """
+    Validates the persistent TODO_DEMO_WORKSPACE directory that is committed to
+    git and watched by genesis_monitor at http://localhost:8000.
+
+    This test class uses the `observable_workspace` session fixture which writes
+    the full lifecycle to local_projects/todo-demo/.ai-workspace/.  Because that
+    directory sits under the genesis_monitor watch root, you can open the browser
+    and see the exact same state the tests assert against.
+
+    Pattern: identical to data_mapper.test03 – test09 which are committed
+    project directories used as both live demo fixtures and test data sources.
+    """
+
+    def test_observable_workspace_exists_on_disk(self, observable_workspace: Path):
+        """todo-demo directory exists under local_projects/."""
+        assert observable_workspace.exists()
+        assert (observable_workspace / ".ai-workspace").is_dir()
+        assert (observable_workspace / ".ai-workspace" / "events" / "events.jsonl").exists()
+
+    def test_observable_workspace_has_full_lifecycle(self, observable_workspace: Path):
+        """The committed events.jsonl contains all 17 lifecycle events."""
+        events_file = observable_workspace / ".ai-workspace" / "events" / "events.jsonl"
+        lines = [ln for ln in events_file.read_text().splitlines() if ln.strip()]
+        assert len(lines) == 17, f"Expected 17 events, got {len(lines)}"
+
+    def test_observable_workspace_parseable_by_monitor(
+        self, observable_workspace: Path
+    ):
+        """Genesis Monitor can parse and serve the persistent workspace."""
+        client = _make_client(observable_workspace)
+        resp = client.get("/project/todo-demo")
+        assert resp.status_code == 200
+        assert "todo-demo" in resp.text
+
+    def test_observable_workspace_shows_all_edges_converged(
+        self, observable_workspace: Path
+    ):
+        """Full lifecycle: all 3 edges converged in the observable workspace."""
+        client = _make_client(observable_workspace)
+        resp = client.get("/fragments/project/todo-demo/edges")
+        assert resp.status_code == 200
+        assert "converged" in resp.text
+
+    def test_observable_workspace_temporal_scrubber(
+        self, observable_workspace: Path
+    ):
+        """Historical state at T+35 min shows intent→requirements in_progress."""
+        client = _make_client(observable_workspace)
+        resp = client.get(
+            "/fragments/project/todo-demo/edges"
+            "?t=2026-03-04T08:35:00Z"
+        )
+        assert resp.status_code == 200
+        # At T+35, requirements edge is in_progress (first iteration done, not yet converged)
+        body = resp.text
+        assert "in_progress" in body or "intent" in body

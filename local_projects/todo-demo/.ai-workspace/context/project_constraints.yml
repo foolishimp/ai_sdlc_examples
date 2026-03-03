@@ -1,0 +1,14 @@
+language:
+  primary: python
+  version: '>=3.12'
+thresholds:
+  test_coverage_minimum: 80%
+tools:
+  linter:
+    args: src/
+    command: ruff check
+    pass_criterion: exit code 0
+  test_runner:
+    args: tests/ -q
+    command: pytest
+    pass_criterion: exit code 0

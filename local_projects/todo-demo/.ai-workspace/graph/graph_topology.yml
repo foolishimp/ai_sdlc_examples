@@ -1,0 +1,22 @@
+asset_types:
+  code:
+    description: Implementation
+  design:
+    description: Technical design
+  intent:
+    description: Business intent
+  requirements:
+    description: Functional requirements
+  unit_tests:
+    description: Unit tests
+transitions:
+- edge_type: intent_requirements
+  source: intent
+  target: requirements
+- edge_type: requirements_design
+  source: requirements
+  target: design
+- bidirectional: true
+  edge_type: tdd
+  source: code
+  target: unit_tests
