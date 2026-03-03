@@ -6,8 +6,6 @@ from genesis_monitor.parsers.traceability import TraceabilityReport
 from genesis_monitor.projections.feature_module_map import build_feature_module_map
 from genesis_monitor.projections.gantt import (
     FeatureMatrix,
-    MatrixCell,
-    MatrixRow,
     build_feature_matrix,
 )
 

@@ -28,12 +28,11 @@ from genesis_monitor.models.features import (
     ProjectionProfile,
     TimeBox,
 )
-from genesis_monitor.projections.spawn_tree import build_spawn_tree
+from genesis_monitor.projections.compliance import build_compliance_report
+from genesis_monitor.projections.consciousness import build_consciousness_timeline
 from genesis_monitor.projections.dimensions import build_dimension_coverage
 from genesis_monitor.projections.regimes import build_regime_summary
-from genesis_monitor.projections.consciousness import build_consciousness_timeline
-from genesis_monitor.projections.compliance import build_compliance_report
-
+from genesis_monitor.projections.spawn_tree import build_spawn_tree
 
 # ── Spawn Tree Tests ──────────────────────────────────────────
 

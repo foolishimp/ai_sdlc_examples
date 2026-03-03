@@ -110,13 +110,13 @@ def _parse_one(data: dict) -> Event:
         if annotation and d == 0:
             d = annotation
         typed_kwargs["delta"] = d
-    
+
     # Map any remaining fields from original_data metadata
     orig = data.get("_metadata", {}).get("original_data", {})
     for f in dataclasses.fields(cls):
         if f.name in typed_kwargs: continue
         if f.name in orig: typed_kwargs[f.name] = orig[f.name]
-        
+
     return cls(**typed_kwargs)
 
 

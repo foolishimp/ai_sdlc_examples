@@ -6,9 +6,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from event_factory import make_ol2_event
-
 from genesis_monitor.models.events import (
     EdgeConvergedEvent,
     Event,
@@ -17,11 +15,9 @@ from genesis_monitor.models.events import (
     IterationCompletedEvent,
     SpecModifiedEvent,
 )
-from genesis_monitor.models.features import ConstraintDimension, ProjectionProfile
 from genesis_monitor.parsers.events import parse_events
 from genesis_monitor.parsers.features import parse_feature_vectors
 from genesis_monitor.parsers.topology import parse_graph_topology
-
 
 # ── Typed Event Parsing ─────────────────────────────────────────
 

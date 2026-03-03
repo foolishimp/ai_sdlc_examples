@@ -1,9 +1,9 @@
 # Genesis Monitor — Requirements Specification
 
-**Version**: 3.0.0
-**Date**: 2026-02-23
-**Status**: Draft — iterate(intent→requirements) for INT-GMON-005
-**Feature**: REQ-F-GMON-001, REQ-F-GMON-002
+**Version**: 3.1.0
+**Date**: 2026-03-03
+**Status**: Converged — iterate(intent→requirements) for INT-GMON-009
+**Feature**: REQ-F-GMON-001, REQ-F-GMON-002, REQ-F-MTEN-001
 **Source Asset**: docs/specification/INTENT.md v3.0.0 (5 intent items, 32 outcomes)
 **Methodology**: AI SDLC Asset Graph Model v2.8
 
@@ -47,6 +47,7 @@ Genesis Monitor is a real-time web dashboard that observes AI SDLC methodology e
 | REQ-F-IENG-* | INT-GMON-005 (IntentEngine classification) |
 | REQ-F-ETIM-* | INT-GMON-005 (Edge timestamps) |
 | REQ-F-CTOL-* | INT-GMON-005 (Constraint tolerances) |
+| REQ-F-MTEN-* | INT-GMON-009 (Multi-design tenancy) |
 
 ### 1.4 Target Implementation
 
@@ -277,6 +278,7 @@ The system MUST provide a hierarchical tree view on the project index page that 
 - AC-3: Non-project directories that are ancestors of projects appear as expandable folder nodes
 - AC-4: Tree auto-updates via SSE when projects change
 - AC-5: Clicking a project node navigates to its detail dashboard
+- AC-6: All branches are expanded by default on initial page load — no project is hidden behind a collapsed ancestor
 
 ---
 
@@ -950,7 +952,50 @@ The system MUST compute a normalized event activity density distribution across 
 
 ---
 
-## 25. Source Findings (v2.5/v2.8 Iteration)
+## 25. Multi-Design Tenancy (v3.0 — multi-tenant iteration)
+
+### REQ-F-MTEN-001: Design Tenant Filter
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-033, OUT-035
+
+The system MUST support filtering all dashboard views to a single design tenant via a `?design=` query parameter. When the parameter is present, only events whose `.project` field matches the tenant value are used to compute projections.
+
+**Acceptance Criteria**:
+- AC-1: `?design=` parameter accepted on the project detail page and all 14 fragment routes
+- AC-2: When `?design=` is present, the event list, feature reconstruction, and status reconstruction are scoped to matching events only
+- AC-3: When `?design=` is absent, the merged view of all events is shown (existing behaviour)
+- AC-4: An unknown tenant value produces an empty (not errored) dashboard
+
+### REQ-F-MTEN-002: Design Tenant Selector UI
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-033, OUT-035
+
+The system MUST render a tab bar on the project detail page showing all design tenants present in the event log, with per-tenant event counts. The active tenant is visually distinguished. An "All tenants" tab restores the unfiltered view.
+
+**Acceptance Criteria**:
+- AC-1: Selector nav rendered only when the project has events from more than one distinct `.project` value
+- AC-2: Each tab shows the tenant name and its total event count `(N)` in a subdued annotation
+- AC-3: The active tab carries `aria-current="page"` (Pico CSS native active state — no custom class needed)
+- AC-4: "All tenants" tab links to the project URL with no `?design=` param; carries `aria-current="page"` when no design is active
+- AC-5: Clicking a tenant tab performs a full page navigation (not HTMX swap) so all fragments reinitialise consistently
+
+### REQ-F-MTEN-003: Design Filter Propagation
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-034
+
+The system MUST propagate the active design filter automatically to all HTMX fragment requests (including SSE-triggered reloads) and temporal scrubber reloads, without requiring per-fragment `hx-get` URL modifications.
+
+**Acceptance Criteria**:
+- AC-1: An HTMX `configRequest` event listener injects the `design` query parameter into the request parameters of every HTMX request when a tenant is active
+- AC-2: The temporal scrubber's `triggerReload()` function includes `design=<tenant>` in the query string alongside `t=<timestamp>` when a tenant is active
+- AC-3: The active design value is captured once at page load from `window.location.search`; full page navigation on tenant switch ensures the captured value is always current
+
+---
+
+## 26. Source Findings (v2.5/v2.8 Iteration)
 
 | # | Type | Finding | Resolution |
 |---|------|---------|------------|
@@ -965,10 +1010,14 @@ The system MUST compute a normalized event activity density distribution across 
 | 9 | AMBIGUITY | Constraint dimension "resolved" status — how to detect from artifacts | Resolved: check for ADR files matching dimension name or design section grep |
 | 10 | GAP | INT-GMON-004 does not specify how vector nesting depth is bounded | Deferred — display depth, but enforcement is the methodology's responsibility |
 | 11 | GAP | Code implemented REQ-F-TRACE-* and REQ-F-NAV-* before spec was written | Added sections 23–24 (TRACE, NAV) retroactively to close the traceability chain |
+| 12 | BUG | `_get_historical_state` called `reconstruct_features/status` without `timestamp_limit` in design-only branch | Fixed by passing `datetime.now(utc)`; bug was latent until design filter was exercised by tests |
+| 13 | BUG | `reconstruct_status` constructed `PhaseEntry` with `delta_curve` kwarg that does not exist on the dataclass | Fixed by removing the field from the `PhaseEntry` constructor call in `temporal.py` |
+| 14 | GAP | Backend `?design=` filter existed but no UI exposed it — users had no way to switch tenants | Added §25 (MTEN) requirements and implementation: selector nav, HTMX interceptor, scrubber fix |
+| 15 | GAP | REQ-F-DASH-006 did not specify initial expansion state; implementation used `depth < 2` collapse, hiding projects nested ≥ 2 levels deep (e.g., e2e runs under `ai_sdlc_method/aisdlc-dogfood/`) | Added AC-6: all branches expanded by default; fixed `_tree.html` and added `/fragments/tree` route |
 
 ---
 
-## 26. Requirements Summary
+## 27. Requirements Summary
 
 | Category | Count | Critical | High | Medium |
 |----------|-------|----------|------|--------|
@@ -996,4 +1045,5 @@ The system MUST compute a normalized event activity density distribution across 
 | Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
 | Traceability Projections (TRACE) | 2 | 0 | 2 | 0 |
 | Temporal Navigation (NAV) | 3 | 0 | 2 | 1 |
-| **Total** | **66** | **13** | **37** | **16** |
+| Multi-Design Tenancy (MTEN) | 3 | 0 | 3 | 0 |
+| **Total** | **69** | **13** | **40** | **16** |

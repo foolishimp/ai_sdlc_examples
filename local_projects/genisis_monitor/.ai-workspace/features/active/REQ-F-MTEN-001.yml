@@ -1,0 +1,89 @@
+feature: REQ-F-MTEN-001
+title: Multi-Design Tenant Observability
+intent: INT-GMON-009
+vector_type: feature
+profile: standard
+status: converged
+created: '2026-03-03T00:00:00Z'
+updated: '2026-03-03T00:00:00Z'
+parent_id: null
+
+requirements:
+- REQ-F-MTEN-001
+- REQ-F-MTEN-002
+- REQ-F-MTEN-003
+
+description: >
+  Design selector UI for the project detail dashboard. Allows users to filter all
+  dashboard views to a single design tenant (imp_claude, imp_gemini, imp_codex, etc.)
+  via a tab bar derived from the event log's .project field values. The HTMX
+  configRequest interceptor and scrubber fix propagate the active filter automatically
+  to all fragment requests without per-fragment URL changes.
+
+trajectory:
+  intent:
+    status: converged
+    asset: specification/INTENT.md
+    iteration: 1
+    delta: 0
+    updated_at: '2026-03-03T00:00:00Z'
+  requirements:
+    status: converged
+    asset: specification/REQUIREMENTS.md
+    iteration: 1
+    delta: 0
+    updated_at: '2026-03-03T00:00:00Z'
+  design:
+    status: converged
+    asset: imp_python_fastapi/design/adrs/ADR-004.md
+    iteration: 1
+    delta: 0
+    updated_at: '2026-03-03T00:00:00Z'
+  code:
+    status: converged
+    asset: imp_python_fastapi/code/src/genesis_monitor/templates/project.html
+    iteration: 1
+    delta: 0
+    updated_at: '2026-03-03T00:00:00Z'
+  unit_tests:
+    status: converged
+    asset: imp_python_fastapi/tests/test_server.py
+    iteration: 1
+    delta: 0
+    updated_at: '2026-03-03T00:00:00Z'
+  "code\u2194unit_tests":
+    status: converged
+
+work_breakdown:
+- id: WU-MTEN-001
+  title: Add design_counts + t to project_detail context (routes.py)
+  req: [REQ-F-MTEN-001]
+  status: completed
+- id: WU-MTEN-002
+  title: Fix _get_historical_state design-only branch (routes.py bug)
+  req: [REQ-F-MTEN-001]
+  status: completed
+- id: WU-MTEN-003
+  title: Fix PhaseEntry delta_curve kwarg (temporal.py bug)
+  req: [REQ-F-MTEN-001]
+  status: completed
+- id: WU-MTEN-004
+  title: Add design tenant selector nav to project.html
+  req: [REQ-F-MTEN-002]
+  status: completed
+- id: WU-MTEN-005
+  title: Fix triggerReload() to preserve design param in scrubber
+  req: [REQ-F-MTEN-003]
+  status: completed
+- id: WU-MTEN-006
+  title: Add htmx:configRequest interceptor to project.html
+  req: [REQ-F-MTEN-003]
+  status: completed
+- id: WU-MTEN-007
+  title: Add TestDesignTenancy to test_server.py (6 tests)
+  req: [REQ-F-MTEN-001, REQ-F-MTEN-002, REQ-F-MTEN-003]
+  status: completed
+- id: WU-MTEN-008
+  title: Add multi-tenant events to conftest.py fixture
+  req: [REQ-F-MTEN-001, REQ-F-MTEN-002]
+  status: completed

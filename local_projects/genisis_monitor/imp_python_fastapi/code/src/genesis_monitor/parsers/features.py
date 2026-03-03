@@ -2,11 +2,11 @@
 # Implements: REQ-F-FUNC-001, REQ-F-ETIM-001, REQ-F-ETIM-003
 """Parse .ai-workspace/features/active/*.yml into FeatureVector models."""
 
+import re
 from datetime import datetime
 from pathlib import Path
 
 import yaml
-import re
 
 from genesis_monitor.models.core import EdgeTrajectory, FeatureVector
 from genesis_monitor.models.features import TimeBox
@@ -23,7 +23,7 @@ def parse_feature_vectors(workspace: Path, project_path: Path = None) -> list[Fe
         return []
 
     vectors_dict: dict[str, FeatureVector] = {}
-    
+
     # 1. Load Singleton Definitions from Spec (The "WHAT")
     if project_path:
         spec_file = project_path / "specification" / "features" / "FEATURE_VECTORS.md"

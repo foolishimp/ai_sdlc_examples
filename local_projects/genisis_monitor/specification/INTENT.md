@@ -149,6 +149,26 @@ The v2.8/v3.0 spec formalises the IntentEngine as a composition law over the fou
 
 ---
 
+## INT-GMON-009: Multi-Design Tenant Observability
+
+### Problem
+
+The genesis monitor shares a single `.ai-workspace/events/events.jsonl` across all design implementations of a methodology project (`imp_claude`, `imp_gemini`, `imp_codex`, etc.). Each event carries a `.project` field identifying its design tenant. The backend's `?design=` filter already works, but the UI provides no way to select or visualise tenants — every view shows the merged event stream with no tenant context. Users observing a multi-implementation project cannot isolate one tenant's convergence history, feature state, or events without writing their own queries.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-033 | Design tenant selector | Tab bar showing all tenants with event counts; clicking a tab filters all dashboard views to that tenant |
+| OUT-034 | Filter propagation | Active tenant filter propagated automatically to all HTMX fragment requests and temporal scrubber reloads without per-fragment URL changes |
+| OUT-035 | All-tenants view | "All tenants" tab restores the unfiltered merged view; URL has no `?design=` param |
+
+### Rationale
+
+The multi-tenant event log is the natural consequence of running parallel implementations. Without a design selector, the dashboard merges convergence states from different agents — a `imp_claude` `edge_converged` event and an `imp_gemini` `edge_started` event for the same edge appear as conflicting states. The selector makes the per-tenant view first-class, enabling independent progress tracking across implementations without requiring separate workspaces.
+
+---
+
 ## Constraints
 
 - **Read-only**: The monitor MUST NOT write to any target project's `.ai-workspace/`. It is a pure observer.

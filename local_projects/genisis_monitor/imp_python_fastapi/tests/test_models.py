@@ -1,7 +1,6 @@
 # Validates: REQ-F-PARSE-001, REQ-F-PARSE-002
 """Tests for data models."""
 
-from pathlib import Path
 
 from genesis_monitor.models import (
     AppConfig,

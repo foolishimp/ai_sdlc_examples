@@ -9,6 +9,18 @@
             theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'neutral'
         });
     </script>
+    <style>
+        .design-tenant-nav {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: var(--pico-spacing);
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--pico-muted-border-color);
+        }
+        .design-tenant-nav a { white-space: nowrap; }
+        .design-tenant-nav small { opacity: 0.7; font-size: 0.8em; margin-left: 0.25em; }
+    </style>
 {% endblock %}
 
 {% block scripts %}
@@ -21,6 +33,14 @@
                     });
                 }
             });
+
+            // Inject ?design= into every HTMX fragment request automatically
+            document.addEventListener('htmx:configRequest', function(evt) {
+                const design = new URLSearchParams(window.location.search).get('design');
+                if (design) {
+                    evt.detail.parameters['design'] = design;
+                }
+            });
         </script>
     {% endblock %}
 
@@ -28,6 +48,9 @@
 
 
     <script>
+        // Capture design param once at page load; re-initialises on full page nav
+        const _currentDesign = new URLSearchParams(window.location.search).get('design') || '';
+
         // Store timestamps and density for the global control plane
         window.eventTimestamps = [
             {% for ev in all_events | sort(attribute="timestamp") %}"{{ ev.timestamp.isoformat() }}"{% if not loop.last %}, {% endif %}{% endfor %}
@@ -70,8 +93,11 @@
             const triggerReload = () => {
                 const eIdx = Math.floor((endSlider.value / 100) * (window.eventTimestamps.length - 1));
                 const isLive = (eIdx === window.eventTimestamps.length - 1);
-                const tParam = isLive ? "" : "?t=" + encodeURIComponent(window.eventTimestamps[eIdx]);
-                
+                const parts = [];
+                if (!isLive) parts.push("t=" + encodeURIComponent(window.eventTimestamps[eIdx]));
+                if (_currentDesign) parts.push("design=" + encodeURIComponent(_currentDesign));
+                const tParam = parts.length ? "?" + parts.join("&") : "";
+
                 document.querySelectorAll("[hx-get]").forEach(el => {
                     const getAttr = el.getAttribute("hx-get");
                     if (getAttr && getAttr.includes("/fragments/")) {
@@ -130,8 +156,22 @@
     <p>{{ project.path }}</p>
 </hgroup>
 
-
-    
+{% if available_designs %}
+<nav class="design-tenant-nav" aria-label="Design tenants">
+  <a href="/project/{{ project.project_id }}{% if t %}?t={{ t }}{% endif %}"
+     {% if not design %}aria-current="page"{% endif %}>
+    All tenants
+    <small>({{ project.events | length }})</small>
+  </a>
+  {% for d in available_designs %}
+  <a href="/project/{{ project.project_id }}?design={{ d }}{% if t %}&amp;t={{ t }}{% endif %}"
+     {% if d == design %}aria-current="page"{% endif %}>
+    {{ d }}
+    <small>({{ design_counts.get(d, 0) }})</small>
+  </a>
+  {% endfor %}
+</nav>
+{% endif %}
 
     <div class="grid-2">
     <!-- Asset Graph -->

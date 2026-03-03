@@ -3,7 +3,7 @@
 
 from pathlib import Path
 
-from genesis_monitor.models.core import Project, StatusReport, PhaseEntry
+from genesis_monitor.models.core import PhaseEntry, Project, StatusReport
 from genesis_monitor.projections.tree import build_project_tree
 
 
@@ -41,7 +41,7 @@ class TestBuildProjectTree:
         tree = build_project_tree(projects)
         leaves = _collect_projects(tree)
         assert len(leaves) == 3
-        names = {l["name"] for l in leaves}
+        names = {node["name"] for node in leaves}
         assert names == {"alpha", "beta", "gamma"}
 
     def test_projects_at_different_depths(self):
@@ -52,7 +52,7 @@ class TestBuildProjectTree:
         tree = build_project_tree(projects)
         leaves = _collect_projects(tree)
         assert len(leaves) == 2
-        names = {l["name"] for l in leaves}
+        names = {node["name"] for node in leaves}
         assert names == {"shallow", "project"}
 
     def test_is_project_flags(self):
@@ -71,7 +71,7 @@ class TestBuildProjectTree:
                 pass
         # Leaf project nodes should be projects
         leaves = _collect_projects(tree)
-        assert all(l["is_project"] for l in leaves)
+        assert all(node["is_project"] for node in leaves)
 
     def test_common_ancestor_pruning(self):
         """Tree root should be the common ancestor, not filesystem root."""

@@ -1,7 +1,6 @@
 # Validates: REQ-F-DASH-002, REQ-F-DASH-003, REQ-F-DASH-004, REQ-F-DASH-005, REQ-F-TELEM-001
 """Tests for projection functions."""
 
-from pathlib import Path
 
 from genesis_monitor.models import (
     AssetType,

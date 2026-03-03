@@ -17,24 +17,18 @@ from genesis_monitor.models.events import (
     CheckpointCreatedEvent,
     ClaimExpiredEvent,
     ClaimRejectedEvent,
-    CommandErrorEvent,
     ConvergenceEscalatedEvent,
     EdgeReleasedEvent,
     EdgeStartedEvent,
-    EncodingEscalatedEvent,
-    EvaluatorDetailEvent,
     ExteroceptiveSignalEvent,
     GapsValidatedEvent,
-    HealthCheckedEvent,
     InteroceptiveSignalEvent,
-    IterationAbandonedEvent,
     IterationCompletedEvent,
     ProjectInitializedEvent,
     ReleaseCreatedEvent,
     ReviewCompletedEvent,
 )
 from genesis_monitor.models.features import ConstraintDimension
-
 
 # ── EVENT_TYPE_MAP ────────────────────────────────────────────────
 

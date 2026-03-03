@@ -1,9 +1,9 @@
 # Genesis Monitor — Requirements Specification
 
-**Version**: 3.0.0
-**Date**: 2026-02-23
-**Status**: Draft — iterate(intent→requirements) for INT-GMON-005
-**Feature**: REQ-F-GMON-001, REQ-F-GMON-002
+**Version**: 3.1.0
+**Date**: 2026-03-03
+**Status**: Converged — iterate(intent→requirements) for INT-GMON-009
+**Feature**: REQ-F-GMON-001, REQ-F-GMON-002, REQ-F-MTEN-001
 **Source Asset**: docs/specification/INTENT.md v3.0.0 (5 intent items, 32 outcomes)
 **Methodology**: AI SDLC Asset Graph Model v2.8
 
@@ -47,6 +47,7 @@ Genesis Monitor is a real-time web dashboard that observes AI SDLC methodology e
 | REQ-F-IENG-* | INT-GMON-005 (IntentEngine classification) |
 | REQ-F-ETIM-* | INT-GMON-005 (Edge timestamps) |
 | REQ-F-CTOL-* | INT-GMON-005 (Constraint tolerances) |
+| REQ-F-MTEN-* | INT-GMON-009 (Multi-design tenancy) |
 
 ### 1.4 Target Implementation
 
@@ -277,6 +278,7 @@ The system MUST provide a hierarchical tree view on the project index page that 
 - AC-3: Non-project directories that are ancestors of projects appear as expandable folder nodes
 - AC-4: Tree auto-updates via SSE when projects change
 - AC-5: Clicking a project node navigates to its detail dashboard
+- AC-6: All branches are expanded by default on initial page load — no project is hidden behind a collapsed ancestor
 
 ---
 
@@ -873,7 +875,127 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 
 ---
 
-## 25. Source Findings (v2.5/v2.8 Iteration)
+## 23. Traceability Projections (v3.0 — code-coverage iteration)
+
+### REQ-F-TRACE-001: Feature-Code Traceability Cross-Reference
+
+**Priority**: High
+**Traces To**: INT-GMON-006 (REQ key coverage visibility)
+
+The system MUST scan project code and test files for REQ key tags (`# Implements: REQ-*` in code files, `# Validates: REQ-*` in test files) and produce a per-requirement coverage map showing which requirements have code implementations, test coverage, and full traceability.
+
+**Acceptance Criteria**:
+- AC-1: Scanner reads all `.py` files under the project path recursively
+- AC-2: `# Implements: REQ-*` tags extracted from code files; `# Validates: REQ-*` from test files
+- AC-3: Coverage map produced per REQ key: `{has_code: bool, code_files: list, has_tests: bool, test_files: list, status: full|partial|none}`
+- AC-4: Summary statistics computed: total_req_keys, full_coverage, partial_coverage, no_coverage counts
+- AC-5: Per-feature rollup computes percentage of that feature's REQ keys that are implemented and tested
+
+### REQ-F-TRACE-002: Feature × Module Bipartite Map
+
+**Priority**: High
+**Traces To**: INT-GMON-006 (design-layer module visibility)
+
+The system MUST produce a bipartite mapping between feature vectors and implementing code modules, derived by joining each feature's REQ keys against the code coverage scan, and display which modules carry implementation responsibility for each feature.
+
+**Acceptance Criteria**:
+- AC-1: Bipartite map built from feature vector REQ keys joined with traceability scanner output
+- AC-2: Each row shows: feature_id, req_keys, implementing modules (file paths), untraced keys count
+- AC-3: Untraced keys (REQ keys in feature spec with no code tag) highlighted as gaps
+- AC-4: Map rendered as an HTML fragment accessible via `/fragments/project/{id}/feature-module-map`
+
+---
+
+## 24. Temporal Navigation (v3.0 — time-travel iteration)
+
+### REQ-F-NAV-001: Event Log Temporal Query
+
+**Priority**: High
+**Traces To**: INT-GMON-007 (historical state visibility)
+
+The system MUST support querying project state at arbitrary past timestamps by accepting a `?t=ISO8601` parameter and filtering the event log to events at or before that timestamp, enabling inspection of any historical project state.
+
+**Acceptance Criteria**:
+- AC-1: `?t=` query parameter accepted on all page and fragment routes
+- AC-2: Event list filtered to `event.timestamp <= t` before any projection is computed
+- AC-3: All projections (graph, convergence, features, gantt, edges) reflect the filtered event set
+- AC-4: When `?t=` is absent or equals the latest event timestamp, live state is shown
+
+### REQ-F-NAV-003: Feature State Reconstruction from Events
+
+**Priority**: High
+**Traces To**: INT-GMON-007 (event-sourced state reconstruction)
+
+The system MUST reconstruct the complete feature vector state at a given timestamp by replaying a filtered event log, deriving edge trajectory statuses (in_progress, converged), iteration counts, and delta curves without reading feature YAML files.
+
+**Acceptance Criteria**:
+- AC-1: `reconstruct_features(events, timestamp_limit) → list[FeatureVector]` function implemented
+- AC-2: `reconstruct_status(events, timestamp_limit) → StatusReport` function implemented
+- AC-3: `edge_started` events set trajectory status to `in_progress`
+- AC-4: `iteration_completed` events increment iteration count and append delta to delta_curve
+- AC-5: `edge_converged` events set trajectory status to `converged`
+- AC-6: Feature overall status derived from trajectory: all edges converged → `converged`, else `in_progress`
+
+### REQ-F-NAV-007: Event Density Heatmap
+
+**Priority**: Medium
+**Traces To**: INT-GMON-007 (activity visualization)
+
+The system MUST compute a normalized event activity density distribution across the project's event timeline, divided into configurable buckets, for use as a heatmap overlay in the temporal scrubber UI.
+
+**Acceptance Criteria**:
+- AC-1: `get_event_density(events, buckets=100) → list[float]` function implemented
+- AC-2: Timeline divided into N equal time buckets between first and last event timestamps
+- AC-3: Each bucket's count normalized to [0.0, 1.0] relative to the peak bucket
+- AC-4: Returns `[0.0] * buckets` for empty event lists; `[1.0] * buckets` for zero-duration timelines
+- AC-5: Output consumed by the global scrubber UI as `window.eventDensity`
+
+---
+
+## 25. Multi-Design Tenancy (v3.0 — multi-tenant iteration)
+
+### REQ-F-MTEN-001: Design Tenant Filter
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-033, OUT-035
+
+The system MUST support filtering all dashboard views to a single design tenant via a `?design=` query parameter. When the parameter is present, only events whose `.project` field matches the tenant value are used to compute projections.
+
+**Acceptance Criteria**:
+- AC-1: `?design=` parameter accepted on the project detail page and all 14 fragment routes
+- AC-2: When `?design=` is present, the event list, feature reconstruction, and status reconstruction are scoped to matching events only
+- AC-3: When `?design=` is absent, the merged view of all events is shown (existing behaviour)
+- AC-4: An unknown tenant value produces an empty (not errored) dashboard
+
+### REQ-F-MTEN-002: Design Tenant Selector UI
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-033, OUT-035
+
+The system MUST render a tab bar on the project detail page showing all design tenants present in the event log, with per-tenant event counts. The active tenant is visually distinguished. An "All tenants" tab restores the unfiltered view.
+
+**Acceptance Criteria**:
+- AC-1: Selector nav rendered only when the project has events from more than one distinct `.project` value
+- AC-2: Each tab shows the tenant name and its total event count `(N)` in a subdued annotation
+- AC-3: The active tab carries `aria-current="page"` (Pico CSS native active state — no custom class needed)
+- AC-4: "All tenants" tab links to the project URL with no `?design=` param; carries `aria-current="page"` when no design is active
+- AC-5: Clicking a tenant tab performs a full page navigation (not HTMX swap) so all fragments reinitialise consistently
+
+### REQ-F-MTEN-003: Design Filter Propagation
+
+**Priority**: High
+**Traces To**: INT-GMON-009 / OUT-034
+
+The system MUST propagate the active design filter automatically to all HTMX fragment requests (including SSE-triggered reloads) and temporal scrubber reloads, without requiring per-fragment `hx-get` URL modifications.
+
+**Acceptance Criteria**:
+- AC-1: An HTMX `configRequest` event listener injects the `design` query parameter into the request parameters of every HTMX request when a tenant is active
+- AC-2: The temporal scrubber's `triggerReload()` function includes `design=<tenant>` in the query string alongside `t=<timestamp>` when a tenant is active
+- AC-3: The active design value is captured once at page load from `window.location.search`; full page navigation on tenant switch ensures the captured value is always current
+
+---
+
+## 26. Source Findings (v2.5/v2.8 Iteration)
 
 | # | Type | Finding | Resolution |
 |---|------|---------|------------|
@@ -887,10 +1009,15 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | 8 | GAP | INT-GMON-004 does not specify Markov criteria validation display | Deferred — covered implicitly by convergence view + protocol compliance |
 | 9 | AMBIGUITY | Constraint dimension "resolved" status — how to detect from artifacts | Resolved: check for ADR files matching dimension name or design section grep |
 | 10 | GAP | INT-GMON-004 does not specify how vector nesting depth is bounded | Deferred — display depth, but enforcement is the methodology's responsibility |
+| 11 | GAP | Code implemented REQ-F-TRACE-* and REQ-F-NAV-* before spec was written | Added sections 23–24 (TRACE, NAV) retroactively to close the traceability chain |
+| 12 | BUG | `_get_historical_state` called `reconstruct_features/status` without `timestamp_limit` in design-only branch | Fixed by passing `datetime.now(utc)`; bug was latent until design filter was exercised by tests |
+| 13 | BUG | `reconstruct_status` constructed `PhaseEntry` with `delta_curve` kwarg that does not exist on the dataclass | Fixed by removing the field from the `PhaseEntry` constructor call in `temporal.py` |
+| 14 | GAP | Backend `?design=` filter existed but no UI exposed it — users had no way to switch tenants | Added §25 (MTEN) requirements and implementation: selector nav, HTMX interceptor, scrubber fix |
+| 15 | GAP | REQ-F-DASH-006 did not specify initial expansion state; implementation used `depth < 2` collapse, hiding projects nested ≥ 2 levels deep (e.g., e2e runs under `ai_sdlc_method/aisdlc-dogfood/`) | Added AC-6: all branches expanded by default; fixed `_tree.html` and added `/fragments/tree` route |
 
 ---
 
-## 26. Requirements Summary
+## 27. Requirements Summary
 
 | Category | Count | Critical | High | Medium |
 |----------|-------|----------|------|--------|
@@ -916,60 +1043,7 @@ The system MUST parse and display `breach_status` for constraint dimensions, ind
 | IntentEngine Classification (IENG) | 2 | 0 | 1 | 1 |
 | Edge Timestamps (ETIM) | 3 | 0 | 3 | 0 |
 | Constraint Tolerances (CTOL) | 2 | 0 | 2 | 0 |
-| **Total** | **61** | **13** | **33** | **15** |
-
---- 
-
-## 27. Executive Presentation (v3.1)
-
-### REQ-F-DASH-007: Explanatory Hovers
-**Priority**: Medium | **Traces To**: INT-GMON-006
-The system MUST provide informational hover icons next to all derived metrics and status indicators, explaining how the value was computed and which artifact provided the source data.
-
-### REQ-F-DASH-008: Real-Time Timestamps
-**Priority**: High | **Traces To**: INT-GMON-006
-Every dashboard fragment (HTMX swap) MUST include a "Last updated at [HH:MM:SS]" timestamp to provide immediate confidence in data freshness.
-
-### REQ-F-UX-006: Interactive Gantt Drill-Down
-**Priority**: High | **Traces To**: INT-GMON-006
-The Gantt chart component MUST be interactive. Clicking a task/edge bar MUST trigger an HTMX swap that displays the detailed iteration history and findings for that specific edge.
-
-### REQ-F-UX-007: Data Lineage Surface
-**Priority**: High | **Traces To**: INT-GMON-006
-The system MUST provide a "Show Source Data" toggle or link for every status card, rendering the raw underlying filesystem artifact (YAML, JSONL, or MD) used to generate that specific view.
-
---- 
-
-## 28. Temporal Navigation (v3.2)
-
-### REQ-F-NAV-001: Event History Indexing
-**Priority**: High | **Traces To**: INT-GMON-007
-The system MUST index the full events.jsonl on startup, providing a temporal map of all methodology transitions.
-
-### REQ-F-NAV-002: Temporal Scrubber UI
-**Priority**: Critical | **Traces To**: INT-GMON-007
-The system MUST provide a UI scrubber (slider) that allows the user to select a specific timestamp in the project's history.
-
-### REQ-F-NAV-003: State Reconstruction at T
-**Priority**: Critical | **Traces To**: INT-GMON-007
-When a historical timestamp T is selected, all dashboard fragments MUST use HTMX to re-render the state of assets, features, and the graph as they existed at time T.
-
-### REQ-F-NAV-004: Event-Link Tracing
-**Priority**: High | **Traces To**: INT-GMON-007
-The system MUST provide a visual trace of the causal chain for any selected event, showing its parent intents or subsequent child spawns.
-
---- 
-
-## 29. Global Control Plane (v3.3)
-
-### REQ-F-NAV-005: Fixed Global Footer
-**Priority**: High | **Traces To**: INT-GMON-008
-The system MUST provide a fixed-position footer that contains the temporal navigation controls, versioning, and event metrics, ensuring they are always accessible regardless of scroll position.
-
-### REQ-F-NAV-006: Dual-Handle Temporal Scrubber
-**Priority**: Critical | **Traces To**: INT-GMON-008
-The temporal navigator MUST support selecting a range (Start T to End T). Reconstructed views must reflect the methodology state transitions that occurred within that specific window.
-
-### REQ-F-NAV-007: Event Density Visualization
-**Priority**: Medium | **Traces To**: INT-GMON-008
-The scrubber bar MUST visually represent event clustering using a heatmap or marker system, allowing users to identify periods of high-intensity activity.
+| Traceability Projections (TRACE) | 2 | 0 | 2 | 0 |
+| Temporal Navigation (NAV) | 3 | 0 | 2 | 1 |
+| Multi-Design Tenancy (MTEN) | 3 | 0 | 3 | 0 |
+| **Total** | **69** | **13** | **40** | **16** |

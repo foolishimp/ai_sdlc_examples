@@ -149,6 +149,26 @@ The v2.8/v3.0 spec formalises the IntentEngine as a composition law over the fou
 
 ---
 
+## INT-GMON-009: Multi-Design Tenant Observability
+
+### Problem
+
+The genesis monitor shares a single `.ai-workspace/events/events.jsonl` across all design implementations of a methodology project (`imp_claude`, `imp_gemini`, `imp_codex`, etc.). Each event carries a `.project` field identifying its design tenant. The backend's `?design=` filter already works, but the UI provides no way to select or visualise tenants — every view shows the merged event stream with no tenant context. Users observing a multi-implementation project cannot isolate one tenant's convergence history, feature state, or events without writing their own queries.
+
+### Expected Outcomes
+
+| ID | Outcome | Measures |
+|----|---------|----------|
+| OUT-033 | Design tenant selector | Tab bar showing all tenants with event counts; clicking a tab filters all dashboard views to that tenant |
+| OUT-034 | Filter propagation | Active tenant filter propagated automatically to all HTMX fragment requests and temporal scrubber reloads without per-fragment URL changes |
+| OUT-035 | All-tenants view | "All tenants" tab restores the unfiltered merged view; URL has no `?design=` param |
+
+### Rationale
+
+The multi-tenant event log is the natural consequence of running parallel implementations. Without a design selector, the dashboard merges convergence states from different agents — a `imp_claude` `edge_converged` event and an `imp_gemini` `edge_started` event for the same edge appear as conflicting states. The selector makes the per-tenant view first-class, enabling independent progress tracking across implementations without requiring separate workspaces.
+
+---
+
 ## Constraints
 
 - **Read-only**: The monitor MUST NOT write to any target project's `.ai-workspace/`. It is a pure observer.
@@ -168,101 +188,3 @@ INT-GMON-003 → REQ-GMON-* (technology requirements)
 INT-GMON-004 → REQ-GMON-* (v2.5 alignment requirements)
 INT-GMON-005 → REQ-GMON-* (v2.8/v3.0 alignment requirements)
 ```
-
---- 
-
-## INT-GMON-006: Executive Presentation & Drill-Down
-
-### Problem
-The current dashboard lacks intuitive explanations for data derivation and aesthetic polish required for executive stakeholders. The Gantt chart is compressed and non-interactive, and the lineage from dashboard metrics back to underlying data is not visible.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-033 | Explanatory Hovers | "?" icons with hover text explaining data derivation and sources |
-| OUT-034 | Real-Time Status | "Last Updated" timestamps on all data fragments |
-| OUT-035 | Presentation UX | Executive-grade CSS styling and layout improvements |
-| OUT-036 | Interactive Gantt | Clickable Gantt bars that drill down into edge details |
-| OUT-037 | Data Lineage | "Explain this" view showing the raw underlying artifact data |
-
---- 
-
-## INT-GMON-006: Executive Presentation & Drill-Down
-
-### Problem
-The current dashboard lacks intuitive explanations for data derivation and aesthetic polish required for executive stakeholders. The Gantt chart is compressed and non-interactive, and the lineage from dashboard metrics back to underlying data is not visible.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-033 | Explanatory Hovers | "?" icons with hover text explaining data derivation and sources |
-| OUT-034 | Real-Time Status | "Last Updated" timestamps on all data fragments |
-| OUT-035 | Presentation UX | Executive-grade CSS styling and layout improvements |
-| OUT-036 | Interactive Gantt | Clickable Gantt bars that drill down into edge details |
-| OUT-037 | Data Lineage | "Explain this" view showing the raw underlying artifact data |
-
---- 
-
-## INT-GMON-007: Interactive Temporal Navigator
-
-### Problem
-The dashboard is currently locked to the "now" state. Understanding system evolution requires the ability to scan backwards through the event log, zoom into specific periods of high activity, and observe the state of the graph as it existed at any historical timestamp.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-038 | Temporal Scrubber | A UI slider to navigate the entire history of the events.jsonl |
-| OUT-039 | Zoomable Execution View | Variable-scale visualization of event density over time |
-| OUT-040 | State Reconstruction | Dashboard fragments update to reflect state at selected timestamp T |
-| OUT-041 | Causal Event Tracing | Visual links between historical events (e.g. intent → spawn → convergence) |
-
---- 
-
-## INT-GMON-007: Interactive Temporal Navigator
-
-### Problem
-The dashboard is currently locked to the "now" state. Understanding system evolution requires the ability to scan backwards through the event log, zoom into specific periods of high activity, and observe the state of the graph as it existed at any historical timestamp.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-038 | Temporal Scrubber | A UI slider to navigate the entire history of the events.jsonl |
-| OUT-039 | Zoomable Execution View | Variable-scale visualization of event density over time |
-| OUT-040 | State Reconstruction | Dashboard fragments update to reflect state at selected timestamp T |
-| OUT-041 | Causal Event Tracing | Visual links between historical events (e.g. intent → spawn → convergence) |
-
---- 
-
-## INT-GMON-008: Static Global Control Plane & Zoomable Scrubber
-
-### Problem
-The temporal controls are currently lost when scrolling, and the single-point slider does not allow for viewing a window of time or understanding where activity is clustered. Executives need a persistent control plane that allows them to "zoom in" on specific periods of intense methodology execution.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-042 | Fixed Global Footer | Scrubber and versioning are persistent at the bottom of the viewport |
-| OUT-043 | Dual-Handle Zoom | Ability to select a Start and End timestamp to define a view period |
-| OUT-044 | Activity Clustering | Visual markers or heatmap on the slider showing event density |
-| OUT-045 | Contextual Metadata | Footer displays event count range and total duration |
-
---- 
-
-## INT-GMON-008: Static Global Control Plane & Zoomable Scrubber
-
-### Problem
-The temporal controls are currently lost when scrolling, and the single-point slider does not allow for viewing a window of time or understanding where activity is clustered. Executives need a persistent control plane that allows them to "zoom in" on specific periods of intense methodology execution.
-
-### Expected Outcomes
-
-| ID | Outcome | Measures |
-|----|---------|----------|
-| OUT-042 | Fixed Global Footer | Scrubber and versioning are persistent at the bottom of the viewport |
-| OUT-043 | Dual-Handle Zoom | Ability to select a Start and End timestamp to define a view period |
-| OUT-044 | Activity Clustering | Visual markers or heatmap on the slider showing event density |
-| OUT-045 | Contextual Metadata | Footer displays event count range and total duration |

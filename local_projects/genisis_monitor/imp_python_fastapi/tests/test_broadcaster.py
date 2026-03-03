@@ -4,7 +4,6 @@
 import asyncio
 
 import pytest
-
 from genesis_monitor.server.broadcaster import SSEBroadcaster
 
 

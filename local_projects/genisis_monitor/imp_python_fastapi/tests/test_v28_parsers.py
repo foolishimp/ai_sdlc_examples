@@ -8,9 +8,7 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from event_factory import make_ol2_event
-
 from genesis_monitor.models.events import (
     AffectTriageEvent,
     CheckpointCreatedEvent,
@@ -34,10 +32,9 @@ from genesis_monitor.models.events import (
     ReviewCompletedEvent,
 )
 from genesis_monitor.parsers.events import classify_intent_engine_output, parse_events
-from genesis_monitor.projections.convergence import build_convergence_table_from_events
 from genesis_monitor.parsers.features import parse_feature_vectors
 from genesis_monitor.parsers.topology import parse_graph_topology
-
+from genesis_monitor.projections.convergence import build_convergence_table_from_events
 
 # ── v2.8 Event Parsing ────────────────────────────────────────────
 
@@ -520,7 +517,7 @@ class TestConvergenceDeltaCurve:
     def test_delta_curve_from_iteration_events(self):
         """build_convergence_table_from_events extracts delta_curve."""
         events = parse_events  # we build events manually below
-        from genesis_monitor.models.events import IterationCompletedEvent, EdgeStartedEvent
+        from genesis_monitor.models.events import EdgeStartedEvent, IterationCompletedEvent
 
         evts = [
             EdgeStartedEvent(

@@ -28,7 +28,6 @@ from genesis_monitor.models.features import (
     TimeBox,
 )
 
-
 # ── Typed Event Models ──────────────────────────────────────────
 
 

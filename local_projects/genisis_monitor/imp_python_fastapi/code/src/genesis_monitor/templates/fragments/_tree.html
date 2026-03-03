@@ -35,7 +35,7 @@
 {% elif node.children %}
     {# Folder node (may also be a project) — collapsible #}
     <li style="list-style: none; padding: 2px 0;">
-        <details {% if depth < 2 %}open{% endif %}>
+        <details open>
             <summary style="cursor: pointer; font-weight: {% if depth == 0 %}bold{% else %}normal{% endif %};">
                 {{ node.name }}
             </summary>

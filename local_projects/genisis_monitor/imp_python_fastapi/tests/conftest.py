@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from event_factory import make_ol2_event
 
 
@@ -87,6 +86,7 @@ gantt
     }))
 
     # Events (OL v2 format — the parser only processes events with 'eventType')
+    # Includes mixed-tenant events so the design selector is exercised in tests.
     events_dir = ws / "events"
     events_dir.mkdir()
     events = [
@@ -94,6 +94,12 @@ gantt
                        project="test", edge="design→code"),
         make_ol2_event("edge_converged", timestamp="2026-02-01T10:05:00Z",
                        project="test", edge="design→code"),
+        make_ol2_event("edge_started", timestamp="2026-02-01T11:00:00Z",
+                       project="imp_claude", edge="intent→requirements"),
+        make_ol2_event("edge_converged", timestamp="2026-02-01T11:30:00Z",
+                       project="imp_claude", edge="intent→requirements"),
+        make_ol2_event("edge_started", timestamp="2026-02-01T12:00:00Z",
+                       project="imp_gemini", edge="requirements→design"),
     ]
     (events_dir / "events.jsonl").write_text(
         "\n".join(json.dumps(e) for e in events) + "\n"

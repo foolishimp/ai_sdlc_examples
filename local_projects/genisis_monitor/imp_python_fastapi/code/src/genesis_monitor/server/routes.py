@@ -1,11 +1,14 @@
 # Implements: REQ-F-DASH-001, REQ-F-DASH-002, REQ-F-DASH-003, REQ-F-DASH-004, REQ-F-DASH-005, REQ-F-DASH-006, REQ-F-STREAM-002
 # Implements: REQ-F-VREL-003, REQ-F-CDIM-002, REQ-F-REGIME-002, REQ-F-CONSC-003, REQ-F-PROTO-001
+# Implements: REQ-F-MTEN-001
+# Implements: REQ-F-MTEN-002
+# Implements: REQ-F-MTEN-003
 """FastAPI route definitions — page routes, fragment routes, SSE endpoint."""
 
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request
@@ -22,11 +25,14 @@ from genesis_monitor.projections import (
     build_project_tree,
     build_regime_summary,
     build_spawn_tree,
-    collect_telem_signals,
 )
 from genesis_monitor.projections.feature_module_map import build_feature_module_map
+from genesis_monitor.projections.temporal import (
+    get_event_density,
+    reconstruct_features,
+    reconstruct_status,
+)
 from genesis_monitor.projections.traceability import build_traceability_view
-from genesis_monitor.projections.temporal import reconstruct_features, reconstruct_status, get_event_density
 
 if TYPE_CHECKING:
     from genesis_monitor.registry import ProjectRegistry
@@ -52,8 +58,9 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             except Exception:
                 pass
         if design:
-            features = reconstruct_features(events)
-            status = reconstruct_status(events)
+            limit = datetime.now(tz=UTC)
+            features = reconstruct_features(events, limit)
+            status = reconstruct_status(events, limit)
             return events, features, status
         return events, project.features, project.status
 
@@ -74,6 +81,8 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             return HTMLResponse("<h1>Project not found</h1>", status_code=404)
         events, features, status = _get_historical_state(project, t, design)
         available_designs = sorted(list(set(e.project for e in project.events if e.project)))
+        design_counts = {d: sum(1 for e in project.events if e.project == d)
+                         for d in available_designs}
         graph_mermaid = build_graph_mermaid(project.topology, status)
         convergence = build_convergence_table(status, events)
         matrix = build_feature_matrix(features)
@@ -91,7 +100,9 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             {
                 "project": project,
                 "design": design,
+                "t": t,
                 "available_designs": available_designs,
+                "design_counts": design_counts,
                 "graph_mermaid": graph_mermaid,
                 "convergence": convergence,
                 "matrix": matrix,
@@ -180,6 +191,16 @@ def create_router(registry: ProjectRegistry, broadcaster: SSEBroadcaster) -> API
             request,
             "fragments/_telem.html",
             {"signals": signals, "current_time": datetime.now().strftime("%H:%M:%S")},
+        )
+
+    @router.get("/fragments/tree", response_class=HTMLResponse)
+    async def fragment_tree(request: Request):
+        projects = registry.list_projects()
+        tree = build_project_tree(projects)
+        return request.app.state.templates.TemplateResponse(
+            request,
+            "fragments/_tree.html",
+            {"projects": projects, "tree": tree},
         )
 
     @router.get("/fragments/project-list", response_class=HTMLResponse)

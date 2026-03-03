@@ -66,6 +66,6 @@ class TestProjectRegistry:
         assert project.status is not None
         assert len(project.features) == 1
         assert project.topology is not None
-        assert len(project.events) == 2
+        assert len(project.events) == 5  # fixture has 5 mixed-tenant events
         assert len(project.tasks) == 3
         assert project.constraints is not None

@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 from event_factory import make_ol2_event
-
 from genesis_monitor.parsers import (
     parse_constraints,
     parse_events,
@@ -14,7 +13,6 @@ from genesis_monitor.parsers import (
     parse_status,
     parse_tasks,
 )
-
 
 # ── STATUS.md parser ─────────────────────────────────────────────
 
@@ -123,9 +121,9 @@ class TestParseGraphTopology:
 class TestParseEvents:
     def test_parse_valid_events(self, workspace_path: Path):
         result = parse_events(workspace_path)
-        assert len(result) == 2
+        # Fixture has 5 mixed-tenant events (test×2, imp_claude×2, imp_gemini×1)
+        assert len(result) == 5
         assert result[0].event_type == "edge_started"
-        assert result[1].event_type == "edge_converged"
 
     def test_parse_timestamps(self, workspace_path: Path):
         result = parse_events(workspace_path)

@@ -2,7 +2,7 @@
 {% block title %}Genesis Monitor — Projects{% endblock %}
 
 {% block content %}
-<h1>Monitored Projects</h1>
+<h1>Monitored Projects <small style="font-size:0.6em; color: var(--pico-muted-color);">{{ projects | length }} projects</small></h1>
 
 <div id="project-tree"
      hx-get="/fragments/tree"

@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Patterns for REQ key extraction
-_IMPLEMENTS_RE = re.compile(r"#\s*Implements:\s*(REQ-[\w,-]+(?:\s*,\s*REQ-[\w,-]+)*)")
-_VALIDATES_RE = re.compile(r"#\s*Validates:\s*(REQ-[\w,-]+(?:\s*,\s*REQ-[\w,-]+)*)")
+_IMPLEMENTS_RE = re.compile(r"#\s*Implements:\s*(REQ-[\w-]+(?:\s*,\s*REQ-[\w-]+)*)")
+_VALIDATES_RE = re.compile(r"#\s*Validates:\s*(REQ-[\w-]+(?:\s*,\s*REQ-[\w-]+)*)")
 _REQ_KEY_RE = re.compile(r"REQ-[\w-]+")
 
 # File extensions to scan

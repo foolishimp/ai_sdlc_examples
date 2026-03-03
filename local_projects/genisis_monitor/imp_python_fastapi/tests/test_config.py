@@ -4,7 +4,6 @@
 from pathlib import Path
 
 import yaml
-
 from genesis_monitor.config import load_config
 
 

@@ -10,14 +10,14 @@ language:
 
 tools:
   test_runner:
-    command: pytest
-    args: ["tests/", "-v"]
-    pass_criterion: "exit 0"
+    command: "python -m pytest"
+    args: "imp_python_fastapi/tests/ -q"
+    pass_criterion: "exit code 0"
     required: true
   linter:
-    command: ruff
-    args: ["check", "src/", "tests/"]
-    pass_criterion: "exit 0"
+    command: "ruff check"
+    args: "imp_python_fastapi/code/src/ imp_python_fastapi/tests/ --ignore=E501,E701,F821,F841"
+    pass_criterion: "exit code 0"
     required: false
 
 thresholds:

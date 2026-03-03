@@ -10,11 +10,9 @@ from genesis_monitor.models.core import (
     FeatureVector,
     GraphTopology,
     Project,
-    StatusReport,
 )
 from genesis_monitor.models.events import (
     AffectTriageEvent,
-    ClaimExpiredEvent,
     ConvergenceEscalatedEvent,
     EdgeStartedEvent,
     Event,
@@ -24,9 +22,9 @@ from genesis_monitor.models.events import (
     IterationCompletedEvent,
     ReviewCompletedEvent,
 )
-from genesis_monitor.models.features import ConstraintDimension, ProjectionProfile
-from genesis_monitor.projections.consciousness import build_consciousness_timeline
+from genesis_monitor.models.features import ConstraintDimension
 from genesis_monitor.projections.compliance import build_compliance_report
+from genesis_monitor.projections.consciousness import build_consciousness_timeline
 from genesis_monitor.projections.dimensions import build_dimension_coverage
 from genesis_monitor.projections.intent_engine import build_intent_engine_view
 from genesis_monitor.projections.regimes import build_regime_summary

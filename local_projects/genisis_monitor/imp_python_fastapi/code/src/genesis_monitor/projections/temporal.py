@@ -1,8 +1,9 @@
-# Implements: REQ-F-NAV-001, REQ-F-NAV-003
+# Implements: REQ-F-NAV-001, REQ-F-NAV-003, REQ-F-MTEN-001
 """Temporal projection engine. Reconstructs state from the event log."""
 
 from datetime import datetime
-from genesis_monitor.models.core import FeatureVector, EdgeTrajectory, StatusReport
+
+from genesis_monitor.models.core import EdgeTrajectory, FeatureVector, PhaseEntry, StatusReport
 from genesis_monitor.models.events import Event
 
 
@@ -73,9 +74,6 @@ def reconstruct_features(events: list[Event], timestamp_limit: datetime) -> list
     return list(features_dict.values())
 
 
-from genesis_monitor.models.core import PhaseEntry
-
-
 def reconstruct_status(events: list[Event], timestamp_limit: datetime) -> StatusReport:
     """Reconstruct project status (phase summary) from events."""
     from collections import defaultdict
@@ -124,7 +122,6 @@ def reconstruct_status(events: list[Event], timestamp_limit: datetime) -> Status
                 edge=edge,
                 status=data["status"],
                 iterations=data["iterations"],
-                delta_curve=data["delta_curve"],
                 evaluator_results={"summary": f"{len(data['features'])} features"},
             )
         )
