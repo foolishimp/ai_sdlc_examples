@@ -78,6 +78,12 @@ def _parse_one(data: dict) -> Event:
         if ns.startswith("aisdlc://"):
             project = ns[len("aisdlc://"):]
 
+    # REQ-F-MTEN-001: infer design tenant from file path when the project field
+    # carries only the repo name (all events tagged repo-wide rather than per-tenant).
+    # Priority order: imp_<name>/ → spec name; specification/ → "specification";
+    # anything else keeps the repo-level project name.
+    project = _infer_tenant(project, data)
+
     base_kwargs = {
         "timestamp": timestamp,
         "event_type": event_type,
@@ -188,3 +194,62 @@ def classify_intent_engine_output(event_type: str) -> str:
     if event_type in _ESCALATE_TYPES:
         return "escalate"
     return "unclassified"
+
+
+# ── Multi-tenancy: derive design tenant from file path (REQ-F-MTEN-001) ──────
+
+def _extract_file_path(data: dict) -> str:
+    """Extract a file path from an event dict, trying common locations."""
+    # 1. _metadata.original_data.file_path (artifact_modified events)
+    fp = data.get("_metadata", {}).get("original_data", {}).get("file_path", "")
+    if fp:
+        return fp
+    # 2. _metadata.original_data.file (spec_modified events)
+    fp = data.get("_metadata", {}).get("original_data", {}).get("data", {}).get("file", "")
+    if fp:
+        return fp
+    # 3. OL outputs[0].name (generic OL events)
+    outputs = data.get("outputs", [])
+    if outputs and isinstance(outputs[0], dict):
+        name = outputs[0].get("name", "")
+        # Strip file:// prefix if present
+        if name.startswith("file://"):
+            # name is absolute path — extract relative portion after project root
+            # e.g. file:///Users/jim/src/apps/ai_sdlc_method/imp_claude/design/ADR.md
+            # We only care about the first path component after the repo root
+            parts = name.replace("file://", "").lstrip("/").split("/")
+            # Find imp_* or specification component
+            for i, p in enumerate(parts):
+                if p.startswith("imp_") or p == "specification":
+                    return "/".join(parts[i:])
+        return name
+    return ""
+
+
+def _infer_tenant(project: str, data: dict) -> str:
+    """Infer design tenant from file path when project carries only the repo name.
+
+    Maps path prefix → tenant:
+      imp_claude/...    → "imp_claude"
+      imp_gemini/...    → "imp_gemini"
+      imp_codex/...     → "imp_codex"
+      imp_bedrock/...   → "imp_bedrock"
+      specification/... → "specification"
+      (anything else)   → unchanged (repo-level / cross-cutting)
+
+    Only activates when the project value is the repo name (not already a tenant).
+    If the project is already a specific tenant name, it is returned unchanged.
+    """
+    # Already a tenant-specific value — don't overwrite
+    if project.startswith("imp_") or project == "specification":
+        return project
+
+    fp = _extract_file_path(data)
+    if not fp:
+        return project
+
+    first = fp.split("/")[0]
+    if first.startswith("imp_") or first == "specification":
+        return first
+
+    return project
