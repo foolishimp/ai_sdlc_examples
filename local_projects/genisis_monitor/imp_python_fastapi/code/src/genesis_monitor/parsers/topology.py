@@ -1,5 +1,14 @@
 # Implements: REQ-F-PARSE-003, REQ-F-CDIM-001, REQ-F-PROF-001, REQ-F-CTOL-001, REQ-F-CTOL-002
-"""Parse .ai-workspace/graph/graph_topology.yml into a GraphTopology model."""
+"""Parse graph_topology.yml into a GraphTopology model.
+
+Source priority (first found wins):
+  1. Plugin config: {project_root}/*/code/**/plugins/*/config/graph_topology.yml
+  2. Workspace copy: {workspace}/graph/graph_topology.yml  (may be a symlink)
+
+Rationale: the plugin config is the authoritative source. The workspace copy
+exists for compatibility but may lag if not kept in sync. Reading the plugin
+config directly avoids that class of staleness.
+"""
 
 from pathlib import Path
 
@@ -9,12 +18,38 @@ from genesis_monitor.models.core import AssetType, GraphTopology, Transition
 from genesis_monitor.models.features import ConstraintDimension, ProjectionProfile
 
 
-def parse_graph_topology(workspace: Path) -> GraphTopology | None:
+def _find_plugin_config(project_root: Path) -> Path | None:
+    """Search for a genesis plugin graph_topology.yml under the project root.
+
+    Matches: {project_root}/*/code/**/plugins/*/config/graph_topology.yml
+    Returns the first match (sorted for determinism), or None.
+    """
+    for candidate in sorted(
+        project_root.glob("*/code/**/" + "plugins/*/config/graph_topology.yml")
+    ):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def parse_graph_topology(
+    workspace: Path,
+    project_root: Path | None = None,
+) -> GraphTopology | None:
     """Parse graph topology YAML.
 
-    Returns None if the file doesn't exist or can't be parsed.
+    If project_root is provided, searches for the plugin config first.
+    Falls back to workspace/graph/graph_topology.yml.
+    Returns None if no file exists or parsing fails.
     """
-    topo_path = workspace / "graph" / "graph_topology.yml"
+    topo_path: Path | None = None
+
+    if project_root:
+        topo_path = _find_plugin_config(project_root)
+
+    if topo_path is None:
+        topo_path = workspace / "graph" / "graph_topology.yml"
+
     if not topo_path.exists():
         return None
 

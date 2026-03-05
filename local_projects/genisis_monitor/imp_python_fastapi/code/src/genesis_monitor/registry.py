@@ -50,7 +50,7 @@ class ProjectRegistry:
             name=name,
             status=status,
             features=parse_feature_vectors(workspace, project_path=path),
-            topology=parse_graph_topology(workspace),
+            topology=parse_graph_topology(workspace, project_root=path),
             events=parse_events(workspace, max_events=100000),
             tasks=parse_tasks(workspace),
             constraints=parse_constraints(workspace),
