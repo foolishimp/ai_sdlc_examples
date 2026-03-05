@@ -1,14 +1,39 @@
 {% if events %}
 <table>
     <thead>
-        <tr><th>Time</th><th>Type</th><th>Details</th></tr>
+        <tr><th>Time</th><th>Type</th><th>Details</th><th>Hashes</th></tr>
     </thead>
     <tbody>
         {% for e in events | reverse %}
         <tr>
-            <td><small>{{ e.timestamp.strftime('%H:%M:%S') }}</small></td>
-            <td><code>{{ e.event_type }}</code></td>
-            <td><small>{{ e.data | string | truncate(80) }}</small></td>
+            <td><small>{{ e.timestamp.strftime("%H:%M:%S") }}</small></td>
+            <td>
+                <code class="{% if e.event_type == "manual_commit" %}human-tag{% elif e.event_type == "transaction_aborted" %}error-tag{% endif %}">
+                    {{ e.event_type }}
+                </code>
+            </td>
+            <td>
+                <small>
+                    {% if e.event_type == "iteration_completed" %}
+                        <strong>{{ e.feature }}:{{ e.edge }}</strong> (iter {{ e.iteration }})
+                    {% else %}
+                        {{ e.data.get("description", e.data | string | truncate(60)) }}
+                    {% endif %}
+                </small>
+            </td>
+            <td>
+                {% set outputs = e.data.get("outputs", []) %}
+                {% if outputs %}
+                    {% for out in outputs %}
+                        {% set h = out.get("facets", {}).get("sdlc:contentHash", {}).get("hash") %}
+                        {% if h %}
+                            <div class="hash-box" title="{{ out.get("name") }}">
+                                <code>{{ h[:8] }}</code>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </td>
         </tr>
         {% endfor %}
     </tbody>

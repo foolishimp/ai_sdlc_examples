@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from genesis_monitor.models.events import Event
     from genesis_monitor.models.features import (
         ConstraintDimension,
         ProjectionProfile,
@@ -20,10 +21,8 @@ if TYPE_CHECKING:
 
 @dataclass
 class PhaseEntry:
-    """One row of the phase completion summary table."""
-
     edge: str
-    status: str  # converged | in_progress | not_started
+    status: str
     iterations: int = 0
     evaluator_results: dict[str, str] = field(default_factory=dict)
     source_findings: int = 0
@@ -32,8 +31,6 @@ class PhaseEntry:
 
 @dataclass
 class TelemSignal:
-    """A TELEM self-reflection signal."""
-
     signal_id: str
     category: str
     description: str
@@ -42,8 +39,6 @@ class TelemSignal:
 
 @dataclass
 class StatusReport:
-    """Parsed STATUS.md data."""
-
     project_name: str = ""
     phase_summary: list[PhaseEntry] = field(default_factory=list)
     telem_signals: list[TelemSignal] = field(default_factory=list)
@@ -53,51 +48,43 @@ class StatusReport:
 
 @dataclass
 class EdgeTrajectory:
-    """Per-edge trajectory within a feature vector."""
-
     status: str = "not_started"
     iteration: int = 0
     evaluator_results: dict[str, str] = field(default_factory=dict)
-    # v2.8 additions
     started_at: datetime | None = None
     converged_at: datetime | None = None
     convergence_type: str = ""
     escalations: list[str] = field(default_factory=list)
+    # v2.9 Unit of Work
+    latest_hash: str | None = None
+    archive_path: str | None = None
 
 
 @dataclass
 class FeatureVector:
-    """A tracked feature with per-edge convergence trajectory."""
-
     feature_id: str = ""
     title: str = ""
     status: str = "pending"
     vector_type: str = "feature"
     trajectory: dict[str, EdgeTrajectory] = field(default_factory=dict)
-    # v2.5 additions
     profile: str | None = None
     parent_id: str | None = None
     spawned_by: str | None = None
     children: list[str] = field(default_factory=list)
     fold_back_status: str | None = None
     time_box: TimeBox | None = None
-    # v2.8 additions
     encoding: dict | None = None
     requirements: list[str] = field(default_factory=list)
 
 
 @dataclass
 class AssetType:
-    """A node type in the asset graph."""
-
     name: str = ""
     description: str = ""
 
 
 @dataclass
 class Transition:
-    """An admissible edge in the asset graph."""
-
     source: str = ""
     target: str = ""
     edge_type: str = ""
@@ -105,19 +92,14 @@ class Transition:
 
 @dataclass
 class GraphTopology:
-    """The asset graph topology definition."""
-
     asset_types: list[AssetType] = field(default_factory=list)
     transitions: list[Transition] = field(default_factory=list)
-    # v2.5 additions
     constraint_dimensions: list[ConstraintDimension] = field(default_factory=list)
     profiles: list[ProjectionProfile] = field(default_factory=list)
 
 
 @dataclass
 class Task:
-    """A task from ACTIVE_TASKS.md."""
-
     task_id: str = ""
     title: str = ""
     status: str = "pending"
@@ -126,8 +108,6 @@ class Task:
 
 @dataclass
 class ProjectConstraints:
-    """Parsed project_constraints.yml."""
-
     language: str = ""
     tools: dict[str, dict] = field(default_factory=dict)
     thresholds: dict[str, str] = field(default_factory=dict)
@@ -136,15 +116,12 @@ class ProjectConstraints:
 
 @dataclass
 class EdgeConvergence:
-    """Derived convergence view for a single edge."""
-
     edge: str = ""
     iterations: int = 0
     evaluator_summary: str = ""
     source_findings: int = 0
     process_gaps: int = 0
     status: str = "not_started"
-    # v2.8 additions
     started_at: datetime | None = None
     converged_at: datetime | None = None
     duration: str = ""
@@ -154,8 +131,6 @@ class EdgeConvergence:
 
 @dataclass
 class Project:
-    """A discovered project with all parsed data."""
-
     project_id: str = ""
     path: Path = field(default_factory=Path)
     name: str = ""
@@ -172,8 +147,6 @@ class Project:
 
 @dataclass
 class AppConfig:
-    """Application configuration."""
-
     watch_dirs: list[Path] = field(default_factory=list)
     host: str = "0.0.0.0"
     port: int = 8000

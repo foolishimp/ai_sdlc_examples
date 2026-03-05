@@ -31,153 +31,29 @@
         .badge-converged { background: rgba(76, 175, 80, 0.15); color: #4caf50; }
         .badge-in-progress { background: rgba(255, 152, 0, 0.15); color: #ff9800; }
         .badge-not-started { background: rgba(153, 153, 153, 0.15); color: #999; }
-        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
-    
-        
-        /* Global Control Plane (v3.3) */
-        main.container { padding-bottom: 120px; } /* Space for fixed footer */
-        
+
+        /* v2.9 Formal Transactions */
+        .human-tag { color: #2196f3; background: rgba(33, 150, 243, 0.1); padding: 2px 4px; border-radius: 3px; }
+        .error-tag { color: #f44336; background: rgba(244, 67, 54, 0.1); padding: 2px 4px; border-radius: 3px; }
+        .hash-box { display: inline-block; padding: 1px 4px; background: #eee; border: 1px solid #ddd; border-radius: 3px; font-size: 0.75rem; margin-right: 4px; cursor: help; }
+
+        /* Global Control Plane (Scrubber) */
+        main.container { padding-bottom: 120px; }
         .global-footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: #1a1d21;
-            color: #fff;
-            padding: 15px 0;
-            border-top: 1px solid #333;
-            z-index: 2000;
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: #1a1d21; color: #fff; padding: 15px 0;
+            border-top: 1px solid #333; z-index: 2000;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
         }
-        
-        .footer-grid {
-            display: grid;
-            grid-template-columns: 200px 1fr 200px;
-            gap: 20px;
-            align-items: center;
-        }
-        
-        /* Dual Range Slider Styles */
-        .range-wrapper {
-            position: relative;
-            width: 100%;
-            height: 30px;
-        }
-        
-        .range-track {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 100%;
-            height: 8px;
-            background: #333;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-        
-        .density-heatmap {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0.6;
-        }
-        
-        input[type="range"].dual-handle {
-            position: absolute;
-            width: 100%;
-            pointer-events: none;
-            appearance: none;
-            background: none;
-            margin: 0;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-        
-        input[type="range"].dual-handle::-webkit-slider-thumb {
-            pointer-events: auto;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            background: var(--pico-primary);
-            cursor: pointer;
-            border: 2px solid #fff;
-        }
-        
-        .scrubber-labels {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.7rem;
-            color: #999;
-            margin-top: 5px;
-            font-family: monospace;
-        }
-        /* Executive Polish & Tooltips */
-        .card { box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: box-shadow 0.2s; }
-        .card:hover { box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
-        .timestamp { font-size: 0.75rem; color: var(--pico-muted-color); text-align: right; margin-top: -10px; margin-bottom: 10px; font-family: monospace; }
-        
-        .help-hover {
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background-color: var(--pico-primary);
-            color: white;
-            font-size: 10px;
-            font-weight: bold;
-            cursor: help;
-            margin-left: 5px;
-            position: relative;
-        }
-        
-        .help-hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #333;
-            color: #fff;
-            padding: 5px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s;
-            z-index: 1000;
-            pointer-events: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .help-hover:hover::after {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .lineage-toggle {
-            font-size: 0.8rem;
-            cursor: pointer;
-            color: var(--pico-primary);
-            text-decoration: underline;
-            margin-top: 10px;
-            display: inline-block;
-        }
-        
-        .raw-data-block {
-            background-color: #f4f5f6;
-            padding: 10px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 0.85rem;
-            overflow-x: auto;
-            margin-top: 10px;
-        }
+        .footer-grid { display: grid; grid-template-columns: 200px 1fr 200px; gap: 20px; align-items: center; }
+        .range-wrapper { position: relative; width: 100%; height: 30px; }
+        .range-track { position: absolute; top: 50%; transform: translateY(-50%); width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; }
+        .density-heatmap { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.6; }
+        input[type="range"].dual-handle { position: absolute; width: 100%; pointer-events: none; appearance: none; background: none; margin: 0; top: 50%; transform: translateY(-50%); }
+        input[type="range"].dual-handle::-webkit-slider-thumb { pointer-events: auto; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--pico-primary); cursor: pointer; border: 2px solid #fff; }
+        .scrubber-labels { display: flex; justify-content: space-between; font-size: 0.7rem; color: #999; margin-top: 5px; font-family: monospace; }
+
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } .footer-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body hx-ext="sse" sse-connect="/events/stream">
@@ -186,7 +62,6 @@
             <li><strong><a href="/">Genesis Monitor</a></strong></li>
         </ul>
         <ul>
-            <li><a href="/telem">TELEM Signals</a></li>
             <li><a href="/api/health">Health</a></li>
         </ul>
     </nav>
@@ -195,16 +70,10 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Legacy Footer Replaced -->
-        <small>Genesis Monitor — AI SDLC v3.2.0 Methodology Dashboard</small>
-    </footer>
-
-    {% block scripts %}{% endblock %}
-
     <footer class="global-footer">
         <div class="container footer-grid">
             <div class="version-info">
-                <small><strong>Genesis Monitor</strong><br>v3.3.0 Platinum</small>
+                <small><strong>Genesis Monitor</strong><br>v2.9.0 Hard SDLC</small>
             </div>
             
             <div class="scrubber-container">
@@ -229,5 +98,6 @@
         </div>
     </footer>
 
+    {% block scripts %}{% endblock %}
 </body>
 </html>

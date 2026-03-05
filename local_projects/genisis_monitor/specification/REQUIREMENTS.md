@@ -1047,3 +1047,56 @@ The system MUST propagate the active design filter automatically to all HTMX fra
 | Temporal Navigation (NAV) | 3 | 0 | 2 | 1 |
 | Multi-Design Tenancy (MTEN) | 3 | 0 | 3 | 0 |
 | **Total** | **69** | **13** | **40** | **16** |
+---
+## 26. Formal Transactions (v2.9 — Unit of Work)
+
+### REQ-F-TX-001: Transaction Boundary Parsing
+
+**Priority**: Critical
+**Traces To**: ADR-S-015 / OUT-036
+
+The system MUST parse `START`, `COMPLETE`, `FAIL`, and `ABORT` OpenLineage event types to identify formal transaction boundaries for each unit of work.
+
+**Acceptance Criteria**:
+- AC-1: Event parser correctly identifies OL eventType
+- AC-2: `ABORT` events are mapped to TransactionAbortedEvent dataclass
+- AC-3: Dashboard visually distinguishes manual vs automated commits
+
+### REQ-F-TX-002: Content Hash Visibility
+
+**Priority**: High
+**Traces To**: ADR-S-015 / OUT-037
+
+The system MUST extract and display SHA-256 `contentHash` facets from event inputs and outputs, providing a verifiable link between the ledger and the physical artifacts.
+
+**Acceptance Criteria**:
+- AC-1: Parser extracts `sdlc:contentHash` from OpenLineage dataset facets
+- AC-2: Event feed displays truncated hashes (8 chars) with full hash on hover
+- AC-3: Temporal reconstruction tracks the latest committed hash per edge
+
+## 27. Tournament Pattern (v2.9 — Evolutionary Convergence)
+
+### REQ-F-TOUR-001: Tournament Node Styling
+
+**Priority**: High
+**Traces To**: v2.9.0 Topology / OUT-038
+
+The system MUST visually distinguish Tournament Pattern nodes (`parallel_spawn`, `tournament_arbitration`, `tournament_merge`) in the asset graph visualization.
+
+**Acceptance Criteria**:
+- AC-1: Tournament nodes rendered with distinct color or border style (e.g., light blue with dashed border)
+- AC-2: Parallel fan-out and merge points are clearly identifiable in the graph LR diagram
+
+## 28. Markov Archiving (v2.9 — Provenance)
+
+### REQ-F-ARCH-001: Linked Run Archives
+
+**Priority**: High
+**Traces To**: ADR-S-014 / OUT-039
+
+The system MUST parse `sdlc:run_archive_path` facets and provide direct links to the physical iteration archives stored in the `runs/` directory.
+
+**Acceptance Criteria**:
+- AC-1: Feature detail view includes links to the run archive for each trajectory iteration
+- AC-2: Links correctly resolve to the local `runs/` filesystem path
+- AC-3: Missing archives (purged) are handled gracefully (link disabled or hidden)

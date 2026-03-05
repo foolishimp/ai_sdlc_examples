@@ -301,6 +301,29 @@ class ArtifactModifiedEvent(Event):
     tool: str = ""        # Write | Edit
 
 
+# ── v2.9 Formal Transaction Events ────────────────────────────────
+
+
+@dataclass
+class ManualCommitEvent(Event):
+    """Emitted when a human formally blesses/commits the current state."""
+
+    feature: str = ""
+    edge: str = ""
+    description: str = ""
+    gap_count: int = 0
+
+
+@dataclass
+class TransactionAbortedEvent(Event):
+    """Emitted when an orphaned or failed transaction is formally aborted."""
+
+    feature: str = ""
+    edge: str = ""
+    reason: str = ""
+    original_run_id: str = ""
+
+
 EVENT_TYPE_MAP: dict[str, type[Event]] = {
     # v2.5 events
     "iteration_completed": IterationCompletedEvent,
@@ -336,4 +359,7 @@ EVENT_TYPE_MAP: dict[str, type[Event]] = {
     "encoding_escalated": EncodingEscalatedEvent,
     # artifact write observation
     "artifact_modified": ArtifactModifiedEvent,
+    # v2.9 formal transactions
+    "manual_commit": ManualCommitEvent,
+    "transaction_aborted": TransactionAbortedEvent,
 }

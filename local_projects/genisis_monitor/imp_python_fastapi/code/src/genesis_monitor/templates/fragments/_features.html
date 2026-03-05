@@ -1,62 +1,39 @@
-<div class="timestamp" id="feat-ts">Last updated: {{ current_time }}</div>
 {% if features %}
-{% for f in features %}
-<details>
-    <summary>
-        <strong>{{ f.feature_id }}</strong> — {{ f.title }}
-        <span class="badge badge-{{ 'converged' if f.status == 'converged' else ('in-progress' if f.status == 'in_progress' else 'not-started') }}">
-            {{ f.status }}
-        </span>
-        {% if f.vector_type != 'feature' %}
-        <code>{{ f.vector_type }}</code>
-        {% endif %}
-        {% if f.profile %}
-        <small>[{{ f.profile }}]</small>
-        {% endif %}
-        {% if f.requirements %}
-        <small>({{ f.requirements | length }} REQs)</small>
-        {% endif %}
-    </summary>
-    {% if f.parent_id %}
-    <p><small>Parent: <code>{{ f.parent_id }}</code>{% if f.spawned_by %} | Spawned by: <code>{{ f.spawned_by }}</code>{% endif %}</small></p>
-    {% endif %}
-    {% if f.fold_back_status %}
-    <p><small>Fold-back: <strong>{{ f.fold_back_status }}</strong></small></p>
-    {% endif %}
-    {% if f.time_box %}
-    <p><small>Time-box: <strong>{{ f.time_box.duration }}</strong> | On expiry: {{ f.time_box.on_expiry }}{% if f.time_box.check_in %} | Check-in: {{ f.time_box.check_in }}{% endif %}</small></p>
-    {% endif %}
-    {% if f.requirements %}
-    <p><small>Requirements: {% for req in f.requirements %}<code>{{ req }}</code>{% if not loop.last %} {% endif %}{% endfor %}</small></p>
-    {% endif %}
-    {% if f.trajectory %}
-    <table>
-        <thead>
-            <tr><th>Edge</th><th>Status <span class="help-hover" data-tooltip="Derived from events.jsonl or feature vector YAML">?</span></th><th>Iterations</th></tr>
-        </thead>
-        <tbody>
-            {% for edge_name, traj in f.trajectory.items() %}
-            <tr>
-                <td>{{ edge_name }}</td>
-                <td><span class="status-{{ traj.status }}">{{ traj.status }}</span></td>
-                <td>{{ traj.iteration }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p><em>No trajectory data.</em></p>
-    {% endif %}
-
-    <div style="text-align: right;">
-        <span class="lineage-toggle" hx-get="/lineage/source/feature/{{ f.feature_id }}" hx-target="#raw-{{ f.feature_id }}" hx-swap="innerHTML">
-            View Source YAML
-        </span>
-    </div>
-    <div id="raw-{{ f.feature_id }}"></div>
-
-</details>
-{% endfor %}
+<div class="grid">
+    {% for f in features %}
+    <article class="card">
+        <header>
+            <strong>{{ f.feature_id }}</strong>
+            <span class="badge badge-{{ f.status }}">{{ f.status }}</span>
+        </header>
+        <p><small>{{ f.title }}</small></p>
+        
+        <table>
+            <thead>
+                <tr><th>Edge</th><th>Status</th><th>Hash</th></tr>
+            </thead>
+            <tbody>
+                {% for node, traj in f.trajectory.items() %}
+                <tr>
+                    <td>{{ node }}</td>
+                    <td><span class="status-{{ traj.status }}">{{ traj.status }}</span></td>
+                    <td>
+                        {% if traj.latest_hash %}
+                            <code title="Committed Hash">{{ traj.latest_hash[:8] }}</code>
+                            {% if traj.archive_path %}
+                                <br><small><a href="/runs/{{ traj.archive_path | urlencode }}" target="_blank">Archive</a></small>
+                            {% endif %}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </article>
+    {% endfor %}
+</div>
 {% else %}
-<p><em>No feature vectors found.</em></p>
+<p><em>No feature vectors discovered.</em></p>
 {% endif %}
