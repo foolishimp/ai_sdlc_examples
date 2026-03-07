@@ -127,6 +127,7 @@ class EdgeConvergence:
     duration: str = ""
     convergence_type: str = ""
     delta_curve: list[int] = field(default_factory=list)
+    hamiltonian: int = 0  # H = T + V (iterations + last_delta) — iteration cost
 
 
 @dataclass

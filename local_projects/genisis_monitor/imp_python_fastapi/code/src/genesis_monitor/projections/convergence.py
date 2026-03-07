@@ -80,6 +80,12 @@ def build_convergence_table_from_events(events: list[Event]) -> list[EdgeConverg
 
         summary = f"{len(state['features'])} feature{'s' if len(state['features']) != 1 else ''}"
 
+        # Hamiltonian H = T + V (kinetic + potential energy)
+        # T = iterations expended (work done); V = last delta (work remaining)
+        T = state["iterations"]
+        V = state["delta_curve"][-1] if state["delta_curve"] else 0
+        hamiltonian = T + V
+
         rows.append(EdgeConvergence(
             edge=edge,
             iterations=state["iterations"],
@@ -90,6 +96,7 @@ def build_convergence_table_from_events(events: list[Event]) -> list[EdgeConverg
             duration=duration,
             convergence_type=state["convergence_type"],
             delta_curve=state["delta_curve"],
+            hamiltonian=hamiltonian,
         ))
 
     return rows
